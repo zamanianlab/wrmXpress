@@ -1,0 +1,66 @@
+species:
+  - Bma
+  # - Cel
+  # - Sma
+
+stages:
+  - Mf
+  # - Adult
+  # - Mixed
+
+modules:
+
+  #### Motilty (optical flow) ####
+  motility:
+    run: True
+
+  #### Conversion ####
+  # For converting the TimePoint directory structure used for timelapse/video
+  # experiments to a directory that can be loaded as a stack in Fiji. Will
+  # automatically be set to run = True if flow[run] = True. If the converted
+  # video should be saved in directories[output], set save_video to True and
+  # add a rescale_multiplier (can be any float value). Flow will be run with the
+  # unscaled video, but the saved video can still be scaled.
+  convert:
+    run: True
+    save_video: True
+    rescale_multiplier: 1
+
+  #### Segmentation ####
+  # If there is only one wavelength, keep the value blank. If there are multiple,
+  # uncomment the wavelength you want segmented.
+  segment:
+    run: True
+    wavelength:
+      # - w1
+      # - w2
+      # - w3
+
+  #### CellProfiler ####
+  # Change run to True and uncomment a pipeline.
+  cellprofiler:
+    run: False
+    pipeline:
+      # - mf_celltox
+      # - feeding
+      # - wormsize
+      # - wormsize_trans
+
+  #### Diagnostics ####
+  # Usually set to true.
+  dx:
+    run: True
+
+wells:
+  - All
+  # - A01
+  # - A12
+  # - E01
+
+directories:
+  work:
+    - work
+  input:
+    - input
+  output:
+    - output
