@@ -126,19 +126,19 @@ if __name__ == "__main__":
 
     if 'cellprofiler' in modules.keys():
         pipeline = modules['cellprofiler']['pipeline'][0]
-        fl_command = 'Rscript Core_imgproc/scripts/cp/generate_filelist_{}.R {} {}'.format(
+        fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
         fl_command_split = shlex.split(fl_command)
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
 
-        cp_command = 'cellprofiler -c -r -p Core_imgproc/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
+        cp_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
             pipeline, pipeline)
         cp_command_split = shlex.split(cp_command)
         print('Starting CellProfiler.')
         subprocess.run(cp_command_split)
 
-        md_command = 'Rscript Core_imgproc/scripts/metadata_join_master.R {}'.format(
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {}'.format(
             g.plate)
         md_command_split = shlex.split(md_command)
         print('Joining experiment metadata and tidying.')
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         outpath = output.joinpath('data', plate + '_data' + ".csv")
         df.to_csv(path_or_buf=outpath, index_label='well')
 
-        md_command = 'Rscript Core_imgproc/scripts/metadata_join_master.R {}'.format(g.plate)
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {}'.format(g.plate)
         md_command_split = shlex.split(md_command)
         subprocess.run(md_command_split)
 
