@@ -36,7 +36,7 @@ ImageMath:[module_num:2|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Measurement:
 
 MaskImage:[module_num:3|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:InvertedRaw
+    Select the input image:RawImage
     Name the output image:RawMask
     Use objects or an image as a mask?:Image
     Select object for mask:None
