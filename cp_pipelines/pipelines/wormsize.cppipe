@@ -53,7 +53,7 @@ Smooth:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_windo
     Clip intensities to 0 and 1?:Yes
 
 EnhanceEdges:[module_num:5|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:RawMask
+    Select the input image:Smooth
     Name the output image:WormEdges
     Automatically calculate the threshold?:Yes
     Absolute threshold:0.2
