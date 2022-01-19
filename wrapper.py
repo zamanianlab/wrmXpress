@@ -97,8 +97,8 @@ if __name__ == "__main__":
 
     # pool global variables into namedtuple (g)
     g = namedtuple(
-        'g', 'input work output plate_dir plate plate_short time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
-    g = g(input, work, output, plate_dir, plate, plate_short, time_points,
+        'g', 'input work output plate_dir plate plate_short species stages time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
+    g = g(input, work, output, plate_dir, plate, plate_short, species, stages, time_points,
           columns, rows, x_sites, y_sites, n_waves, wave_names, wells, '')
 
     ######################################
