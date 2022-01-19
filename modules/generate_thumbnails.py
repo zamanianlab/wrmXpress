@@ -22,7 +22,7 @@ def generate_thumbnails(g, type):
             rescale_value = 0.125
         rescaled = rescale(image, rescale_value, anti_aliasing=True, clip=False)
         # normalize to 0-255
-        if type == 'flow':
+        if type == 'motility':
             rescaled[0, 0] = 1
         else:
             rescaled[0, 0] = 0.05
@@ -47,7 +47,7 @@ def generate_thumbnails(g, type):
         new_im.paste(Image.fromarray(thumb),
                      ((col - 1) * 256, (row - 1) * 256))
 
-    if type == 'flow':
+    if type == 'motility':
         # apply a colormap if it's a flow image
         new_im = np.asarray(new_im) / 255
         new_im = Image.fromarray(np.uint8(cm.inferno(new_im) * 255))

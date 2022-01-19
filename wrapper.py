@@ -10,6 +10,7 @@ from collections import defaultdict
 from collections import namedtuple
 
 sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
+sys.path.append('/Users/njwheeler/GitHub/wrmXpress/modules')
 
 from get_wells import get_wells
 from get_image_paths import get_image_paths
@@ -41,8 +42,8 @@ if __name__ == "__main__":
         conf = yaml.load(f.read(), Loader=yaml.FullLoader)
 
     # read the modules, remove any where run is False
-    species = conf.get('species')
-    stages = conf.get('stages')
+    species = conf.get('species')[0]
+    stages = conf.get('stages')[0]
     modules = conf.get('modules')
     print('modules:')
     for key, value in modules.copy().items():
