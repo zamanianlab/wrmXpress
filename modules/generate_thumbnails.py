@@ -65,6 +65,9 @@ def generate_thumbnails(g, type):
 
     g.output.joinpath('thumbs').mkdir(
         parents=True, exist_ok=True)
-    outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
+    if type == '':
+        outfile = g.output.joinpath('thumbs', g.plate + ".png")
+    else:
+        outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
 
     new_im.save(outfile)
