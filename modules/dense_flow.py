@@ -48,7 +48,7 @@ def dense_flow(g, well, video):
         parents=True, exist_ok=True)
     outpath = g.work.joinpath(g.plate, well, 'img')
     flow_png = g.work.joinpath(outpath,
-                                 g.plate + "_" + well + '_flow' + ".png")
+                                 g.plate + "_" + well + '_motility' + ".png")
 
     # write to png
     # the current multiplier works for 10 frame videos, not sure if it will work for others
