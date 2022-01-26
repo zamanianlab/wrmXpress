@@ -1,0 +1,567 @@
+---
+title: "Models for filtering Worm Toolbox output"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 16, fig.height = 8, message = FALSE, warning = FALSE)
+```
+
+This document assesses the ability of several models to classify StraightenedWorm data. Manual annotations are used to train, validate, and select the best model and hyperparameters
+
+First load the data:
+
+```{r}
+
+library(tidymodels)
+library(tidyverse)
+library(here)
+
+files <- tibble(path = list.files(path = here(),
+                                  pattern = '.*_manual.csv',
+                                  recursive = TRUE))
+
+get_data <- function(...) {
+  
+  df <- tibble(...)
+  
+  data <- read_csv(here(df$path))
+  
+}
+
+annotations <- files %>% 
+  pmap_dfr(get_data) %>% 
+  janitor::clean_names() %>% 
+  filter(!is.na(worm)) %>% 
+  select(worm, contains('area')) %>% 
+  mutate(worm = case_when(
+    worm == 'Y' ~ 'Single worm',
+    worm == 'N' ~ 'Debris',
+    worm == 'P' ~ 'Partial worm',
+    worm == 'M' ~ 'Multiple worms',
+  )) %>% 
+  mutate(worm = as.factor(worm))
+
+glimpse(annotations)
+
+```
+
+
+## Explore data
+
+The Worm Toolbox in Cell Profiler can export a variety of features, some of which may be useful in classification.
+
+```{r}
+
+library(ggbeeswarm)
+
+annotations %>%
+  pivot_longer(-worm, names_to = 'measurement', values_to = 'value') %>%
+  ggplot() +
+  geom_quasirandom(aes(x = worm, y = value, color = worm)) +
+  facet_wrap(facets = vars(measurement), scales = 'free_y') +
+  theme_minimal() +
+  NULL
+
+```
+
+
+## Build models
+
+First create training (with cross-fold validation) and test data sets
+
+```{r}
+
+model_data <- annotations %>%
+  mutate(worm = factor(worm))
+
+set.seed(123)
+# data_boot <- bootstraps(model_data, times = 2) # only 2 bootstraps for testing
+data_split <- initial_split(model_data,
+                            strata = worm)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+set.seed(234)
+folds <- vfold_cv(train_data,
+                  v = 10,
+                  strata = worm)
+
+```
+
+Specify the models (multinomial regression, decision tree, and random forest):
+
+```{r}
+
+decision_tree_rpart_spec <-
+  decision_tree(tree_depth = tune(), min_n = tune(), cost_complexity = tune()) %>%
+  set_engine('rpart') %>%
+  set_mode('classification')
+
+multinom_reg_glmnet_spec <-
+  multinom_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine('glmnet')
+
+cores <- parallel::detectCores()
+rand_forest_ranger_spec <-
+  rand_forest(mtry = tune(), min_n = tune()) %>%
+  set_engine('ranger', num.threads = cores) %>%
+  set_mode('classification')
+
+svm_poly_kernlab_spec <-
+  svm_poly(cost = tune(), degree = tune(), scale_factor = tune(), margin = tune()) %>%
+  set_engine('kernlab') %>%
+  set_mode('classification')
+
+boost_tree_xgboost_spec <-
+  boost_tree(tree_depth = tune(), learn_rate = tune(), 
+             min_n = tune(), loss_reduction = tune(), mtry = tune(),
+             sample_size = tune(), stop_iter = tune()) %>%
+  set_engine('xgboost') %>%
+  set_mode('classification')
+
+```
+
+Build the recipe and workflow:
+
+```{r}
+
+library(themis)
+
+recipe <-
+  recipe(worm ~ ., data = model_data) %>%
+  step_nzv(all_predictors()) %>%
+  step_normalize(all_predictors()) %>%
+  step_corr(all_numeric_predictors(), threshold = .5) %>%
+  step_smote(worm)
+
+prep <- prep(recipe)
+juice <- juice(prep)
+
+prep
+glimpse(juice)
+
+recipe2 <- recipe
+recipe2$steps[[3]] <- update(recipe2$steps[[3]], skip = TRUE)
+
+dt_workflow <-
+  workflow() %>%
+  add_model(decision_tree_rpart_spec) %>%
+  add_recipe(recipe2)
+
+mn_workflow <-
+  workflow() %>%
+  add_model(multinom_reg_glmnet_spec) %>%
+  add_recipe(recipe)
+
+rf_workflow <-
+  workflow() %>%
+  add_model(rand_forest_ranger_spec) %>%
+  add_recipe(recipe2)
+
+svm_poly_workflow <-
+  workflow() %>%
+  add_model(svm_poly_kernlab_spec) %>%
+  add_recipe(recipe)
+
+xg_workflow <-
+  workflow() %>% 
+  add_model(boost_tree_xgboost_spec) %>% 
+  add_recipe(recipe)
+
+```
+
+## Tune the models
+
+### Decision tree
+
+```{r}
+
+dt_grid <- grid_regular(cost_complexity(),
+                        tree_depth(),
+                        min_n(),
+                        levels = 5)
+
+# tune on the train data
+dt_tune <-
+  dt_workflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = dt_grid,
+    control = control_grid(save_pred = TRUE,
+                           verbose = TRUE),
+    metrics = metric_set(roc_auc, sens)
+  )
+
+write_rds(dt_tune, here('code', 'rds', 'dt_tune.rds'))
+
+dt_tune <- read_rds(here('code', 'rds', 'dt_tune.rds'))
+
+# extract the best decision tree
+best_tree <- dt_tune %>%
+  select_best("roc_auc")
+
+# print metrics
+(dt_metrics <- dt_tune %>% 
+    collect_metrics() %>% 
+    semi_join(best_tree) %>% 
+    select(.metric:.config) %>% 
+    mutate(model = 'Decision tree'))
+
+# finalize the wf with the best tree
+dt_workflow <-
+  dt_workflow %>%
+  finalize_workflow(best_tree)
+
+# generate predictions on the hold-out test data
+dt_auc <-
+  dt_tune %>%
+  collect_predictions(parameters = best_tree) %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  mutate(model = "Decision tree")
+
+dt_auc %>%
+  autoplot()
+
+```
+
+### Multinomial regression
+
+```{r}
+
+mn_grid <- grid_regular(mixture(),
+                        penalty())
+
+mn_tune <-
+  mn_workflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = mn_grid,
+    control = control_grid(save_pred = TRUE,
+                           verbose = TRUE),
+    metrics = metric_set(roc_auc, sens))
+
+write_rds(mn_tune, here('code', 'rds', 'mn_tune.rds'))
+
+mn_tune <- read_rds(here('code', 'rds', 'mn_tune.rds'))
+
+# extract the best model
+best_mn <- mn_tune %>%
+  select_best("roc_auc")
+
+# print metrics
+(mn_metrics <- mn_tune %>% 
+    collect_metrics() %>% 
+    semi_join(best_mn) %>% 
+    select(.metric:.config) %>% 
+    mutate(model = 'Multinomial regression'))
+
+# finalize the wf with the best model
+mn_workflow <-
+  mn_workflow %>%
+  finalize_workflow(best_mn)
+
+# generate predictions on the hold-out test data
+mn_auc <-
+  mn_tune %>%
+  collect_predictions(parameters = best_mn) %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  mutate(model = "Multinomial regression")
+
+mn_auc %>%
+  autoplot()
+
+```
+
+### Random forest
+
+```{r}
+
+rf_grid <- grid_regular(finalize(mtry(), model_data),
+                        min_n())
+
+rf_tune <-
+  rf_workflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = rf_grid,
+    control = control_grid(save_pred = TRUE,
+                           verbose = TRUE),
+    metrics = metric_set(roc_auc, sens))
+
+write_rds(rf_tune, here('code', 'rds', 'rf_tune.rds'))
+
+rf_tune <- read_rds(here('code', 'rds', 'rf_tune.rds'))
+
+# extract the best decision model
+best_rf <- rf_tune %>%
+  select_best("roc_auc")
+
+# print metrics
+(rf_metrics <- rf_tune %>% 
+    collect_metrics() %>% 
+    semi_join(best_rf) %>% 
+    select(.metric:.config) %>% 
+    mutate(model = 'Random forest'))
+
+# finalize the wf with the best model
+rf_workflow <-
+  rf_workflow %>%
+  finalize_workflow(best_rf)
+
+# generate predictions on the hold-out test data
+rf_auc <-
+  rf_tune %>%
+  collect_predictions(parameters = best_rf) %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  mutate(model = "Random forest")
+
+rf_auc %>%
+  autoplot()
+
+```
+
+### SVM
+
+```{r}
+
+svm_grid <- grid_regular(cost(),
+                         degree(),
+                         scale_factor(),
+                         svm_margin())
+
+svm_tune <-
+  svm_poly_workflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = svm_grid,
+    control = control_grid(save_pred = TRUE,
+                           verbose = TRUE),
+    metrics = metric_set(roc_auc, sens))
+
+write_rds(svm_tune, here('code', 'rds', 'svm_tune.rds'))
+
+svm_tune <- read_rds(here('code', 'rds', 'svm_tune.rds'))
+
+# extract the best svm
+best_svm <- svm_tune %>%
+  select_best("roc_auc")
+
+# print metrics
+(svm_metrics <- svm_tune %>% 
+    collect_metrics() %>% 
+    semi_join(best_svm) %>% 
+    select(.metric:.config) %>% 
+    mutate(model = 'SVM'))
+
+# finalize the wf with the best svm
+svm_workflow <-
+  svm_poly_workflow %>%
+  finalize_workflow(best_svm)
+
+# generate predictions on the hold-out test data
+svm_auc <-
+  svm_tune %>%
+  collect_predictions(parameters = best_svm) %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  mutate(model = "SVM")
+
+svm_auc %>%
+  autoplot()
+
+```
+
+### XGBoost
+
+```{r}
+
+xg_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), train_data),
+  learn_rate(),
+  stop_iter(),
+  size = 30
+)
+
+# tune on the train data
+xg_tune <-
+  xg_workflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = xg_grid,
+    control = control_grid(save_pred = TRUE,
+                           verbose = TRUE),
+    metrics = metric_set(roc_auc, sens)
+  )
+
+write_rds(xg_tune, here('code', 'rds', 'xg_tune.rds'))
+
+xg_tune <- read_rds(here('code', 'rds', 'xg_tune.rds'))
+
+# extract the best decision tree
+best_xg <- xg_tune %>%
+  select_best("roc_auc")
+
+# print metrics
+(xg_metrics <- xg_tune %>% 
+    collect_metrics() %>% 
+    semi_join(best_xg) %>% 
+    select(.metric:.config) %>% 
+    mutate(model = 'XGBoost'))
+
+# finalize the wf with the best tree
+xg_workflow <-
+  xg_workflow %>%
+  finalize_workflow(best_xg)
+
+# generate predictions on the hold-out test data
+xg_auc <-
+  xg_tune %>%
+  collect_predictions(parameters = best_xg) %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  mutate(model = "XGBoost")
+
+xg_auc %>%
+  autoplot()
+
+```
+
+
+## Evaluate models
+
+Evaluate using ROC AUC.
+
+```{r}
+
+(all_metrics <- bind_rows(dt_metrics, mn_metrics, rf_metrics, svm_metrics, xg_metrics) %>% 
+   group_by(.metric) %>% 
+   arrange(-mean))
+
+(all_models <- bind_rows(dt_auc, mn_auc, rf_auc, svm_auc, xg_auc) %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity, col = model)) +
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) +
+  coord_equal() +
+  scale_color_viridis_d(option = "plasma") +
+  facet_wrap(facets = vars(.level)) +
+  theme_minimal() +
+  NULL)
+
+```
+
+Random forest and XGBoost consistently perform the best across all 4 classes. Now I fit to the test data using the best parameters and evaluate the model's performance.
+
+```{r}
+
+mtry <- best_xg$mtry
+trees <- 1000
+min_n <- best_xg$min_n
+tree_depth <- best_xg$tree_depth
+learn_rate <- best_xg$learn_rate
+loss_reduction <- best_xg$loss_reduction
+
+last_mod <-
+  boost_tree(mtry = mtry,
+             trees = trees,
+             min_n = min_n,
+             tree_depth = tree_depth,
+             learn_rate = learn_rate,
+             loss_reduction = loss_reduction) %>%
+  set_engine("xgboost", importance = "impurity") %>%
+  set_mode("classification")
+
+last_workflow <-
+  xg_workflow %>%
+  update_model(last_mod)
+
+set.seed(345)
+last_fit <-
+  last_workflow %>%
+  last_fit(data_split, 
+           metrics = metric_set(roc_auc, sens))
+
+collect_metrics(last_fit)
+
+last_fit %>%
+  extract_fit_engine() %>% 
+  vip::vip() +
+  theme_minimal()
+
+(final_auc <-
+  last_fit %>%
+  collect_predictions() %>%
+  roc_curve(.pred_Debris:`.pred_Single worm`, truth = worm) %>%
+  autoplot())
+
+last_fit %>%
+  collect_predictions() %>%
+  conf_mat(truth = worm, estimate = .pred_class) %>%
+  autoplot()
+
+```
+
+The model actually performs better on the test data than the training data, indicating that we aren't overfitting.
+
+In a situation where we probably have more data points than are truly necessary to be able to draw defensible inferences, we are most concerned with accurate identification of a Single Worm. By that I mean that we are ok if the false negative rate is high (i.e., a Single Worm is identified as either Debris, Partial, or Multiple). Thus, we want a high true positive and low false positive for Single Worms, or high positive predictive value (PPV) and high Sensitivity. Using the selected model and the test set, here's what would happen if we only kept the StraightenedWorms to be predicted as a Single Worm:
+
+```{r}
+
+last_fit %>% 
+  collect_predictions() %>% 
+  filter(.pred_class == 'Single worm') %>%
+  conf_mat(truth = worm, estimate = .pred_class)
+
+last_fit %>% 
+  collect_predictions() %>% 
+  group_by(worm) %>% 
+  summarise(n())
+
+final_wf <- last_fit %>% 
+  extract_workflow()
+
+write_rds(final_wf, here('code', 'rds', 'final_workflow.rds'))
+
+pre_filter <- annotations %>% 
+  select(worm, area_shape_major_axis_length) %>% 
+  ggplot(aes(x = worm, y = area_shape_major_axis_length)) +
+  geom_quasirandom(aes(color = worm)) +
+  geom_text(data = . %>% group_by(worm) %>% summarise(n = n()),
+            aes(label = n), y = 550) +
+  theme_minimal() +
+  labs(title = 'Pre-filter') +
+  lims(y = c(0, 600)) +
+  theme(legend.position = 'empty')
+  
+post_filter <- augment(final_wf, annotations) %>% 
+  filter(.pred_class == 'Single worm') %>% 
+  select(worm, area_shape_major_axis_length) %>% 
+  ggplot(aes(x = worm, y = area_shape_major_axis_length)) +
+  geom_quasirandom(aes(color = worm)) +
+  geom_text(data = . %>% group_by(worm) %>% summarise(n = n()),
+            aes(label = n), y = 550) +
+  theme_minimal() +
+  labs(title = 'Post-filter') +
+  lims(y = c(0, 600)) +
+  theme(legend.position = 'empty')
+
+cowplot::plot_grid(pre_filter, post_filter, nrow = 1, align = 'h', axis = 'tb')
+
+(percent_loss <- annotations %>% 
+  select(worm, area_shape_major_axis_length) %>% 
+  group_by(worm) %>% 
+  summarise(pre_filter = n()) %>%
+  left_join(
+    augment(final_wf, annotations) %>% 
+      filter(.pred_class == 'Single worm') %>% 
+      select(worm, area_shape_major_axis_length) %>% 
+      group_by(worm) %>% 
+      summarise(post_filter = n())
+  ) %>% 
+  mutate(percent_loss = 1 - post_filter / pre_filter))
+
+```
+

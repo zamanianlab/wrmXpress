@@ -1,4 +1,5 @@
 suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(tidymodels)))
 options(readr.show_col_types = FALSE,
         dplyr.summarise.inform = FALSE)
 # setwd('~/Desktop/temp_root/')
@@ -6,7 +7,7 @@ options(readr.show_col_types = FALSE,
 args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-# plate <- '20210619-p03-KJG_692'
+# plate <- '20220121-p05-NJW_1113'
 
 metadata_dir <- stringr::str_c('metadata', plate, sep = '/')
 output_dir <- stringr::str_c('output', 'data/', sep = '/')
@@ -77,12 +78,18 @@ if (length(output_files$data_file) > 1) {
     dplyr::rename(well = Metadata_Well)
 
 } else {
+  
+  worm_classes <- readr::read_rds('wrmXpress/cp_pipelines/worm_classification/code/rds/final_workflow.rds')
 
   output_data <- readr::read_csv(output_files$path) %>%
     dplyr::rename_with( ~ case_when(
       . == 'Metadata_Well' ~ 'well',
       TRUE ~ .
-    ))
+    )) %>% 
+    janitor::clean_names()
+  
+    output_data <- worm_classes %>% 
+      parsnip::augment(new_data = output_data)
 
 }
 
