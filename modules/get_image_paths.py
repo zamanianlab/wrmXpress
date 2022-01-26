@@ -80,7 +80,11 @@ def get_image_paths(g, wells):
                     outpath = g.work.joinpath(g.plate, well, 'img')
                     first_png = g.work.joinpath(outpath,
                                                 g.plate + "_" + well + ".png")
-                    cv2.imwrite(str(first_png), first_frame)
+                    try:
+                        cv2.imwrite(str(first_png), first_frame)
+                    except cv2.error:
+                        print('{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
+                        raise
 
                 elif g.n_waves == 1 and time_point != 1:
                     image_path = g.input.joinpath(g.plate, "TimePoint_" + str(time_point),
@@ -100,7 +104,11 @@ def get_image_paths(g, wells):
                         outpath = g.work.joinpath(g.plate, well, 'img')
                         first_png = g.work.joinpath(outpath,
                                                     g.plate + "_" + well + '_w' + str(i) + ".png")
-                        cv2.imwrite(str(first_png), first_frame)
+                        try:
+                            cv2.imwrite(str(first_png), first_frame)
+                        except cv2.error:
+                            print('{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
+                            raise
 
                 elif g.n_waves > 1 and time_point != 1:
                     for i in range(1, g.n_waves + 1):
