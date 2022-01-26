@@ -16,9 +16,13 @@ def generate_thumbnails(g, type):
         image = cv2.imread(str(path), cv2.IMREAD_ANYDEPTH)
 
         # rescale the image with anti-aliasing
-        rescaled = rescale(image, 0.125, anti_aliasing=True, clip=False)
+        if g.species == 'Sma':
+            rescale_value = 0.25
+        else:
+            rescale_value = 0.125
+        rescaled = rescale(image, rescale_value, anti_aliasing=True, clip=False)
         # normalize to 0-255
-        if type == 'flow':
+        if type == 'motility':
             rescaled[0, 0] = 1
         else:
             rescaled[0, 0] = 0.05
@@ -43,7 +47,7 @@ def generate_thumbnails(g, type):
         new_im.paste(Image.fromarray(thumb),
                      ((col - 1) * 256, (row - 1) * 256))
 
-    if type == 'flow':
+    if type == 'motility':
         # apply a colormap if it's a flow image
         new_im = np.asarray(new_im) / 255
         new_im = Image.fromarray(np.uint8(cm.inferno(new_im) * 255))
@@ -61,6 +65,9 @@ def generate_thumbnails(g, type):
 
     g.output.joinpath('thumbs').mkdir(
         parents=True, exist_ok=True)
-    outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
+    if type == '':
+        outfile = g.output.joinpath('thumbs', g.plate + ".png")
+    else:
+        outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
 
     new_im.save(outfile)
