@@ -34,5 +34,5 @@ dependencies:
   - pyyaml=5.4.1
   - pip=21.3.1
   - centrosome=1.2.0
-  - scikit-image
+  - scikit-image=0.19.1
   - cellprofiler=4.2.1
