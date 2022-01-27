@@ -78,19 +78,13 @@ if (length(output_files$data_file) > 1) {
     dplyr::rename(well = Metadata_Well)
 
 } else {
-  
-  worm_classes <- readr::read_rds('wrmXpress/cp_pipelines/worm_classification/code/rds/final_workflow.rds')
 
   output_data <- readr::read_csv(output_files$path) %>%
     dplyr::rename_with( ~ case_when(
       . == 'Metadata_Well' ~ 'well',
       TRUE ~ .
-    )) %>% 
-    janitor::clean_names()
-  
-    output_data <- worm_classes %>% 
-      parsnip::augment(new_data = output_data)
-
+    ))
+    
 }
 
 final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>%
