@@ -93,8 +93,8 @@ IdentifyPrimaryObjects:[module_num:7|svn_version:'Unknown'|variable_revision_num
     Use advanced settings?:Yes
     Threshold setting version:12
     Threshold strategy:Global
-    Thresholding method:Manual
-    Threshold smoothing scale:0
+    Thresholding method:Robust Background
+    Threshold smoothing scale:3
     Threshold correction factor:1.0
     Lower and upper bounds on threshold:0.0,1.0
     Manual threshold:0.001
@@ -102,13 +102,13 @@ IdentifyPrimaryObjects:[module_num:7|svn_version:'Unknown'|variable_revision_num
     Two-class or three-class thresholding?:Two classes
     Log transform before thresholding?:No
     Assign pixels in the middle intensity class to the foreground or the background?:Foreground
-    Size of adaptive window:300
+    Size of adaptive window:1024
     Lower outlier fraction:0.05
-    Upper outlier fraction:0.05
+    Upper outlier fraction:0.1
     Averaging method:Mean
     Variance method:Standard deviation
-    # of deviations:2.0
-    Thresholding method:Otsu
+    # of deviations:3
+    Thresholding method:Robust Background
 
 MeasureObjectSizeShape:[module_num:8|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select object sets to measure:WormObjects
