@@ -1,6 +1,5 @@
-<img src="img/logo/output.png" alt="hex" align = "left" width="130" />
+# wrmXpress <img src="img/logo/output.png" alt="hex" align = "left" width="130" />
 
-<!-- # wrmXpress  -->
 
 <br>  
 <br>  
@@ -8,9 +7,9 @@
 <br>  
 <br>  
 <br>  
-
+ 
 # Overview
-This package contains a variety of bespoke Python and CellProfiler modules used for the analysis of worm imaging data. Some of these are specific to Zamanian lab experimental pipelines, but many of the modules should be robust to a diversity of species and experimental procedures.
+This package contains a variety of Python modules and CellProfiler pipelines used for the analysis of worm imaging data. Some of these are specific to Zamanian lab experimental pipelines, but many of the modules should be robust to a diversity of species and experimental procedures.
 
 # Installation and usage
 
