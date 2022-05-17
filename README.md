@@ -1,4 +1,4 @@
-# wrmXpress <img src="img/logo/output.png" alt="hex" align = "left" width="130" />
+<img src="img/logo/output.png" alt="hex" align = "left" width="130" />
 
 
 <br>  
