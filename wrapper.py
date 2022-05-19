@@ -9,7 +9,6 @@ from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
 
-sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
 sys.path.append('/Users/njwheeler/GitHub/wrmXpress/modules')
 
 from get_wells import get_wells

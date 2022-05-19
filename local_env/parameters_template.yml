@@ -52,10 +52,9 @@ modules:
     run: True
 
 wells:
-  - All
-  # - A01
-  # - A12
-  # - E01
+  - A01
+  - A12
+  - E01
 
 directories:
   work:
