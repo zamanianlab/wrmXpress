@@ -210,6 +210,9 @@ if __name__ == "__main__":
     ###############################################
     if 'dx' in modules.keys():
         # one for each wavelength (TimePoint1)
+        # this if/else is required because of an IX nomenclature quirk:
+        #   if there is only one wavelength, there is no _w1 in the file name
+        #   if there is > 1, each image has _w1, _w2, etc...
         if n_waves == 1:
             type = ''
             print("Generating w1 thumbnails")
