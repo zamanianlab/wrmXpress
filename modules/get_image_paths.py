@@ -1,9 +1,10 @@
 import sys
 import cv2
-# import numpy as np
+from pathlib import path
 from skimage.transform import rescale
 from PIL import Image
 sys.path.append('/Users/njwheeler/GitHub/Core_imgproc/modules')
+sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
 from stitch_sites import stitch_sites
 
 

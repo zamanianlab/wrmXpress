@@ -2,13 +2,13 @@ from pathlib import Path
 from collections import namedtuple
 
 
-def parse_htd(input, work, output, plate_dir, plate, plate_short, species, stages, wells):
+def parse_htd(yaml):
     '''
     Parse an HTD file and return experimental metadata as variables.
     '''
 
-# HTD
-    with open(plate_dir.joinpath(plate_short + '.HTD'), encoding='utf-8', errors='ignore') as f:
+    # HTD
+    with open(yaml.plate_dir.joinpath(yaml.plate_short + '.HTD'), encoding='utf-8', errors='ignore') as f:
         lines = f.readlines()
         time_points = int(
             next((s for s in lines if 'TimePoints' in s), None).split(', ')[1])
@@ -32,7 +32,7 @@ def parse_htd(input, work, output, plate_dir, plate, plate_short, species, stage
 
     g = namedtuple(
         'g', 'input work output plate_dir plate plate_short species stages time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
-    g = g(input, work, output, plate_dir, plate, plate_short, species, stages, time_points,
-          columns, rows, x_sites, y_sites, n_waves, wave_names, wells, '')
+    g = g(yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.species, yaml.stages, time_points,
+          columns, rows, x_sites, y_sites, n_waves, wave_names, yaml.wells, '')
 
     return g

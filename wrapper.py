@@ -1,14 +1,15 @@
-import sys
-import yaml
 import argparse
+import sys
 import re
 import pandas as pd
 import subprocess
 import shlex
 from pathlib import Path
 from collections import defaultdict
+from collections import namedtuple
 
 sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
+sys.path.append(str(Path('/Users/njwheeler/GitHub').joinpath('wrmXpress/modules')))
 
 from get_wells import get_wells
 from get_image_paths import get_image_paths
@@ -17,76 +18,46 @@ from dense_flow import dense_flow
 from segment_worms import segment_worms
 from generate_thumbnails import generate_thumbnails
 from parse_htd import parse_htd
+from crop_wells import crop_wells
+from parse_yaml import parse_yaml
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    # create the class that will instantiate the namedtuple
+    g = namedtuple(
+        'g', 'input work output plate_dir plate plate_short species stages wells_per_image time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
 
-    # required positional arguments
-    parser.add_argument('parameters',
-                        help='Path to the paramaters.yml file.')
-    parser.add_argument('plate',
-                        help='Plate to be analyzed.')
+    ############################################
+    ######### 1. GET THE YAML CONFIGS  #########
+    ############################################
+    arg_parser = argparse.ArgumentParser()
+    g_vars = parse_yaml(arg_parser, g)
 
-    args = parser.parse_args()
 
-    ######################################
-    #########   GET PARAMETERS   #########
-    ######################################
+    #########################################################
+    ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
+    #########################################################
+    if g_vars.wells_per_image == 1:
+        g_vars = parse_htd(g_vars)
+    else:
+        g_vars = crop_wells(g_vars)
 
-    # read the parameters from the YAML
-    with open(args.parameters, 'rb') as f:
-        # BaseLoader reads everything as a string, won't recognize boolean
-        conf = yaml.load(f.read(), Loader=yaml.FullLoader)
 
-    # read the modules, remove any where run is False
-    species = conf.get('species')[0]
-    stages = conf.get('stages')[0]
-    modules = conf.get('modules')
-    print('modules:')
-    for key, value in modules.copy().items():
-        if value['run'] is False:
-            print("\t\t{}: {}".format(key, value['run']))
-            del modules[key]
+    #########################################
+    ######### 3. GET WELLS & PATHS  #########
+    #########################################
+    try:
+        if 'All' in g_vars.wells:
+            wells = get_wells(g_vars)
+            print(wells)
+        #     plate_paths = get_image_paths(g_vars, wells)
+        #     print(plate_paths)
         else:
-            print("\t\t{}: {}".format(key, value['run']))
-    if 'cellprofiler' in modules.keys():
-        for py_mod in ['segment', 'motility', 'convert']:
-            if py_mod in modules.keys():
-                raise ValueError(
-                    "'{}' cannot be used with 'cellprofiler'".format(py_mod))
-
-    # save the parameters in variables
-    wells = conf.get('wells')  # list of wells or 'all'
-    work = conf.get('directories').get('work')[0]  # string
-    input = conf.get('directories').get('input')[0]  # string
-    output = conf.get('directories').get('output')[0]  # string
-    # plate = conf.get('directories').get('plate')[0]  # string
-    plate = args.plate
-    plate_short = re.sub('_[0-9]*$', '', plate)  # string
-
-    # define directories
-    input = Path.home().joinpath(input)
-    work = Path.home().joinpath(work)
-    output = Path.home().joinpath(output)
-    plate_dir = Path.home().joinpath(input, plate)
-
-    g = parse_htd(input, work, output, plate_dir, plate, plate_short, species, stages, wells)
-
-    # ######################################
-    # ######### GET WELLS & PATHS  #########
-    # ######################################
-
-    # # get the wells and well paths
-    # try:
-    #     if 'All' in wells:
-    #         wells = get_wells(g)
-    #         plate_paths = get_image_paths(g, wells)
-    #     else:
-    #         plate_paths = get_image_paths(g, wells)
-    # except TypeError:
-    #     print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
+            plate_paths = get_image_paths(g_vars, g_vars.wells)
+            print(plate_paths)
+    except TypeError:
+        print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
 
     # # update g with wells & plate_paths and print contents (except for plate_paths)
     # g = g._replace(wells=wells, plate_paths=plate_paths)
