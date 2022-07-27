@@ -18,12 +18,17 @@ def generate_thumbnails(g, type):
         # rescale the image with anti-aliasing
         if g.species == 'Sma':
             rescale_value = 0.25
+        elif g.wells_per_image > 1:
+            rescale_value = 1.5
         else:
             rescale_value = 0.125
         rescaled = rescale(image, rescale_value, anti_aliasing=True, clip=False)
         # normalize to 0-255
         if type == 'motility':
-            rescaled[0, 0] = 1
+            if g.wells_per_image > 1:
+                rescaled[0, 0] = 0
+            else:
+                rescaled[0, 0] = 1
         else:
             rescaled[0, 0] = 0.05
         rescaled_norm = cv2.normalize(src=rescaled, dst=None, alpha=0,

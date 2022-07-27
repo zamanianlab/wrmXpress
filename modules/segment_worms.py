@@ -79,6 +79,11 @@ def segment_worms(g, well, well_paths):
         print("Completed in {}".
               format(datetime.now() - start_time))
 
+    # if g.species == 'Bma' and g.stages == 'Adult' and g.wells_per_image > 1:
+        # read video
+        # subtract background (ave?)
+        # sobel
+
     else:
 
         # sobel edge detection

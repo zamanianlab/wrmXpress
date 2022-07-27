@@ -57,4 +57,4 @@ def parse_yaml(arg_parser, g):
 
     yaml_out = g(input, work, output, plate_dir, plate, plate_short, species, stages, wells_per_image, '', '', '', '', '', '', '', wells, '')
 
-    return yaml_out
+    return yaml_out, modules
