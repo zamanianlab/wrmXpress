@@ -119,11 +119,26 @@ def crop_wells(g_vars):
         well_arrays[row['well']] = well_array
 
     for timepoint in range(1, vid_array.shape[0], 1):
-        g_vars.work.joinpath('TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
+        g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
         for well, well_array in well_arrays.items():
-            outpath = g_vars.work.joinpath('TimePoint_' + str(timepoint), g_vars.plate + '_' + well + '.TIF')
+            outpath = g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint), g_vars.plate + '_' + well + '.TIF')
             cv2.imwrite(str(outpath), well_array[timepoint - 1])
 
     g_vars = g_vars._replace(time_points=vid_array.shape[0])
+
+    ### make HTD for non-IX data
+    lines = []
+    lines.append('"TimePoints", ' + str(vid_array.shape[0]) + "\n")
+    lines.append('"XWells", ' + str(len(pd.unique(well_names['col']))) + "\n")
+    lines.append('"YWells", ' + str(len(pd.unique(well_names['row']))) + "\n")
+    lines.append('"XSites", ' + "1" + "\n")
+    lines.append('"YSites", ' + "1" + "\n")
+    lines.append('"NWavelengths", ' + "1" + "\n")
+    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
+
+    htd_path = g_vars.plate_dir.joinpath(g_vars.plate_short + '.HTD')
+    with open(htd_path, mode='w') as htd_file:
+        htd_file.writelines(lines)
+
 
     return g_vars
