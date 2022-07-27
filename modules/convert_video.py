@@ -29,8 +29,7 @@ def convert_video(g, well, well_paths, reorganize, multiplier):
                 g.plate + "_" + well + "_" + timepoint + ".TIF")
             if multiplier != 1:
                 # rescale the image with anti-aliasing
-                rescaled = rescale(
-                    image, multiplier, anti_aliasing=True, clip=False).astype(np.uint16)
+                rescaled = rescale(image, multiplier, anti_aliasing=True, clip=False).astype(np.uint16)
                 cv2.imwrite(str(outpath), rescaled)
             else:
                 cv2.imwrite(str(outpath), image)
