@@ -10,6 +10,7 @@ def get_wells(g_vars):
 
     # collect all wells from TimePoint_1 folder
     search_path = g_vars.plate_dir.joinpath('TimePoint_1')
+    print(search_path)
     images = next(walk(search_path), (None, None, []))[2]
     if g_vars.n_waves == 1:
         if g_vars.x_sites and g_vars.x_sites == 1:

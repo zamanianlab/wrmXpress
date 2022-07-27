@@ -118,7 +118,7 @@ def crop_wells(g_vars):
         well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
         well_arrays[row['well']] = well_array
 
-    for timepoint in range(1, vid_array.shape[0], 1):
+    for timepoint in range(1, vid_array.shape[0] + 1, 1):
         g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
         for well, well_array in well_arrays.items():
             outpath = g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint), g_vars.plate + '_' + well + '.TIF')

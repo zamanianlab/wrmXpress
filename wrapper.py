@@ -41,7 +41,8 @@ if __name__ == "__main__":
     if g_vars.wells_per_image == 1:
         g_vars = parse_htd(g_vars)
     else:
-        g_vars = crop_wells(g_vars)
+        crop_wells(g_vars)
+        g_vars = parse_htd(g_vars)
 
 
     #########################################
@@ -50,9 +51,8 @@ if __name__ == "__main__":
     try:
         if 'All' in g_vars.wells:
             wells = get_wells(g_vars)
-            print(wells)
-        #     plate_paths = get_image_paths(g_vars, wells)
-        #     print(plate_paths)
+            plate_paths = get_image_paths(g_vars, wells)
+            print(plate_paths)
         else:
             plate_paths = get_image_paths(g_vars, g_vars.wells)
             print(plate_paths)

@@ -55,6 +55,6 @@ def parse_yaml(arg_parser, g):
     output = Path.home().joinpath(output)
     plate_dir = Path.home().joinpath(input, plate)
 
-    yaml_out = g(input, work, output, plate_dir, plate, plate_short, species, stages, wells_per_image, '', '', '', '', '', '', '', '', '')
+    yaml_out = g(input, work, output, plate_dir, plate, plate_short, species, stages, wells_per_image, '', '', '', '', '', '', '', wells, '')
 
     return yaml_out
