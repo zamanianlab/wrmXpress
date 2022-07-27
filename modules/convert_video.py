@@ -30,9 +30,17 @@ def convert_video(g, well, well_paths, reorganize, multiplier):
             if multiplier != 1:
                 # rescale the image with anti-aliasing
                 rescaled = rescale(image, multiplier, anti_aliasing=True, clip=False).astype(np.uint16)
-                cv2.imwrite(str(outpath), rescaled)
+                try:
+                    cv2.imwrite(str(outpath), rescaled)
+                except cv2.error:
+                    print('TimePoint_{} does not exist. Please ensure the TimePoints field in the HTD is the same as the number of TimePoints included in input/.'.format(timepoint))
+                    raise
             else:
-                cv2.imwrite(str(outpath), image)
+                try:
+                    cv2.imwrite(str(outpath), image)
+                except cv2.error:
+                    print('TimePoint_{} does not exist. Please ensure the TimePoints field in the HTD is the same as the number of TimePoints included in input/.'.format(timepoint))
+                    raise
         counter += 1
 
     return well_video
