@@ -8,6 +8,8 @@ stages:
   # - Adult
   # - Mixed
 
+wells_per_image: 24
+
 modules:
 
   #### Motilty (optical flow) ####
