@@ -5,6 +5,7 @@ from pathlib import Path
 from skimage.filters import threshold_otsu
 from skimage import filters
 from scipy import ndimage
+import matplotlib.pyplot as plt
 
 
 def segment_worms(g, well, well_paths):
@@ -79,10 +80,50 @@ def segment_worms(g, well, well_paths):
         print("Completed in {}".
               format(datetime.now() - start_time))
 
-    # if g.species == 'Bma' and g.stages == 'Adult' and g.wells_per_image > 1:
-        # read video
-        # subtract background (ave?)
-        # sobel
+    if g.species == 'Bma' and g.stages == 'Adult' and g.wells_per_image > 1:
+
+        frame1 = cv2.imread(str(well_paths[0]), cv2.IMREAD_ANYDEPTH)
+        width, height = frame1.shape
+        vid_array = np.zeros((g.time_points, height, width))
+
+        n = 0
+        for well_path in well_paths:
+            frame = cv2.imread(str(well_path), cv2.IMREAD_ANYDEPTH)
+            vid_array[n] = frame
+            n += 1
+
+        # subtrack background
+        ave = np.mean(vid_array, axis=0)
+        sub_back = frame1 - ave
+
+        # sobel edge detection
+        sobel = filters.sobel(sub_back)
+
+        # gaussian blur
+        blur = ndimage.filters.gaussian_filter(sobel, 1.25)
+
+        # set threshold, make binary, mask
+        threshold = threshold_otsu(blur)
+        binary = blur > threshold
+        mask = create_circular_mask(height, width, radius=height * .4)
+        binary = binary * mask
+
+        sobel_png = g.work.joinpath(outpath,
+                                    g.plate + "_" + well + '_edge' + ".png")
+        cv2.imwrite(str(sobel_png), sobel * 255)
+
+        blur_png = g.work.joinpath(outpath,
+                                   g.plate + "_" + well + '_blur' + ".png")
+        cv2.imwrite(str(blur_png), blur * 255)
+
+        bin_png = g.work.joinpath(outpath,
+                                  g.plate + "_" + well + '_binary' + ".png")
+        cv2.imwrite(str(bin_png), binary * 255)
+
+        # the area is the sum of all the white pixels (1.0)
+        area = np.sum(binary)
+        print("Completed in {}".
+              format(datetime.now() - start_time))
 
     else:
 

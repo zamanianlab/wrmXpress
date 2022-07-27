@@ -25,7 +25,7 @@ def dense_flow(g, well, video):
         if count < length - 1:
             frame1 = video[count].astype('uint16')
             frame2 = video[count + 1].astype('uint16')
-            
+
             if g.stages == 'Adult' and g.species == 'Bma':
                 flow = cv2.calcOpticalFlowFarneback(frame1, frame2, None, 0.9, 10,
                                                     2, 7, 1, 0.7, 0)
@@ -52,7 +52,7 @@ def dense_flow(g, well, video):
         parents=True, exist_ok=True)
     outpath = g.work.joinpath(g.plate, well, 'img')
     flow_png = g.work.joinpath(outpath,
-                                 g.plate + "_" + well + '_motility' + ".png")
+                               g.plate + "_" + well + '_motility' + ".png")
 
     # write to png
     # the current multiplier works for 10 frame videos, not sure if it will work for others

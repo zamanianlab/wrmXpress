@@ -15,19 +15,19 @@ def get_wells(g_vars):
     if g_vars.n_waves == 1:
         if g_vars.x_sites and g_vars.x_sites == 1:
             wells = [file.replace(g_vars.plate_short + '_', '').replace('.TIF', '')
-                    for file in images]
+                     for file in images]
         else:
             wells = [file.replace(g_vars.plate_short + '_', '').replace('.TIF', '')
-                    for file in images]
+                     for file in images]
             wells = [re.sub('_s[0-9]*', '', well) for well in wells]
     else:
         if g_vars.x_sites and g_vars.x_sites == 1:
             wells = [file.replace(g_vars.plate_short + '_', '').replace('.TIF', '')
-                    for file in images]
+                     for file in images]
             wells = [re.sub('_w[0-9]', '', well) for well in wells]
         else:
             wells = [file.replace(g_vars.plate_short + '_', '').replace('.TIF', '')
-                    for file in images]
+                     for file in images]
             wells = [re.sub('_w[0-9]', '', well) for well in wells]
             wells = [re.sub('_s[0-9]*', '', well) for well in wells]
 
@@ -43,8 +43,10 @@ def get_wells(g_vars):
 
     # flag mismatches with HTD file
     if (len(filtered) != g_vars.rows*g_vars.columns):
-        print("The number of identified wells {} does not match expectation of {} from HTD file".format(len(filtered), g_vars.rows*g_vars.columns))
+        print("The number of identified wells {} does not match expectation of {} from HTD file".format(
+            len(filtered), g_vars.rows*g_vars.columns))
     if (time_points != g_vars.time_points):
-        print("The number of identified time points {} does not match expectation of {} from HTD file".format(time_points, g_vars.time_points))
+        print("The number of identified time points {} does not match expectation of {} from HTD file".format(
+            time_points, g_vars.time_points))
 
     return filtered

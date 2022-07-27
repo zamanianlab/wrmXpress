@@ -3,13 +3,14 @@ import re
 from pathlib import Path
 from collections import namedtuple
 
+
 def parse_yaml(arg_parser, g):
 
     # required positional arguments
     arg_parser.add_argument('parameters',
-                        help='Path to the paramaters.yml file.')
+                            help='Path to the paramaters.yml file.')
     arg_parser.add_argument('plate',
-                        help='Plate to be analyzed.')
+                            help='Plate to be analyzed.')
 
     args = arg_parser.parse_args()
 
@@ -55,6 +56,7 @@ def parse_yaml(arg_parser, g):
     output = Path.home().joinpath(output)
     plate_dir = Path.home().joinpath(input, plate)
 
-    yaml_out = g(input, work, output, plate_dir, plate, plate_short, species, stages, wells_per_image, '', '', '', '', '', '', '', wells, '')
+    yaml_out = g(input, work, output, plate_dir, plate, plate_short, species,
+                 stages, wells_per_image, '', '', '', '', '', '', '', wells, '')
 
     return yaml_out, modules

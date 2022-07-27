@@ -10,6 +10,7 @@ from skimage.filters import sobel, threshold_triangle
 from skimage.transform import hough_circle, hough_circle_peaks
 from skimage.morphology import dilation, reconstruction
 
+
 def crop_wells(g_vars):
 
     vid_path = Path.home().joinpath(g_vars.plate_dir, g_vars.plate + '.avi')
@@ -103,30 +104,35 @@ def crop_wells(g_vars):
     filled = reconstruction(seed, mask, method='erosion')
 
     lbl, objects = ndimage.label(filled)
-    centers = ndimage.center_of_mass(filled, lbl, range(1, 1 + g_vars.wells_per_image, 1)) # n_wells
+    centers = ndimage.center_of_mass(filled, lbl, range(
+        1, 1 + g_vars.wells_per_image, 1))  # n_wells
 
     # make a data frame with well names linked to coordinates of centers
-    well_names = pd.DataFrame(centers, columns = ['y', 'x'])
+    well_names = pd.DataFrame(centers, columns=['y', 'x'])
     well_names = well_names.sort_values(by=['y'])
     well_names['row'] = ['A'] * 6 + ['B'] * 6 + ['C'] * 6 + ['D'] * 6
     well_names = well_names.sort_values(by=['x'])
-    well_names['col'] = ['01'] * 4 + ['02'] * 4 + ['03'] * 4 + ['04'] * 4 + ['05'] * 4 + ['06'] * 4
+    well_names['col'] = ['01'] * 4 + ['02'] * 4 + \
+        ['03'] * 4 + ['04'] * 4 + ['05'] * 4 + ['06'] * 4
     well_names['well'] = well_names['row'] + well_names['col']
 
     well_arrays = {}
     for index, row, in well_names.iterrows():
-        well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
+        well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(
+            radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
         well_arrays[row['well']] = well_array
 
     for timepoint in range(1, vid_array.shape[0] + 1, 1):
-        g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
+        g_vars.plate_dir.joinpath(
+            'TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
         for well, well_array in well_arrays.items():
-            outpath = g_vars.plate_dir.joinpath('TimePoint_' + str(timepoint), g_vars.plate + '_' + well + '.TIF')
+            outpath = g_vars.plate_dir.joinpath(
+                'TimePoint_' + str(timepoint), g_vars.plate + '_' + well + '.TIF')
             cv2.imwrite(str(outpath), well_array[timepoint - 1])
 
     g_vars = g_vars._replace(time_points=vid_array.shape[0])
 
-    ### make HTD for non-IX data
+    # make HTD for non-IX data
     lines = []
     lines.append('"TimePoints", ' + str(vid_array.shape[0]) + "\n")
     lines.append('"XWells", ' + str(len(pd.unique(well_names['col']))) + "\n")
@@ -139,6 +145,5 @@ def crop_wells(g_vars):
     htd_path = g_vars.plate_dir.joinpath(g_vars.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
-
 
     return g_vars
