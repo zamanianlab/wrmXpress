@@ -4,7 +4,7 @@ from pathlib import Path
 from collections import namedtuple
 
 
-def parse_yaml(arg_parser, g):
+def parse_yaml(arg_parser, g_class):
 
     # required positional arguments
     arg_parser.add_argument('parameters',
@@ -31,8 +31,8 @@ def parse_yaml(arg_parser, g):
     print("\t\tfile structure: {}".format(file_structure))
     if mode == 'multi-well':
         well_detection = conf.get('multi-well-detection')[0]
-        image_n_row = conf.get('multi-well-row')
-        image_n_col = conf.get('multi-well-cols')
+        image_n_row = int(conf.get('multi-well-row'))
+        image_n_col = int(conf.get('multi-well-cols'))
     else:
         well_detection = 'NA'
         image_n_row = 'NA'
@@ -73,7 +73,7 @@ def parse_yaml(arg_parser, g):
     print('run-time settings:')
     print("\t\twells: {}".format(wells))
     print("\t\tplate: {}".format(plate))
-    
+
     # define directories
     input = Path.home().joinpath(input)
     work = Path.home().joinpath(work)
@@ -83,9 +83,9 @@ def parse_yaml(arg_parser, g):
     print("\t\twork directory: {}".format(str(work)))
     print("\t\toutput directory: {}".format(str(output)))
 
-    yaml_out = g(mode, file_structure, well_detection, image_n_row, image_n_col,
-                 species, stages,
-                 input, work, output, plate_dir, plate, plate_short,
-                 '', '', '', '', '', '', '', wells, '')
+    yaml_out = g_class(mode, file_structure, well_detection, image_n_row, image_n_col,
+                       species, stages,
+                       input, work, output, plate_dir, plate, plate_short,
+                       '', '', '', '', '', '', '', wells, '')
 
     return yaml_out, modules

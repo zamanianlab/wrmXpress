@@ -35,15 +35,15 @@ if __name__ == "__main__":
     g, modules = parse_yaml(arg_parser, g_class)
 
 
-    # #########################################################
-    # ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
-    # #########################################################
-    # if g.wells_per_image == 1:
-    #     g = parse_htd(g)
-    # else:
-    #     # crops_wells will write images in IX format to input/ and create an HTD
-    #     crop_wells(g)
-    #     g = parse_htd(g)
+    #########################################################
+    ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
+    #########################################################
+    if g.file_structure == 'imagexpress':
+        g = parse_htd(g, g_class)
+    else:
+        # crops_wells will write images in IX format to input/ and create an HTD
+        crop_wells(g)
+        g = parse_htd(g, g_class)
 
 
     # #########################################

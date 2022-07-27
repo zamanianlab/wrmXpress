@@ -2,7 +2,7 @@ from pathlib import Path
 from collections import namedtuple
 
 
-def parse_htd(yaml):
+def parse_htd(yaml, g_class):
     '''
     Parse an HTD file and return experimental metadata as variables.
     '''
@@ -29,10 +29,19 @@ def parse_htd(yaml):
             wave_name = next((s for s in lines if name in s),
                              None).split(', ')[1]
             wave_names.append(wave_name.rstrip().replace('"', ''))
-    print(yaml.wells_per_image)
-    g = namedtuple(
-        'g', 'input work output plate_dir plate plate_short species stages wells_per_image time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
-    g = g(yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.species, yaml.stages, yaml.wells_per_image, time_points,
-          columns, rows, x_sites, y_sites, n_waves, wave_names, yaml.wells, '')
+
+    print('HTD metadata:')
+    print("\t\ttime points: {}".format(time_points))
+    print("\t\tcolumns: {}".format(columns))
+    print("\t\trows: {}".format(rows))
+    print("\t\tx sites: {}".format(x_sites))
+    print("\t\ty sites: {}".format(y_sites))
+    print("\t\tnumber of wavelenghts: {}".format(n_waves))
+    print("\t\twavelengths: {}".format(wave_names))
+
+    g = g_class(yaml.mode, yaml.file_structure, yaml.well_detection, yaml.image_n_row, yaml.image_n_col,
+                yaml.species, yaml.stages,
+                yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short,
+                time_points, columns, rows, x_sites, y_sites, n_waves, wave_name, yaml.wells, '')
 
     return g
