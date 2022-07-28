@@ -20,16 +20,17 @@ def generate_thumbnails(g, type):
         rescale_value = 256 / image.shape[0]
         rescaled = rescale(image, rescale_value,
                            anti_aliasing=True, clip=False)
-                           
-        # normalize to 0-255
-        if type == 'motility':
-            if g.image_n_row * g.image_n_col > 1:
-                rescaled[0, 0] = 0
-            else:
-                rescaled[0, 0] = 1
-        else:
-            rescaled[0, 0] = 0.05
-        rescaled_norm = cv2.normalize(src=rescaled, dst=None, alpha=0,
+        thumb_dict[well] = rescaled
+
+    # normalize the color range
+    max_vals = []
+    for thumb in thumb_dict.values():
+        max_vals.append(np.max(thumb))
+    max_p = max(max_vals)
+    for well, thumb in thumb_dict.items():
+        thumb[0, 0] = max_p
+        thumb[0, 1] = 0
+        rescaled_norm = cv2.normalize(src=thumb, dst=None, alpha=0,
                                       beta=255, norm_type=cv2.NORM_MINMAX,
                                       dtype=-1)
         thumb_dict[well] = rescaled_norm
