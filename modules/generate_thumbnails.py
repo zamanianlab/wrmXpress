@@ -17,17 +17,10 @@ def generate_thumbnails(g, type):
                                    g.plate + '_' + well + '_' + type + '.png')
         image = cv2.imread(str(path), cv2.IMREAD_ANYDEPTH)
 
-        # rescale the image with anti-aliasing
-        if g.species == 'Sma':
-            rescale_value = 0.25
-        elif g.image_n_row * g.image_n_col > 1 and g.well_detection == 'auto':
-            rescale_value = 1.5
-        elif g.image_n_row * g.image_n_col > 1 and g.well_detection == 'grid':
-            rescale_value = 1.2
-        else:
-            rescale_value = 0.125
+        rescale_value = 256 / image.shape[0]
         rescaled = rescale(image, rescale_value,
                            anti_aliasing=True, clip=False)
+                           
         # normalize to 0-255
         if type == 'motility':
             if g.image_n_row * g.image_n_col > 1:
