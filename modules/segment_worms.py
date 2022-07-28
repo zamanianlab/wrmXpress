@@ -80,7 +80,7 @@ def segment_worms(g, well, well_paths):
         print("Completed in {}".
               format(datetime.now() - start_time))
 
-    if g.species == 'Bma' and g.stages == 'Adult' and g.wells_per_image > 1:
+    if g.species == 'Bma' and g.stages == 'Adult' and g.image_n_row * g.image_n_col > 1:
 
         frame1 = cv2.imread(str(well_paths[0]), cv2.IMREAD_ANYDEPTH)
         width, height = frame1.shape

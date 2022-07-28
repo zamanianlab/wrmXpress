@@ -10,6 +10,7 @@ from skimage.draw import circle_perimeter
 from skimage.filters import sobel, threshold_triangle
 from skimage.transform import hough_circle, hough_circle_peaks
 from skimage.morphology import dilation, reconstruction
+from itertools import product
 
 
 def auto_crop(g):
@@ -113,27 +114,8 @@ def auto_crop(g):
     lbl, objects = ndimage.label(filled)
     centers = ndimage.center_of_mass(filled, lbl, range(
         1, 1 + wells_per_image, 1))
-
-    # make a data frame with well names linked to coordinates of centers
-    well_names = pd.DataFrame(centers, columns=['y', 'x'])
-    well_names = well_names.sort_values(by=['y'])
-    row_names = list(ascii_uppercase[0:g.image_n_row])
-    col_names = list(range(1, g.image_n_col + 1, 1))
-
-    row_names_df = []
-    for name in row_names:
-        for col in range(g.image_n_col):
-            row_names_df.append(name)
-
-    col_names_df = []
-    for name in col_names:
-        for row in range(g.image_n_row):
-            col_names_df.append(str(name).zfill(2))
-
-    well_names['row'] = row_names_df
-    well_names = well_names.sort_values(by=['x'])
-    well_names['col'] = col_names_df
-    well_names['well'] = well_names['row'] + well_names['col']
+    
+    well_names = generate_well_names(centers, g.image_n_row, g.image_n_col)
 
     well_arrays = {}
     for index, row, in well_names.iterrows():
@@ -151,7 +133,7 @@ def auto_crop(g):
 
     g = g._replace(time_points=vid_array.shape[0])
 
-    create_htd(vid_array, well_names)
+    create_htd(g, vid_array, well_names)
 
     return g
 
@@ -173,16 +155,38 @@ def grid_crop(g):
             frames.append(img)
 
     vid_array = np.stack(frames, axis=0)
-    timepoint, height, width = vid_array.shape
+    timepoint, height, width, depth = vid_array.shape
 
-    x_interval = width / g.image_n_row
-    y_interval = height / g.image_n_col
+    x_interval = int(width // g.image_n_col)
+    y_interval = int(height // g.image_n_row)
+    radius = min(x_interval, y_interval) // 2
 
+    x_centers = [(x_interval / 2) + (x_interval * col) for col in range(g.image_n_col)]
+    y_centers = [(y_interval / 2) + (y_interval * row) for row in range(g.image_n_row)]
 
-    create_htd(vid_array, well_names)
+    centers = list(product(y_centers, x_centers))
 
+    well_names = generate_well_names(centers, g.image_n_row, g.image_n_col)
 
-def create_htd(array, df):
+    well_arrays = {}
+    for index, row, in well_names.iterrows():
+        well_array = vid_array[:, int(row['y'])-radius:int(row['y'])+
+            radius, int(row['x'])-radius:int(row['x'])+radius, :]
+        well_arrays[row['well']] = well_array
+
+    for timepoint in range(1, vid_array.shape[0] + 1, 1):
+        g.plate_dir.joinpath(
+            'TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
+        for well, well_array in well_arrays.items():
+            outpath = g.plate_dir.joinpath(
+                'TimePoint_' + str(timepoint), g.plate + '_' + well + '.TIF')
+            cv2.imwrite(str(outpath), well_array[timepoint - 1])
+
+    g = g._replace(time_points=vid_array.shape[0])
+
+    create_htd(g, vid_array, well_names)
+
+def create_htd(g, array, df):
 
     # make HTD for non-IX data
     lines = []
@@ -197,3 +201,29 @@ def create_htd(array, df):
     htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
+
+
+def generate_well_names(coords, nrow, ncol):
+    # make a data frame with well names linked to coordinates of centers
+    # coords are in a list of tuples
+    well_names = pd.DataFrame(coords, columns=['y', 'x'])
+    well_names = well_names.sort_values(by=['y'])
+    row_names = list(ascii_uppercase[0:nrow])
+    col_names = list(range(1, ncol + 1, 1))
+
+    row_names_df = []
+    for name in row_names:
+        for col in range(ncol):
+            row_names_df.append(name)
+
+    col_names_df = []
+    for name in col_names:
+        for row in range(nrow):
+            col_names_df.append(str(name).zfill(2))
+
+    well_names['row'] = row_names_df
+    well_names = well_names.sort_values(by=['x'])
+    well_names['col'] = col_names_df
+    well_names['well'] = well_names['row'] + well_names['col']
+
+    return well_names
