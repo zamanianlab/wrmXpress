@@ -20,8 +20,9 @@ def generate_thumbnails(g, type):
         # rescale the image with anti-aliasing
         if g.species == 'Sma':
             rescale_value = 0.25
-        elif g.image_n_row * g.image_n_col > 1:
-            # this is 1.2 for grid and 1.5 for auto...
+        elif g.image_n_row * g.image_n_col > 1 and g.well_detection == 'auto':
+            rescale_value = 1.5
+        elif g.image_n_row * g.image_n_col > 1 and g.well_detection == 'grid':
             rescale_value = 1.2
         else:
             rescale_value = 0.125

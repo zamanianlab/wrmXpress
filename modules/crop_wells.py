@@ -55,51 +55,34 @@ def auto_crop(g):
     cx = np.ndarray.tolist(cx)
     radii = np.ndarray.tolist(radii)
 
-    bad_indices = []
-    i = 0
+    # filter the circle centers using an auto-generated grid
+    timepoint, height, width, depth = vid_array.shape
 
-    for x, y in zip(cx, cy):
-        if x < 100:
-            bad_indices.append(i)
-        elif x > 200 and x < 300:
-            bad_indices.append(i)
-        elif x > 400 and x < 500:
-            bad_indices.append(i)
-        elif x > 600 and x < 700:
-            bad_indices.append(i)
-        elif x > 800 and x < 900:
-            bad_indices.append(i)
-        elif x > 1000 and x < 1100:
-            bad_indices.append(i)
-        elif x > 1200:
-            bad_indices.append(i)
-        elif y < 100:
-            bad_indices.append(i)
-        elif y > 200 and y < 300:
-            bad_indices.append(i)
-        elif y > 400 and y < 500:
-            bad_indices.append(i)
-        elif y > 600 and y < 700:
-            bad_indices.append(i)
-        elif y > 800:
-            bad_indices.append(i)
-        else:
-            i += 1
+    x_interval = int(width // g.image_n_col)
+    y_interval = int(height // g.image_n_row)
 
-    for i in bad_indices:
-        cy.pop(i)
-        cx.pop(i)
-        radii.pop(i)
+    grid_mask = np.ones(vid_array.shape[1:3])
 
-    ave_int = ave.astype(int)
-
-    fig, ax = plt.subplots(ncols=1, nrows=1)
-    for center_y, center_x, radius in zip(cy, cx, radii):
-        circy, circx = circle_perimeter(center_y, center_x, radius)
-
-    black = np.zeros(ave_int.shape[0:2])
-
-    for center_y, center_x, radius in zip(cy, cx, radii):
+    for row in range(1, g.image_n_row):
+        start = y_interval * row - 50
+        stop = y_interval * row + 70
+        grid_mask[start:stop, :] = 0
+    grid_mask[0:y_interval // 2, :] = 0
+    grid_mask[grid_mask.shape[0] - y_interval // 2:grid_mask.shape[0] , :] = 0
+    for col in range(1, g.image_n_col):
+        start = x_interval * col - 50
+        stop = x_interval * col + 70
+        grid_mask[:, start:stop] = 0
+    grid_mask[:, 0:x_interval // 2] = 0
+    grid_mask[:, grid_mask.shape[1] - x_interval // 2:grid_mask.shape[1]] = 0
+  
+    # centers of the hough transform == 1
+    black = np.zeros(ave.shape[0:2])
+    for center_y, center_x in zip(cy, cx):
+        black[center_y, center_x] = 1
+    black = black * grid_mask
+    centers = tuple(zip(*np.where(black == 1)))
+    for center_y, center_x, in centers:
         circy, circx = circle_perimeter(center_y, center_x, radius)
         black[circy, circx] = 1
 
