@@ -49,7 +49,7 @@ def auto_crop(g):
     radii = np.arange(radius - 2, radius + 2, 2)
     hough_res = hough_circle(binary, radii)
     accums, cx, cy, radii = hough_circle_peaks(
-        hough_res, radii, total_num_peaks=500)
+        hough_res, radii, total_num_peaks=wells_per_image*20)
 
     cy = np.ndarray.tolist(cy)
     cx = np.ndarray.tolist(cx)

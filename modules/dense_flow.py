@@ -26,7 +26,7 @@ def dense_flow(g, well, video):
             frame1 = video[count].astype('uint16')
             frame2 = video[count + 1].astype('uint16')
 
-            if g.stages == 'Adult' and g.species == 'Bma':
+            if g.stages == 'Adult':
                 flow = cv2.calcOpticalFlowFarneback(frame1, frame2, None, 0.9, 10,
                                                     2, 7, 1, 0.7, 0)
             else:
