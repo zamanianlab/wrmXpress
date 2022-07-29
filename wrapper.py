@@ -1,6 +1,5 @@
-import sys
-import yaml
 import argparse
+import sys
 import re
 import pandas as pd
 import subprocess
@@ -9,8 +8,8 @@ from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
 
-sys.path.append(str(Path.home().joinpath('/Users/njwheeler/GitHub/Core_imgproc/modules')))
-sys.path.append(str(Path.home().joinpath('Core_imgproc/modules')))
+sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
+sys.path.append(str(Path('/Users/njwheeler/GitHub').joinpath('wrmXpress/modules')))
 
 from get_wells import get_wells
 from get_image_paths import get_image_paths
@@ -18,135 +17,86 @@ from convert_video import convert_video
 from dense_flow import dense_flow
 from segment_worms import segment_worms
 from generate_thumbnails import generate_thumbnails
+from parse_htd import parse_htd
+from crop_wells import auto_crop
+from crop_wells import grid_crop
+from parse_yaml import parse_yaml
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    # create the class that will instantiate the namedtuple
+    g_class = namedtuple(
+        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
 
-    # required positional arguments
-    parser.add_argument('parameters',
-                        help='Path to the paramaters.yml file.')
-    parser.add_argument('plate',
-                        help='Plate to be analyzed.')
+    ############################################
+    ######### 1. GET THE YAML CONFIGS  #########
+    ############################################
+    arg_parser = argparse.ArgumentParser()
+    g, modules = parse_yaml(arg_parser, g_class)
 
-    args = parser.parse_args()
 
-    ######################################
-    #########   GET PARAMETERS   #########
-    ######################################
-
-    # read the parameters from the YAML
-    with open(args.parameters, 'rb') as f:
-        # BaseLoader reads everything as a string, won't recognize boolean
-        conf = yaml.load(f.read(), Loader=yaml.FullLoader)
-
-    # read the modules, remove any where run is False
-    species = conf.get('species')
-    stages = conf.get('stages')
-    modules = conf.get('modules')
-    print('modules:')
-    for key, value in modules.copy().items():
-        if value['run'] is False:
-            print("\t\t{}: {}".format(key, value['run']))
-            del modules[key]
+    #########################################################
+    ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
+    #########################################################
+    if g.file_structure == 'imagexpress':
+        g = parse_htd(g, g_class)
+    else:
+         # crops_wells will write images in IX format to input/ and create an HTD
+        if g.well_detection == 'auto':
+            auto_crop(g)
+        elif g.well_detection == 'grid':
+            grid_crop(g)
         else:
-            print("\t\t{}: {}".format(key, value['run']))
-    if 'cellprofiler' in modules.keys():
-        for py_mod in ['segment', 'motility', 'convert']:
-            if py_mod in modules.keys():
-                raise ValueError(
-                    "'{}' cannot be used with 'cellprofiler'".format(py_mod))
+            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode.')
+        g = parse_htd(g, g_class)
 
-    # save the parameters in variables
-    wells = conf.get('wells')  # list of wells or 'all'
-    work = conf.get('directories').get('work')[0]  # string
-    input = conf.get('directories').get('input')[0]  # string
-    output = conf.get('directories').get('output')[0]  # string
-    # plate = conf.get('directories').get('plate')[0]  # string
-    plate = args.plate
-    plate_short = re.sub('_[0-9]*$', '', plate)  # string
 
-    # define directories
-    input = Path.home().joinpath(input)
-    work = Path.home().joinpath(work)
-    output = Path.home().joinpath(output)
-    plate_dir = Path.home().joinpath(input, plate)
-
-    # HTD
-    with open(plate_dir.joinpath(plate_short + '.HTD'), encoding='utf-8', errors='ignore') as f:
-        lines = f.readlines()
-        time_points = int(
-            next((s for s in lines if 'TimePoints' in s), None).split(', ')[1])
-        columns = int(
-            next((s for s in lines if 'XWells' in s), None).split(', ')[1])
-        rows = int(
-            next((s for s in lines if 'YWells' in s), None).split(', ')[1])
-        x_sites = int(
-            next((s for s in lines if 'XSites' in s), None).split(', ')[1])
-        y_sites = int(
-            next((s for s in lines if 'YSites' in s), None).split(', ')[1])
-        n_waves = int(
-            next((s for s in lines if 'NWavelengths' in s), None).split(', ')[1])
-        # loop to get all the WaveNames
-        wave_names = []
-        for i in range(n_waves):
-            name = 'WaveName' + str(i + 1)
-            wave_name = next((s for s in lines if name in s),
-                             None).split(', ')[1]
-            wave_names.append(wave_name.rstrip().replace('"', ''))
-
-    # pool global variables into namedtuple (g)
-    g = namedtuple(
-        'g', 'input work output plate_dir plate plate_short time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
-    g = g(input, work, output, plate_dir, plate, plate_short, time_points,
-          columns, rows, x_sites, y_sites, n_waves, wave_names, wells, '')
-
-    ######################################
-    ######### GET WELLS & PATHS  #########
-    ######################################
-
-    # get the wells and well paths
+    #########################################
+    ######### 3. GET WELLS & PATHS  #########
+    #########################################
     try:
-        if 'All' in wells:
+        if 'All' in g.wells:
             wells = get_wells(g)
             plate_paths = get_image_paths(g, wells)
         else:
-            plate_paths = get_image_paths(g, wells)
+            wells = g.wells
+            plate_paths = get_image_paths(g, g.wells)
     except TypeError:
         print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
+
 
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
     for (i, j) in zip(g._fields[:-1], g[:-1]):
         print("{}:\t{}".format(i, j))
 
-    ##########################################
-    #########    RUN CELLPROFILER    #########
-    ##########################################
+    ########################################
+    ######### 4. RUN CELLPROFILER  #########
+    ########################################
 
     if 'cellprofiler' in modules.keys():
         pipeline = modules['cellprofiler']['pipeline'][0]
-        fl_command = 'Rscript Core_imgproc/scripts/cp/generate_filelist_{}.R {} {}'.format(
+        fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
         fl_command_split = shlex.split(fl_command)
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
 
-        cp_command = 'cellprofiler -c -r -p Core_imgproc/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
+        cp_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
             pipeline, pipeline)
         cp_command_split = shlex.split(cp_command)
         print('Starting CellProfiler.')
         subprocess.run(cp_command_split)
 
-        md_command = 'Rscript Core_imgproc/scripts/metadata_join_master.R {}'.format(
-            g.plate)
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(
+            g.plate, g.rows, g.columns)
         md_command_split = shlex.split(md_command)
         print('Joining experiment metadata and tidying.')
         subprocess.run(md_command_split)
 
     ######################################
-    #########   RUN PY MODULES   #########
+    ######### 5. RUN PY MODULES  #########
     ######################################
 
     # Each module will give a single phenotypic value, which is then written
@@ -160,7 +110,7 @@ if __name__ == "__main__":
         out_dict = defaultdict(list)
         cols = []
 
-    # start the well-by-well iterator
+        # start the well-by-well iterator
         for well, well_paths in zip(wells, plate_paths):
             print("Running well {}".format(well))
 
@@ -173,7 +123,7 @@ if __name__ == "__main__":
                 print('{}: module \'convert\' finished'.format(well))
 
             if 'segment' in modules.keys():
-                if n_waves != 1:
+                if g.n_waves != 1:
                     wave_length = modules.get('segment').get('wavelength')
                     # filter for the paths to the wavelengths to be segmented
                     well_paths = [
@@ -193,30 +143,33 @@ if __name__ == "__main__":
                 out_dict[well].append(flow)
                 print('{}: module \'motility\' finished'.format(well))
 
-        ###############################################
-        #########         WRITE DATA          #########
-        ###############################################
+        ##################################
+        ######### 6. WRITE DATA  #########
+        ##################################
 
         df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
-        output.joinpath('data').mkdir(parents=True, exist_ok=True)
-        outpath = output.joinpath('data', plate + '_data' + ".csv")
+        g.output.joinpath('data').mkdir(parents=True, exist_ok=True)
+        outpath = g.output.joinpath('data', g.plate + '_data' + ".csv")
         df.to_csv(path_or_buf=outpath, index_label='well')
 
-        md_command = 'Rscript Core_imgproc/scripts/metadata_join_master.R {}'.format(g.plate)
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(g.plate, g.rows, g.columns)
         md_command_split = shlex.split(md_command)
         subprocess.run(md_command_split)
 
-    ###############################################
-    #########     GENERATE THUMBNAILS     #########
-    ###############################################
+    ###########################################
+    ######### 7. GENERATE THUMBNAILS  #########
+    ###########################################
     if 'dx' in modules.keys():
         # one for each wavelength (TimePoint1)
-        if n_waves == 1:
+        # this if/else is required because of an IX nomenclature quirk:
+        #   if there is only one wavelength, there is no _w1 in the file name
+        #   if there is > 1, each image has _w1, _w2, etc...
+        if g.n_waves == 1:
             type = ''
             print("Generating w1 thumbnails")
             generate_thumbnails(g, type)
         else:
-            for i in range(1, n_waves + 1):
+            for i in range(1, g.n_waves + 1):
                 type = 'w' + str(i)
                 print("Generating {} thumbnails".format(type))
                 generate_thumbnails(g, type)

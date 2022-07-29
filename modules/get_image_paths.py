@@ -1,10 +1,11 @@
+from stitch_sites import stitch_sites
 import sys
 import cv2
-# import numpy as np
 from skimage.transform import rescale
+from pathlib import Path
 from PIL import Image
-sys.path.append('/Users/njwheeler/GitHub/Core_imgproc/modules')
-from stitch_sites import stitch_sites
+sys.path.append('/Users/njwheeler/GitHub/wrmXpress/modules')
+sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
 
 
 def get_image_paths(g, wells):
@@ -33,7 +34,7 @@ def get_image_paths(g, wells):
                     parents=True, exist_ok=True)
                 outpath = g.work.joinpath(g.plate, well, 'img')
                 path = g.work.joinpath(outpath,
-                                           g.plate + "_" + well + ".TIF")
+                                       g.plate + "_" + well + ".TIF")
                 well_paths.append(path)
                 frame.save(path)
                 # also save a png for thumbnails
@@ -63,7 +64,8 @@ def get_image_paths(g, wells):
                     frame.save(well_tif)
                     # also save a png for thumbnails
                     path = str(path).replace('TIF', 'png')
-                    rescaled = rescale(frame, 0.5, anti_aliasing=True, clip=False)
+                    rescaled = rescale(
+                        frame, 0.5, anti_aliasing=True, clip=False)
                     rescaled.save(path)
 
         else:
@@ -80,7 +82,12 @@ def get_image_paths(g, wells):
                     outpath = g.work.joinpath(g.plate, well, 'img')
                     first_png = g.work.joinpath(outpath,
                                                 g.plate + "_" + well + ".png")
-                    cv2.imwrite(str(first_png), first_frame)
+                    try:
+                        cv2.imwrite(str(first_png), first_frame)
+                    except cv2.error:
+                        print(
+                            '{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
+                        raise
 
                 elif g.n_waves == 1 and time_point != 1:
                     image_path = g.input.joinpath(g.plate, "TimePoint_" + str(time_point),
@@ -100,7 +107,12 @@ def get_image_paths(g, wells):
                         outpath = g.work.joinpath(g.plate, well, 'img')
                         first_png = g.work.joinpath(outpath,
                                                     g.plate + "_" + well + '_w' + str(i) + ".png")
-                        cv2.imwrite(str(first_png), first_frame)
+                        try:
+                            cv2.imwrite(str(first_png), first_frame)
+                        except cv2.error:
+                            print(
+                                '{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
+                            raise
 
                 elif g.n_waves > 1 and time_point != 1:
                     for i in range(1, g.n_waves + 1):

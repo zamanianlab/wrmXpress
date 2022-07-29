@@ -1,3 +1,13 @@
+# Images
+# *.png
+*.tiff
+cp_pipelines/worm_models/*.npy
+cp_pipelines/worm_models/*.tiff
+cp_pipelines/worm_models/*.tif
+
+# R
+.Rhistory
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +137,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Dev
+.vscode/

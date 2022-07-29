@@ -1,4 +1,5 @@
 suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(tidymodels)))
 options(readr.show_col_types = FALSE,
         dplyr.summarise.inform = FALSE)
 # setwd('~/Desktop/temp_root/')
@@ -6,7 +7,9 @@ options(readr.show_col_types = FALSE,
 args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-# plate <- '20210619-p03-KJG_692'
+rows <- args[2]
+cols <- args[3]
+# plate <- '20220121-p05-NJW_1113'
 
 metadata_dir <- stringr::str_c('metadata', plate, sep = '/')
 output_dir <- stringr::str_c('output', 'data/', sep = '/')
@@ -29,10 +32,10 @@ get_metadata <- function(...) {
   df <- tibble(...)
 
   data <- readr::read_csv(df$path,
-                          col_names = sprintf("%02d", seq(1:12)),
-                          col_types = 'cccccccccccc') %>%
-    dplyr::mutate(row = LETTERS[1:8], .before = `01`) %>%
-    tidyr::pivot_longer(cols = `01`:`12`, names_to = 'col', values_to = df$category) %>%
+                          col_names = sprintf("%02d", seq(1:as.numeric(cols))),
+                          col_types = rep('c', as.numeric(cols))) %>%
+    dplyr::mutate(row = LETTERS[1:as.numeric(rows)], .before = `01`) %>%
+    tidyr::pivot_longer(-row, names_to = 'col', values_to = df$category) %>%
     dplyr::mutate(well = stringr::str_c(row, col), plate = df$plate)
 
 }
@@ -44,9 +47,9 @@ collapse_rows <- function(x) {
 
 metadata <- metadata_files %>%
   purrr::pmap_dfr(get_metadata) %>%
-  dplyr::select(plate, well, row, col, species, stages, strains, treatment, conc, other) %>%
+  dplyr::select(plate, well, row, col, everything()) %>%
   dplyr::group_by(plate, well, row, col) %>%
-  dplyr::summarise(dplyr::across(species:other, collapse_rows))
+  dplyr::summarise(dplyr::across(everything(), collapse_rows))
 
 output_files <- dplyr::tibble(base = output_dir,
                               plate = plate,
@@ -83,7 +86,7 @@ if (length(output_files$data_file) > 1) {
       . == 'Metadata_Well' ~ 'well',
       TRUE ~ .
     ))
-
+    
 }
 
 final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>%

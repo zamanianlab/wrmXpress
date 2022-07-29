@@ -21,7 +21,7 @@ load_csv <- dplyr::tibble(
   Group_Index = seq(1, length(tl)),
   URL_GFP = stringr::str_c('file:', wd, 'input', plate, gfp, sep = '/'),
   URL_TransmittedLight = stringr::str_c('file:', wd, 'input', plate, tl, sep = '/'),
-  URL_wellmask = stringr::str_c('file:', wd, 'Core_imgproc', 'cp_pipelines', 'masks', mask, sep = '/'),
+  URL_wellmask = stringr::str_c('file:', wd, 'wrmXpress', 'cp_pipelines', 'masks', mask, sep = '/'),
   PathName_GFP = stringr::str_remove(URL_GFP, 'file:'),
   PathName_TransmittedLight = stringr::str_remove(URL_TransmittedLight, 'file:'),
   PathName_wellmask = stringr::str_remove(URL_wellmask, 'file:'),

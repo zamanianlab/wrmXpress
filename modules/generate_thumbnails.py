@@ -10,19 +10,27 @@ def generate_thumbnails(g, type):
     thumb_dict = {}
     for well in g.wells:
         if type == '':
-            path = g.work.joinpath(g.plate, well, 'img', g.plate + '_' + well + '.png')
+            path = g.work.joinpath(g.plate, well, 'img',
+                                   g.plate + '_' + well + '.png')
         else:
-            path = g.work.joinpath(g.plate, well, 'img', g.plate + '_' + well + '_' + type + '.png')
+            path = g.work.joinpath(g.plate, well, 'img',
+                                   g.plate + '_' + well + '_' + type + '.png')
         image = cv2.imread(str(path), cv2.IMREAD_ANYDEPTH)
 
-        # rescale the image with anti-aliasing
-        rescaled = rescale(image, 0.125, anti_aliasing=True, clip=False)
-        # normalize to 0-255
-        if type == 'flow':
-            rescaled[0, 0] = 1
-        else:
-            rescaled[0, 0] = 0.05
-        rescaled_norm = cv2.normalize(src=rescaled, dst=None, alpha=0,
+        rescale_value = 256 / image.shape[0]
+        rescaled = rescale(image, rescale_value,
+                           anti_aliasing=True, clip=False)
+        thumb_dict[well] = rescaled
+
+    # normalize the color range
+    max_vals = []
+    for thumb in thumb_dict.values():
+        max_vals.append(np.max(thumb))
+    max_p = max(max_vals)
+    for well, thumb in thumb_dict.items():
+        thumb[0, 0] = max_p
+        thumb[0, 1] = 0
+        rescaled_norm = cv2.normalize(src=thumb, dst=None, alpha=0,
                                       beta=255, norm_type=cv2.NORM_MINMAX,
                                       dtype=-1)
         thumb_dict[well] = rescaled_norm
@@ -43,7 +51,7 @@ def generate_thumbnails(g, type):
         new_im.paste(Image.fromarray(thumb),
                      ((col - 1) * 256, (row - 1) * 256))
 
-    if type == 'flow':
+    if type == 'motility':
         # apply a colormap if it's a flow image
         new_im = np.asarray(new_im) / 255
         new_im = Image.fromarray(np.uint8(cm.inferno(new_im) * 255))
@@ -61,6 +69,9 @@ def generate_thumbnails(g, type):
 
     g.output.joinpath('thumbs').mkdir(
         parents=True, exist_ok=True)
-    outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
+    if type == '':
+        outfile = g.output.joinpath('thumbs', g.plate + ".png")
+    else:
+        outfile = g.output.joinpath('thumbs', g.plate + '_' + type + ".png")
 
     new_im.save(outfile)

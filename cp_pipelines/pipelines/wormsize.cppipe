@@ -2,7 +2,7 @@ CellProfiler Pipeline: http://www.cellprofiler.org
 Version:5
 DateRevision:421
 GitHash:
-ModuleCount:15
+ModuleCount:16
 HasImagePlaneDetails:False
 
 LoadData:[module_num:1|svn_version:'Unknown'|variable_revision_number:6|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -16,7 +16,7 @@ LoadData:[module_num:1|svn_version:'Unknown'|variable_revision_number:6|show_win
     Select metadata tags for grouping:
     Rescale intensities?:Yes
 
-ImageMath:[module_num:2|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ImageMath:[module_num:2|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Operation:Invert
     Raise the power of the result by:1.0
     Multiply the result by:1.0
@@ -36,15 +36,24 @@ ImageMath:[module_num:2|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Measurement:
 
 MaskImage:[module_num:3|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:InvertedRaw
+    Select the input image:RawImage
     Name the output image:RawMask
     Use objects or an image as a mask?:Image
     Select object for mask:None
     Select image for mask:WellMask
     Invert the mask?:No
 
-EnhanceEdges:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+Smooth:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:RawMask
+    Name the output image:Smooth
+    Select smoothing method:Gaussian Filter
+    Calculate artifact diameter automatically?:No
+    Typical artifact diameter:2.5
+    Edge intensity difference:0.1
+    Clip intensities to 0 and 1?:Yes
+
+EnhanceEdges:[module_num:5|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input image:Smooth
     Name the output image:WormEdges
     Automatically calculate the threshold?:Yes
     Absolute threshold:0.2
@@ -56,7 +65,7 @@ EnhanceEdges:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show
     Calculate value for low threshold automatically?:Yes
     Low threshold value:0.1
 
-Smooth:[module_num:5|svn_version:'Unknown'|variable_revision_number:2|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+Smooth:[module_num:6|svn_version:'Unknown'|variable_revision_number:2|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:WormEdges
     Name the output image:SmoothedEdges
     Select smoothing method:Gaussian Filter
@@ -65,10 +74,10 @@ Smooth:[module_num:5|svn_version:'Unknown'|variable_revision_number:2|show_windo
     Edge intensity difference:0.1
     Clip intensities to 0 and 1?:Yes
 
-IdentifyPrimaryObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:15|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+IdentifyPrimaryObjects:[module_num:7|svn_version:'Unknown'|variable_revision_number:15|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:SmoothedEdges
     Name the primary objects to be identified:WormObjects
-    Typical diameter of objects, in pixel units (Min,Max):25,10000
+    Typical diameter of objects, in pixel units (Min,Max):10,30000
     Discard objects outside the diameter range?:Yes
     Discard objects touching the border of the image?:Yes
     Method to distinguish clumped objects:Intensity
@@ -76,37 +85,37 @@ IdentifyPrimaryObjects:[module_num:6|svn_version:'Unknown'|variable_revision_num
     Size of smoothing filter:10
     Suppress local maxima that are closer than this minimum allowed distance:7.0
     Speed up by using lower-resolution image to find local maxima?:Yes
-    Fill holes in identified objects?:Never
+    Fill holes in identified objects?:After declumping only
     Automatically calculate size of smoothing filter for declumping?:Yes
     Automatically calculate minimum allowed distance between local maxima?:Yes
     Handling of objects if excessive number of objects identified:Continue
     Maximum number of objects:500
     Use advanced settings?:Yes
     Threshold setting version:12
-    Threshold strategy:Adaptive
-    Thresholding method:Manual
-    Threshold smoothing scale:1.3488
+    Threshold strategy:Global
+    Thresholding method:Robust Background
+    Threshold smoothing scale:3
     Threshold correction factor:1.0
     Lower and upper bounds on threshold:0.0,1.0
-    Manual threshold:0.5
+    Manual threshold:0.001
     Select the measurement to threshold with:None
     Two-class or three-class thresholding?:Two classes
     Log transform before thresholding?:No
     Assign pixels in the middle intensity class to the foreground or the background?:Foreground
-    Size of adaptive window:300
+    Size of adaptive window:1024
     Lower outlier fraction:0.05
-    Upper outlier fraction:0.05
+    Upper outlier fraction:0.1
     Averaging method:Mean
     Variance method:Standard deviation
-    # of deviations:2.0
-    Thresholding method:Otsu
+    # of deviations:3
+    Thresholding method:Robust Background
 
-MeasureObjectSizeShape:[module_num:7|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectSizeShape:[module_num:8|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select object sets to measure:WormObjects
     Calculate the Zernike features?:No
     Calculate the advanced features?:No
 
-FilterObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:9|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+FilterObjects:[module_num:9|svn_version:'Unknown'|variable_revision_number:9|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the objects to filter:WormObjects
     Name the output objects:FilterObjects
     Select the filtering mode:Measurements
@@ -115,30 +124,35 @@ FilterObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:9|sho
     Select the location of the rules or classifier file:Elsewhere...|
     Rules or classifier file name:rules.txt
     Class number:1
-    Measurement count:1
+    Measurement count:2
     Additional object count:0
     Assign overlapping child to:Both parents
     Keep removed objects as a seperate set?:No
     Name the objects removed by the filter:RemovedObjects
     Select the measurement to filter by:AreaShape_Area
-    Filter using a minimum measurement value?:Yes
+    Filter using a minimum measurement value?:No
     Minimum value:700
     Filter using a maximum measurement value?:Yes
-    Maximum value:50000
+    Maximum value:30000
+    Select the measurement to filter by:AreaShape_MajorAxisLength
+    Filter using a minimum measurement value?:Yes
+    Minimum value:25
+    Filter using a maximum measurement value?:No
+    Maximum value:1.0
 
-ConvertObjectsToImage:[module_num:9|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertObjectsToImage:[module_num:10|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input objects:FilterObjects
     Name the output image:WormBinary
     Select the color format:Binary (black & white)
     Select the colormap:Default
 
-UntangleWorms:[module_num:10|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+UntangleWorms:[module_num:11|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input binary image:WormBinary
     Overlap style:Without overlap
     Name the output overlapping worm objects:OverlappingWorms
     Name the output non-overlapping worm objects:NonOverlappingWorms
-    Training set file location:Default Input Folder sub-folder|Core_imgproc/cp_pipelines/worm_models
-    Training set file name:WheelerAdultTrainingSet.xml
+    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file name:IVM_Untreated_TrainingSet.xml
     Use training set weights?:Yes
     Overlap weight:5.0
     Leftover weight:10.0
@@ -164,12 +178,12 @@ UntangleWorms:[module_num:10|svn_version:'Unknown'|variable_revision_number:2|sh
     Maximum complexity:High
     Custom complexity:400
 
-StraightenWorms:[module_num:11|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+StraightenWorms:[module_num:12|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|Core_imgproc/cp_pipelines/worm_models
-    Training set file name:WheelerAdultTrainingSet.xml
+    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file name:IVM_Untreated_TrainingSet.xml
     Image count:1
     Measure intensity distribution?:No
     Number of transverse segments:1
@@ -179,12 +193,12 @@ StraightenWorms:[module_num:11|svn_version:'Unknown'|variable_revision_number:3|
     Select an input image to straighten:RawImage
     Name the output straightened image:StraightenedImage
 
-MeasureObjectSizeShape:[module_num:12|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectSizeShape:[module_num:13|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select object sets to measure:StraightenedWorms
     Calculate the Zernike features?:No
     Calculate the advanced features?:No
 
-RescaleIntensity:[module_num:13|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+RescaleIntensity:[module_num:14|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:StraightenedImage
     Name the output image:StraightenedRescaled
     Rescaling method:Stretch each image to use the full intensity range
@@ -198,7 +212,7 @@ RescaleIntensity:[module_num:13|svn_version:'Unknown'|variable_revision_number:3
     Divisor value:1.0
     Divisor measurement:None
 
-SaveImages:[module_num:14|svn_version:'Unknown'|variable_revision_number:16|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+SaveImages:[module_num:15|svn_version:'Unknown'|variable_revision_number:16|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the type of image to save:Image
     Select the image to save:StraightenedRescaled
     Select method for constructing file names:Single name
@@ -218,7 +232,7 @@ SaveImages:[module_num:14|svn_version:'Unknown'|variable_revision_number:16|show
     How to save the series:T (Time)
     Save with lossless compression?:No
 
-ExportToSpreadsheet:[module_num:15|svn_version:'Unknown'|variable_revision_number:13|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_number:13|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the column delimiter:Comma (",")
     Add image metadata columns to your object data file?:Yes
     Add image file and folder names to your object data file?:Yes
