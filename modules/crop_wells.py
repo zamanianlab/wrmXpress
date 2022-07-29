@@ -49,7 +49,7 @@ def auto_crop(g):
     radii = np.arange(radius - 2, radius + 2, 2)
     hough_res = hough_circle(binary, radii)
     accums, cx, cy, radii = hough_circle_peaks(
-        hough_res, radii, total_num_peaks=wells_per_image*20)
+        hough_res, radii, total_num_peaks=wells_per_image*50)
 
     cy = np.ndarray.tolist(cy)
     cx = np.ndarray.tolist(cx)
@@ -67,13 +67,13 @@ def auto_crop(g):
         start = y_interval * row - 50
         stop = y_interval * row + 70
         grid_mask[start:stop, :] = 0
-    grid_mask[0:y_interval // 2, :] = 0
+    grid_mask[0:y_interval // 3, :] = 0
     grid_mask[grid_mask.shape[0] - y_interval // 2:grid_mask.shape[0] , :] = 0
     for col in range(1, g.image_n_col):
         start = x_interval * col - 50
         stop = x_interval * col + 70
         grid_mask[:, start:stop] = 0
-    grid_mask[:, 0:x_interval // 2] = 0
+    grid_mask[:, 0:x_interval // 3] = 0
     grid_mask[:, grid_mask.shape[1] - x_interval // 2:grid_mask.shape[1]] = 0
   
     # centers of the hough transform == 1
