@@ -9,10 +9,10 @@ channels:
 
 dependencies:
   - cython=0.29.21
-  - gtk2=2.24.32
+  - gtk2=2.24.33
   - imageio=2.9.0
   - matplotlib=3.3.3
-  - mysqlclient=1.4.6
+  - mysqlclient=2.0.3
   - networkx=2.5
   - numpy=1.21.4
   - opencv=4.5.0
@@ -29,10 +29,13 @@ dependencies:
   - r-janitor=2.1.0
   - scipy=1.5.3
   - tifffile=2020.11.18
-  - vim=8.2.2041
-  - wxpython=4.1.0
+  - vim=8.2.4950
+  - wxpython=4.1.1
   - pyyaml=5.4.1
   - pip=21.3.1
-  - centrosome=1.2.0
+  # - centrosome=1.2.0
   - scikit-image=0.19.1
-  - cellprofiler=4.2.1
+
+  - pip:
+    - centrosome==1.2.0
+    - cellprofiler==4.2.1

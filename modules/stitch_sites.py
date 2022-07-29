@@ -13,7 +13,7 @@ def stitch_sites(g, well_paths, multiplier):
     new_im = Image.new('I', (height, width))
     for site_path in well_paths:
         site_image = cv2.imread(
-                     str(site_path), cv2.IMREAD_ANYDEPTH)
+            str(site_path), cv2.IMREAD_ANYDEPTH)
         if any(substring in str(site_path) for substring in ['_s1.TIF', '_s1_']):
             new_im.paste(Image.fromarray(site_image), (0, 0))
         elif any(substring in str(site_path) for substring in ['_s2.TIF', '_s2_']):

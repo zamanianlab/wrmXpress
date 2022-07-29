@@ -10,23 +10,27 @@ def generate_thumbnails(g, type):
     thumb_dict = {}
     for well in g.wells:
         if type == '':
-            path = g.work.joinpath(g.plate, well, 'img', g.plate + '_' + well + '.png')
+            path = g.work.joinpath(g.plate, well, 'img',
+                                   g.plate + '_' + well + '.png')
         else:
-            path = g.work.joinpath(g.plate, well, 'img', g.plate + '_' + well + '_' + type + '.png')
+            path = g.work.joinpath(g.plate, well, 'img',
+                                   g.plate + '_' + well + '_' + type + '.png')
         image = cv2.imread(str(path), cv2.IMREAD_ANYDEPTH)
 
-        # rescale the image with anti-aliasing
-        if g.species == 'Sma':
-            rescale_value = 0.25
-        else:
-            rescale_value = 0.125
-        rescaled = rescale(image, rescale_value, anti_aliasing=True, clip=False)
-        # normalize to 0-255
-        if type == 'motility':
-            rescaled[0, 0] = 1
-        else:
-            rescaled[0, 0] = 0.05
-        rescaled_norm = cv2.normalize(src=rescaled, dst=None, alpha=0,
+        rescale_value = 256 / image.shape[0]
+        rescaled = rescale(image, rescale_value,
+                           anti_aliasing=True, clip=False)
+        thumb_dict[well] = rescaled
+
+    # normalize the color range
+    max_vals = []
+    for thumb in thumb_dict.values():
+        max_vals.append(np.max(thumb))
+    max_p = max(max_vals)
+    for well, thumb in thumb_dict.items():
+        thumb[0, 0] = max_p
+        thumb[0, 1] = 0
+        rescaled_norm = cv2.normalize(src=thumb, dst=None, alpha=0,
                                       beta=255, norm_type=cv2.NORM_MINMAX,
                                       dtype=-1)
         thumb_dict[well] = rescaled_norm
