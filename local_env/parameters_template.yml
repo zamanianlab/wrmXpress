@@ -90,7 +90,8 @@ modules:
 # Run on a subset of wells; 'All' will auto-populate wells using the input data
 wells:
   - A01
-  - A02
+  - A12
+  - E01
 
 directories:
   work:
