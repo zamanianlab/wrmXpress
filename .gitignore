@@ -2,6 +2,11 @@
 # *.png
 *.tiff
 
+# Model training
+cp_pipelines/worm_models/*.tiff
+cp_pipelines/worm_models/*.tif
+cp_pipelines/worm_models/*.npy
+
 # R
 .Rhistory
 
