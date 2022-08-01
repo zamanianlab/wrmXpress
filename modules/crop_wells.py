@@ -1,11 +1,9 @@
 from pathlib import Path
 from string import ascii_uppercase
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import ndimage
-from scipy.ndimage import sum as ndi_sum
 from skimage.draw import circle_perimeter
 from skimage.filters import sobel, threshold_triangle
 from skimage.transform import hough_circle, hough_circle_peaks

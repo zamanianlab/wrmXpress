@@ -1,11 +1,7 @@
-from stitch_sites import stitch_sites
-import sys
+from .stitch_sites import stitch_sites
 import cv2
 from skimage.transform import rescale
-from pathlib import Path
 from PIL import Image
-sys.path.append('/Users/njwheeler/GitHub/wrmXpress/modules')
-sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
 
 
 def get_image_paths(g, wells):

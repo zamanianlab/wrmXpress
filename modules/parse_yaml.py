@@ -1,7 +1,6 @@
 import yaml
 import re
 from pathlib import Path
-from collections import namedtuple
 
 
 def parse_yaml(arg_parser, g_class):

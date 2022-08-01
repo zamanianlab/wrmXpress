@@ -1,5 +1,3 @@
-from pathlib import Path
-from collections import namedtuple
 
 
 def parse_htd(yaml, g_class):
