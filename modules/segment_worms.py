@@ -13,19 +13,6 @@ def segment_worms(g, well, well_paths):
     Segments worms to use for downstream normalization.
     '''
 
-    # create a disk mask for 2X images
-    def create_circular_mask(h, w, center=None, radius=None):
-        if center is None:  # make the center the center of the image
-            center = (int(w / 2), int(h / 2))
-        if radius is None:  # make the radius the size of the image
-            radius = min(center[0], center[1], w - center[0], h - center[1])
-
-        Y, X = np.ogrid[:h, :w]
-        dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
-
-        mask = dist_from_center <= radius
-        return mask
-
     start_time = datetime.now()
 
     g.work.joinpath(g.plate, well, 'img').mkdir(
@@ -155,3 +142,14 @@ def segment_worms(g, well, well_paths):
               format(datetime.now() - start_time))
 
     return area
+
+# create a disk mask for 2X images
+def create_circular_mask(h, w, center=None, radius=None):
+    if center is None:  # make the center the center of the image
+        center = (int(w / 2), int(h / 2))
+    if radius is None:  # make the radius the size of the image
+        radius = min(center[0], center[1], w - center[0], h - center[1])
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
+    mask = dist_from_center <= radius
+    return mask

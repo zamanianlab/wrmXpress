@@ -1,7 +1,6 @@
 import yaml
 import re
 from pathlib import Path
-from collections import namedtuple
 
 
 def parse_yaml(arg_parser, g_class):
@@ -86,6 +85,6 @@ def parse_yaml(arg_parser, g_class):
     yaml_out = g_class(mode, file_structure, well_detection, image_n_row, image_n_col,
                        species, stages,
                        input, work, output, plate_dir, plate, plate_short,
-                       '', '', '', '', '', '', '', wells, '')
+                       '', '', '', '', '', '', '', '', wells, '')
 
     return yaml_out, modules

@@ -1,6 +1,5 @@
 import cv2
 from PIL import Image
-import numpy as np
 
 
 def stitch_sites(g, well_paths, multiplier):

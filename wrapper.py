@@ -8,26 +8,25 @@ from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
 
-sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
-sys.path.append(str(Path('/Users/njwheeler/GitHub').joinpath('wrmXpress/modules')))
-
-from get_wells import get_wells
-from get_image_paths import get_image_paths
-from convert_video import convert_video
-from dense_flow import dense_flow
-from segment_worms import segment_worms
-from generate_thumbnails import generate_thumbnails
-from parse_htd import parse_htd
-from crop_wells import auto_crop
-from crop_wells import grid_crop
-from parse_yaml import parse_yaml
+from modules.parse_yaml import parse_yaml
+from modules.parse_htd import parse_htd
+from modules.get_wells import get_wells
+from modules.get_image_paths import get_image_paths
+from modules.convert_video import convert_video
+from modules.dense_flow import dense_flow
+from modules.segment_worms import segment_worms
+from modules.generate_thumbnails import generate_thumbnails
+from modules.parse_htd import parse_htd
+from modules.crop_wells import auto_crop, grid_crop
+from modules.parse_yaml import parse_yaml
+from modules.fecundity import fecundity
 
 
 if __name__ == "__main__":
 
     # create the class that will instantiate the namedtuple
     g_class = namedtuple(
-        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
+        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short desc time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
@@ -68,8 +67,6 @@ if __name__ == "__main__":
 
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
-    for (i, j) in zip(g._fields[:-1], g[:-1]):
-        print("{}:\t{}".format(i, j))
 
     ########################################
     ######### 4. RUN CELLPROFILER  #########
@@ -143,6 +140,13 @@ if __name__ == "__main__":
                 out_dict[well].append(flow)
                 print('{}: module \'motility\' finished'.format(well))
 
+            if 'fecundity' in modules.keys():
+                progeny_area = fecundity(g, well, well_paths)
+                if 'progeny_area' not in cols:
+                    cols.append('progeny_area')
+                out_dict[well].append(progeny_area)
+                print('{}: module \'fecundity\' finished'.format(well))
+
         ##################################
         ######### 6. WRITE DATA  #########
         ##################################
@@ -180,6 +184,10 @@ if __name__ == "__main__":
             dx_types.append('binary')
         if 'motility' in modules:
             dx_types.append('motility')
+        if 'fecundity' in modules and g.species == 'Sma':
+            dx_types.append('filtered')
+        elif 'fecundity' in modules and g.species == 'Bma':
+            dx_types.append('binary')
         for type in dx_types:
             print("Generating {} thumbnails".format(type))
             generate_thumbnails(g, type)

@@ -1,11 +1,7 @@
-from stitch_sites import stitch_sites
-import sys
+from .stitch_sites import stitch_sites
 import cv2
 from skimage.transform import rescale
-from pathlib import Path
 from PIL import Image
-sys.path.append('/Users/njwheeler/GitHub/wrmXpress/modules')
-sys.path.append(str(Path.home().joinpath('wrmXpress/modules')))
 
 
 def get_image_paths(g, wells):
@@ -71,9 +67,27 @@ def get_image_paths(g, wells):
         else:
             for time_point in range(1, g.time_points + 1):
                 # when there is only 1 wavelength, there is no 'w1' in the file name
-                if g.n_waves == 1 and time_point == 1:
+                if g.n_waves == 1 and time_point == 1 and 'Montage' not in g.desc:
                     image_path = g.input.joinpath(g.plate, "TimePoint_" + str(time_point),
                                                   g.plate_short + "_" + well + ".TIF")
+                    well_paths.append(image_path)
+                    first_frame = cv2.imread(
+                        str(image_path), cv2.IMREAD_ANYDEPTH)
+                    g.work.joinpath(g.plate, well, 'img').mkdir(
+                        parents=True, exist_ok=True)
+                    outpath = g.work.joinpath(g.plate, well, 'img')
+                    first_png = g.work.joinpath(outpath,
+                                                g.plate + "_" + well + ".png")
+                    try:
+                        cv2.imwrite(str(first_png), first_frame)
+                    except cv2.error:
+                        print(
+                            '{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
+                        raise
+
+                elif g.n_waves == 1 and time_point == 1 and 'Montage' in g.desc:
+                    image_path = g.input.joinpath(g.plate, "TimePoint_" + str(time_point),
+                                                  g.plate_short + "_" + well + "_w1.TIF")
                     well_paths.append(image_path)
                     first_frame = cv2.imread(
                         str(image_path), cv2.IMREAD_ANYDEPTH)
