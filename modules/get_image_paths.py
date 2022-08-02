@@ -85,7 +85,7 @@ def get_image_paths(g, wells):
                             '{} does not exist. Please check your YAML and input to ensure all selected wells exist in the input data.'.format(well))
                         raise
 
-                if g.n_waves == 1 and time_point == 1 and 'Montage' in g.desc:
+                elif g.n_waves == 1 and time_point == 1 and 'Montage' in g.desc:
                     image_path = g.input.joinpath(g.plate, "TimePoint_" + str(time_point),
                                                   g.plate_short + "_" + well + "_w1.TIF")
                     well_paths.append(image_path)
