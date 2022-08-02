@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from datetime import datetime
-from pathlib import Path
 from scipy import ndimage
 
 
