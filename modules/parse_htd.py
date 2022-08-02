@@ -14,10 +14,16 @@ def parse_htd(yaml, g_class):
             next((s for s in lines if 'XWells' in s), None).split(', ')[1])
         rows = int(
             next((s for s in lines if 'YWells' in s), None).split(', ')[1])
-        x_sites = int(
+        if "XSites" in lines:
+            x_sites = int(
             next((s for s in lines if 'XSites' in s), None).split(', ')[1])
-        y_sites = int(
+        else:
+            x_sites = 1
+        if "YSites" in lines:
+            y_sites = int(
             next((s for s in lines if 'YSites' in s), None).split(', ')[1])
+        else:
+            y_sites = 1
         n_waves = int(
             next((s for s in lines if 'NWavelengths' in s), None).split(', ')[1])
         # loop to get all the WaveNames
