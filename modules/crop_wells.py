@@ -171,6 +171,7 @@ def create_htd(g, array, df):
 
     # make HTD for non-IX data
     lines = []
+    lines.append('"Description", ' + "AVI" + "\n")
     lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
     lines.append('"XWells", ' + str(len(pd.unique(df['col']))) + "\n")
     lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")
