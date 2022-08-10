@@ -35,6 +35,10 @@
 
 7. Run the model on the new image, which will use the model to segment worms. Try both models, and move to step 8 after the better model has finished.
 
+    ![Screen Shot 2022-08-10 at 9 39 44 AM](https://user-images.githubusercontent.com/16230555/183931407-90fa9138-ebdc-4368-9d47-f16f2a815d46.png)
+
+7. Run the model on the new image, which will use the model to segment worms. Try both models, and move to step 8 after the better model has finished.
+
 8. Manually annotate the image to delete, merge, or add masks
    1. Delete a mask: Cmd + Click
    2. Merge two masks: Click one mask, then Option + Click
