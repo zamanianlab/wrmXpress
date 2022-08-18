@@ -10,6 +10,7 @@ from skimage.transform import hough_circle, hough_circle_peaks
 from skimage.morphology import dilation, reconstruction
 from itertools import product
 
+import matplotlib.pyplot as plt
 
 def auto_crop(g):
     ''' 
@@ -47,7 +48,7 @@ def auto_crop(g):
     radii = np.arange(radius - 2, radius + 2, 2)
     hough_res = hough_circle(binary, radii)
     accums, cx, cy, radii = hough_circle_peaks(
-        hough_res, radii, total_num_peaks=wells_per_image*50)
+        hough_res, radii, total_num_peaks=wells_per_image*2000)
 
     cy = np.ndarray.tolist(cy)
     cx = np.ndarray.tolist(cx)
@@ -62,27 +63,36 @@ def auto_crop(g):
     grid_mask = np.ones(vid_array.shape[1:3])
 
     for row in range(1, g.image_n_row):
-        start = y_interval * row - 50
-        stop = y_interval * row + 70
+        start = y_interval * row - 80
+        stop = y_interval * row + 80
         grid_mask[start:stop, :] = 0
-    grid_mask[0:y_interval // 3, :] = 0
-    grid_mask[grid_mask.shape[0] - y_interval // 2:grid_mask.shape[0] , :] = 0
+    grid_mask[0:int(y_interval // 2), :] = 0
+    grid_mask[grid_mask.shape[0] - int(y_interval // 2):grid_mask.shape[0] , :] = 0
     for col in range(1, g.image_n_col):
-        start = x_interval * col - 50
-        stop = x_interval * col + 70
+        start = x_interval * col - 80
+        stop = x_interval * col + 80
         grid_mask[:, start:stop] = 0
-    grid_mask[:, 0:x_interval // 3] = 0
-    grid_mask[:, grid_mask.shape[1] - x_interval // 2:grid_mask.shape[1]] = 0
+    grid_mask[:, 0:int(x_interval // 2)] = 0
+    grid_mask[:, grid_mask.shape[1] - int(x_interval // 2):grid_mask.shape[1]] = 0
+    # plt.imshow(grid_mask)
+    # plt.show()
   
     # centers of the hough transform == 1
     black = np.zeros(ave.shape[0:2])
     for center_y, center_x in zip(cy, cx):
         black[center_y, center_x] = 1
+    # plt.imshow(black)
+    # plt.show()
     black = black * grid_mask
+    # plt.imshow(black)
+    # plt.show()
     centers = tuple(zip(*np.where(black == 1)))
     for center_y, center_x, in centers:
         circy, circx = circle_perimeter(center_y, center_x, radius)
-        black[circy, circx] = 1
+        try: 
+            black[circy, circx] = 1
+        except IndexError:
+            pass
 
     closed = dilation(black)
 
@@ -91,6 +101,8 @@ def auto_crop(g):
     mask = closed
 
     filled = reconstruction(seed, mask, method='erosion')
+    # plt.imshow(filled)
+    # plt.show()
 
     lbl, objects = ndimage.label(filled)
     centers = ndimage.center_of_mass(filled, lbl, range(
@@ -99,6 +111,7 @@ def auto_crop(g):
     well_names = generate_well_names(centers, g.image_n_row, g.image_n_col)
 
     well_arrays = {}
+    
     for index, row, in well_names.iterrows():
         well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(
             radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
