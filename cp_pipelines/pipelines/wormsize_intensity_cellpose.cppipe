@@ -1,0 +1,174 @@
+CellProfiler Pipeline: http://www.cellprofiler.org
+Version:5
+DateRevision:421
+GitHash:
+ModuleCount:11
+HasImagePlaneDetails:False
+
+Images:[module_num:1|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:['To begin creating your project, use the Images module to compile a list of files and/or folders that you want to analyze. You can also specify a set of rules to include only the desired files in your selected folders.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    :
+    Filter images?:Images only
+    Select the rule criteria:and (extension does isimage) (directory doesnot containregexp "[\\\\/]\\.")
+
+Metadata:[module_num:2|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:['The Metadata module optionally allows you to extract information describing your images (i.e, metadata) which will be stored along with your measurements. This information can be contained in the file name and/or location, or in an external file.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Extract metadata?:Yes
+    Metadata data type:Text
+    Metadata types:{}
+    Extraction method count:1
+    Metadata extraction method:Extract from file/folder names
+    Metadata source:File name
+    Regular expression to extract from file name:^(?P<Date>.*)-(?P<Plate>p[0-9]{2,3})-(?P<Researcher>[A-Z]{2,3})_(?P<Well>[A-P][0-9]{2})
+    Regular expression to extract from folder name:(?P<Date>[0-9]{4}_[0-9]{2}_[0-9]{2})$
+    Extract metadata from:Images matching a rule
+    Select the filtering criteria:and (file does containregexp "^(?P<Date>.*)-(?P<Plate>p[0-9]{2,3})")
+    Metadata file location:Elsewhere...|
+    Match file and image metadata:[]
+    Use case insensitive matching?:No
+    Metadata file name:None
+    Does cached metadata exist?:No
+
+NamesAndTypes:[module_num:3|svn_version:'Unknown'|variable_revision_number:8|show_window:False|notes:['The NamesAndTypes module allows you to assign a meaningful name to each image by which other modules will refer to it.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Assign a name to:Images matching rules
+    Select the image type:Grayscale image
+    Name to assign these images:DNA
+    Match metadata:[]
+    Image set matching method:Order
+    Set intensity range from:Image metadata
+    Assignments count:2
+    Single images count:0
+    Maximum intensity:255.0
+    Process as 3D?:No
+    Relative pixel spacing in X:1.0
+    Relative pixel spacing in Y:1.0
+    Relative pixel spacing in Z:1.0
+    Select the rule criteria:and (extension does istif)
+    Name to assign these images:RawImage
+    Name to assign these objects:Cell
+    Select the image type:Grayscale image
+    Set intensity range from:Image metadata
+    Maximum intensity:255.0
+    Select the rule criteria:and (file does contain "_masks")
+    Name to assign these images:WormMask
+    Name to assign these objects:Nucleus
+    Select the image type:Binary mask
+    Set intensity range from:Image metadata
+    Maximum intensity:255.0
+
+Groups:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:['The Groups module optionally allows you to split your list of images into image subsets (groups) which will be processed independently of each other. Examples of groupings include screening batches, microtiter plates, time-lapse movies, etc.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Do you want to group your images?:No
+    grouping metadata count:1
+    Metadata category:None
+
+UntangleWorms:[module_num:5|svn_version:'Unknown'|variable_revision_number:2|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input binary image:WormMasks
+    Overlap style:Without overlap
+    Name the output overlapping worm objects:OverlappingWorms
+    Name the output non-overlapping worm objects:NonOverlappingWorms
+    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file name:IVM_Untreated_TrainingSet.xml
+    Use training set weights?:Yes
+    Overlap weight:10
+    Leftover weight:100
+    Retain outlines of the overlapping objects?:Yes
+    Outline colormap?:Default
+    Name the overlapped outline image:OverlappedWormOutlines
+    Retain outlines of the non-overlapping worms?:Yes
+    Name the non-overlapped outlines image:NonoverlappedWormOutlines
+    Train or untangle worms?:Untangle
+    Minimum area percentile:1.0
+    Minimum area factor:0.85
+    Maximum area percentile:90.0
+    Maximum area factor:1.0
+    Minimum length percentile:1.0
+    Minimum length factor:0.9
+    Maximum length percentile:99.0
+    Maximum length factor:1.1
+    Maximum cost percentile:90.0
+    Maximum cost factor:1.9
+    Number of control points:21
+    Maximum radius percentile:90.0
+    Maximum radius factor:1.0
+    Maximum complexity:Medium
+    Custom complexity:400
+
+StraightenWorms:[module_num:6|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input untangled worm objects:NonOverlappingWorms
+    Name the output straightened worm objects:StraightenedWorms
+    Worm width:20
+    Training set file location:Default Input Folder sub-folder|/Users/njwheeler/GitHub/wrmXpress/cp_pipelines/worm_models
+    Training set file name:IVM_Untreated_TrainingSet.xml
+    Image count:1
+    Measure intensity distribution?:No
+    Number of transverse segments:4
+    Number of longitudinal stripes:3
+    Align worms?:Do not align
+    Alignment image:None
+    Select an input image to straighten:RawImage
+    Name the output straightened image:StraightenedImage
+
+MeasureObjectSizeShape:[module_num:7|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select object sets to measure:StraightenedWorms
+    Calculate the Zernike features?:No
+    Calculate the advanced features?:No
+
+MeasureObjectIntensity:[module_num:8|svn_version:'Unknown'|variable_revision_number:4|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select images to measure:StraightenedImage
+    Select objects to measure:StraightenedWorms
+
+RescaleIntensity:[module_num:9|svn_version:'Unknown'|variable_revision_number:3|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input image:StraightenedImage
+    Name the output image:StraightenedRescaled
+    Rescaling method:Stretch each image to use the full intensity range
+    Method to calculate the minimum intensity:Custom
+    Method to calculate the maximum intensity:Custom
+    Lower intensity limit for the input image:0.0
+    Upper intensity limit for the input image:1.0
+    Intensity range for the input image:0.0,1.0
+    Intensity range for the output image:0.0,1.0
+    Select image to match in maximum intensity:None
+    Divisor value:1.0
+    Divisor measurement:None
+
+SaveImages:[module_num:10|svn_version:'Unknown'|variable_revision_number:16|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the type of image to save:Image
+    Select the image to save:StraightenedRescaled
+    Select method for constructing file names:Single name
+    Select image name for file prefix:None
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>
+    Number of digits:4
+    Append a suffix to the image file name?:No
+    Text to append to the image name:
+    Saved file format:tiff
+    Output file location:Elsewhere...|output/straightened_worms
+    Image bit depth:16-bit integer
+    Overwrite existing files without warning?:Yes
+    When to save:Every cycle
+    Record the file and path information to the saved image?:No
+    Create subfolders in the output folder?:No
+    Base image folder:Elsewhere...|
+    How to save the series:T (Time)
+    Save with lossless compression?:Yes
+
+ExportToSpreadsheet:[module_num:11|svn_version:'Unknown'|variable_revision_number:13|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the column delimiter:Comma (",")
+    Add image metadata columns to your object data file?:Yes
+    Add image file and folder names to your object data file?:Yes
+    Select the measurements to export:Yes
+    Calculate the per-image mean values for object measurements?:No
+    Calculate the per-image median values for object measurements?:No
+    Calculate the per-image standard deviation values for object measurements?:No
+    Output file location:Elsewhere...|output/data/
+    Create a GenePattern GCT file?:No
+    Select source of sample row name:Metadata
+    Select the image to use as the identifier:None
+    Select the metadata to use as the identifier:None
+    Export all measurement types?:No
+    Press button to select measurements:StraightenedWorms|AreaShape_BoundingBoxArea,StraightenedWorms|AreaShape_ConvexArea,StraightenedWorms|AreaShape_FormFactor,StraightenedWorms|AreaShape_Orientation,StraightenedWorms|AreaShape_BoundingBoxMaximum_Y,StraightenedWorms|AreaShape_BoundingBoxMaximum_X,StraightenedWorms|AreaShape_MinFeretDiameter,StraightenedWorms|AreaShape_Center_Y,StraightenedWorms|AreaShape_Center_X,StraightenedWorms|AreaShape_EulerNumber,StraightenedWorms|AreaShape_MedianRadius,StraightenedWorms|AreaShape_MeanRadius,StraightenedWorms|AreaShape_MaximumRadius,StraightenedWorms|AreaShape_BoundingBoxMinimum_Y,StraightenedWorms|AreaShape_BoundingBoxMinimum_X,StraightenedWorms|AreaShape_Eccentricity,StraightenedWorms|AreaShape_MinorAxisLength,StraightenedWorms|AreaShape_Compactness,StraightenedWorms|AreaShape_Solidity,StraightenedWorms|AreaShape_Perimeter,StraightenedWorms|AreaShape_Extent,StraightenedWorms|AreaShape_MajorAxisLength,StraightenedWorms|AreaShape_EquivalentDiameter,StraightenedWorms|AreaShape_MaxFeretDiameter,StraightenedWorms|AreaShape_Area,StraightenedWorms|Intensity_MeanIntensityEdge_StraightenedImage,StraightenedWorms|Intensity_StdIntensityEdge_StraightenedImage,StraightenedWorms|Intensity_MADIntensity_StraightenedImage,StraightenedWorms|Intensity_MinIntensityEdge_StraightenedImage,StraightenedWorms|Intensity_MaxIntensityEdge_StraightenedImage,StraightenedWorms|Intensity_UpperQuartileIntensity_StraightenedImage,StraightenedWorms|Intensity_StdIntensity_StraightenedImage,StraightenedWorms|Intensity_MinIntensity_StraightenedImage,StraightenedWorms|Intensity_LowerQuartileIntensity_StraightenedImage,StraightenedWorms|Intensity_MedianIntensity_StraightenedImage,StraightenedWorms|Intensity_MeanIntensity_StraightenedImage,StraightenedWorms|Intensity_IntegratedIntensity_StraightenedImage,StraightenedWorms|Intensity_MassDisplacement_StraightenedImage,StraightenedWorms|Intensity_IntegratedIntensityEdge_StraightenedImage,StraightenedWorms|Intensity_MaxIntensity_StraightenedImage
+    Representation of Nan/Inf:NaN
+    Add a prefix to file names?:No
+    Filename prefix:MyExpt_
+    Overwrite existing files without warning?:Yes
+    Data to export:StraightenedWorms
+    Combine these object measurements with those of the previous object?:No
+    File name:\g<Date>-\g<Plate>-\g<Researcher>_data.csv
+    Use the object name for the file name?:No
