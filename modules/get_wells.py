@@ -38,7 +38,7 @@ def get_wells(g):
     filtered = list(set(filtered))
 
     # search for TimePoint_i folders and count up total time points
-    search_path = g_vars.plate_dir
+    search_path = g.plate_dir
     dirs = next(walk(search_path), (None, None, []))[1]
     time_points = [int(dir.replace('TimePoint_', '')) for dir in dirs]
     time_points = max(time_points)
