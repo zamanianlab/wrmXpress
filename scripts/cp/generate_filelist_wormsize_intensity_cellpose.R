@@ -1,14 +1,14 @@
 suppressWarnings(suppressMessages(library(tidyverse)))
 
-setwd('~/Desktop/temp_root/')
+# setwd('~/Desktop/temp_root/')
 
 # args = commandArgs(trailingOnly = TRUE)
 
-# plate <- args[1]
-# wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+plate <- args[1]
+wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
 
-plate <- '20220422-p06-EJG_1437'
-wells <- 'A01'
+# plate <- '20220422-p06-EJG_1437'
+# wells <- 'A01'
 
 image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
 
