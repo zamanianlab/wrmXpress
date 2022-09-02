@@ -61,6 +61,12 @@ if __name__ == "__main__":
         else:
             wells = g.wells
             plate_paths = get_image_paths(g, g.wells)
+            # remove files that aren't going to be processed
+            all_wells = get_wells(g)
+            all_paths = get_image_paths(g, all_wells)
+            rm_paths = set(all_paths).difference(plate_paths)
+            for rm in rm_paths:
+                os.remove(rm)
     except TypeError:
         print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
 
@@ -76,7 +82,7 @@ if __name__ == "__main__":
         pipeline = modules['cellprofiler']['pipeline'][0]
         
         # rename TIF to tif to work with cellpose
-        for filepath in Path('input/20220804-p04-KTR_1632/TimePoint_1').glob('**/*'):
+        for filepath in Path('input/{}/TimePoint_1'.format(g.plate)).glob('**/*'):
             os.rename(filepath, str(filepath).replace('TIF', 'tif'))
         wells = [well.replace('TIF', 'tif') for well in wells]
         g = g._replace(wells=wells)
