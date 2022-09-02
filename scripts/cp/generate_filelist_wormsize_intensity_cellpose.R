@@ -24,7 +24,7 @@ load_csv <- dplyr::tibble(
   URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_raw, sep = '/'),
   URL_WormMasks = stringr::str_c('file:', wd, 'input', plate, input_mask, sep = '/'),
   PathName_RawImage = stringr::str_remove(URL_RawImage, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
-  PathName_WormMasks = stringr::str_remove(URL_WormMask, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
+  PathName_WormMasks = stringr::str_remove(URL_WormMasks, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
   FileName_RawImage = input_raw,
   FileName_WormMasks = input_mask,
   Series_RawImage = 0,
