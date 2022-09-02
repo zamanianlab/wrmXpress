@@ -2,13 +2,13 @@ import re
 from os import walk
 
 
-def get_wells(g_vars):
+def get_wells(g):
     '''
     Create a list with all the well names for a given plate format.
     '''
 
     # collect all wells from TimePoint_1 folder
-    search_path = g_vars.plate_dir.joinpath('TimePoint_1')
+    search_path = g.plate_dir.joinpath('TimePoint_1')
     print(search_path)
     images = next(walk(search_path), (None, None, []))[2]
     if g.n_waves == 1:
