@@ -62,11 +62,16 @@ if __name__ == "__main__":
             wells = g.wells
             plate_paths = get_image_paths(g, g.wells)
             # remove files that aren't going to be processed
+            print('Removing unselected wells.')
             all_wells = get_wells(g)
             all_paths = get_image_paths(g, all_wells)
+            all_paths = [item for sublist in all_paths for item in sublist]
+            all_paths = [i.as_posix() for i in all_paths]
+            plate_paths = [item for sublist in plate_paths for item in sublist]
+            plate_paths = [i.as_posix() for i in plate_paths]
             rm_paths = set(all_paths).difference(plate_paths)
             for rm in rm_paths:
-                os.remove(rm)
+                os.remove(rm)   
     except TypeError:
         print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
 
