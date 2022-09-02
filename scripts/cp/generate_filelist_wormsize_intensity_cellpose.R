@@ -1,16 +1,19 @@
 suppressWarnings(suppressMessages(library(tidyverse)))
 
-# setwd('~/Desktop/')
+setwd('~/Desktop/temp_root/')
 
-args = commandArgs(trailingOnly = TRUE)
+# args = commandArgs(trailingOnly = TRUE)
 
-plate <- args[1]
-wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+# plate <- args[1]
+# wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+
+plate <- '20220422-p06-EJG_1437'
+wells <- 'A01'
 
 image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
 
-input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
-input_mask <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+input_raw <- list.files(path = image_dir, pattern = '.*tif$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+input_mask <- list.files(path = image_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- 'well_mask.png'
 
 wd <- getwd() %>% str_remove(., '^/')
@@ -19,17 +22,17 @@ load_csv <- dplyr::tibble(
   Group_Number = 1,
   Group_Index = seq(1, length(input_raw)),
   URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_raw, sep = '/'),
-  URL_WormMask = stringr::str_c('file:', wd, 'input', plate, input_mask, sep = '/'),
+  URL_WormMasks = stringr::str_c('file:', wd, 'input', plate, input_mask, sep = '/'),
   PathName_RawImage = stringr::str_remove(URL_RawImage, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
-  PathName_WormMask = stringr::str_remove(URL_WormMask, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
+  PathName_WormMasks = stringr::str_remove(URL_WormMask, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
   FileName_RawImage = input_raw,
-  FileName_WormMask = input_mask,
+  FileName_WormMasks = input_mask,
   Series_RawImage = 0,
-  Series_WellMask = 0,
+  Series_WormMasks = 0,
   Frame_RawImage = 0,
-  Frame_WellMask = 0,
+  Frame_WormMasks = 0,
   Channel_RawImage = -1,
-  Channel_WellMask = -1,
+  Channel_WormMasks = -1,
   Metadata_Date = stringr::str_extract(plate, '202[0-9]{5}'),
   Metadata_FileLocation = 'nan',
   Metadata_Frame = 0,
