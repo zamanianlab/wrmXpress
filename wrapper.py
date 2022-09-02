@@ -73,8 +73,11 @@ if __name__ == "__main__":
     ########################################
 
     if 'cellprofiler' in modules.keys():
+        # rename TIF to tif to work with cellpose
         for filepath in Path('input/20220804-p04-KTR_1632/TimePoint_1').glob('**/*'):
             os.rename(filepath, str(filepath).replace('TIF', 'tif'))
+        wells = [well.replace('TIF', 'tif') for well in wells]
+        g = g._replace(wells=wells)
         pipeline = modules['cellprofiler']['pipeline'][0]
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
