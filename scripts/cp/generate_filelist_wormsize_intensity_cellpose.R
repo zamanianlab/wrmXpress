@@ -2,7 +2,7 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 
 # setwd('~/Desktop/temp_root/')
 
-# args = commandArgs(trailingOnly = TRUE)
+args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
 wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')

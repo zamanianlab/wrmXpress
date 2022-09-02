@@ -1,4 +1,5 @@
 import argparse
+from os import rename
 import sys
 import re
 import pandas as pd
@@ -73,6 +74,9 @@ if __name__ == "__main__":
     ########################################
 
     if 'cellprofiler' in modules.keys():
+        rename_command = 'for f in {}/{}/TimePoint_1/*.TIF; do mv -- "$f" "${f%.TIF}.tif"; done'.format(g.input, g.plate)
+        rename_command_split = shlex.split(rename_command)
+        subprocess.run(rename_command_split)
         pipeline = modules['cellprofiler']['pipeline'][0]
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
@@ -81,7 +85,7 @@ if __name__ == "__main__":
         subprocess.run(fl_command_split)
 
         if 'cellpose' in pipeline:
-            cellpose_command = 'python -m cellpose --dir . --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'
+            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'format(g.input, g.plate)
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
         cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
