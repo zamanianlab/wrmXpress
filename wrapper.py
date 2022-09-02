@@ -1,6 +1,5 @@
 import argparse
-from os import rename
-import sys
+import os
 import re
 import pandas as pd
 import subprocess
@@ -74,9 +73,8 @@ if __name__ == "__main__":
     ########################################
 
     if 'cellprofiler' in modules.keys():
-        rename_command = 'for f in {}/{}/TimePoint_1/*.TIF; do mv -- "$f" "${f%.TIF}.tif"; done'.format(g.input, g.plate)
-        rename_command_split = shlex.split(rename_command)
-        subprocess.run(rename_command_split)
+        for filepath in Path('input/20220804-p04-KTR_1632/TimePoint_1').glob('**/*'):
+            os.rename(filepath, str(filepath).replace('TIF', 'tif'))
         pipeline = modules['cellprofiler']['pipeline'][0]
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)

@@ -9,7 +9,6 @@ def get_wells(g):
 
     # collect all wells from TimePoint_1 folder
     search_path = g.plate_dir.joinpath('TimePoint_1')
-    print(search_path)
     images = next(walk(search_path), (None, None, []))[2]
     if g.n_waves == 1:
         if g.x_sites and g.x_sites == 1 and "Montage" not in g.desc:
