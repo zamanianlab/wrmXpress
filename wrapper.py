@@ -96,6 +96,12 @@ if __name__ == "__main__":
             cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
+            dir_comand = 'mkdir output/cellpose_masks/'
+            dir_comand_split = shlex.split(dir_comand)
+            subprocess.run(dir_comand_split)
+            cp_command = 'cp {}/{}/TimePoint_1/*.png output/cellpose_masks/'
+            cp_command_split = shlex.split(cp_command)
+            subprocess.run(cp_command)
 
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
