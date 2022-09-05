@@ -99,7 +99,7 @@ if __name__ == "__main__":
             dir_comand = 'mkdir output/cellpose_masks/'
             dir_comand_split = shlex.split(dir_comand)
             subprocess.run(dir_comand_split)
-            cp_command = 'cp {}/{}/TimePoint_1/*.png output/cellpose_masks/'
+            cp_command = 'cp {}/{}/TimePoint_1/*.png output/cellpose_masks/'.format(g.input, g.plate)
             cp_command_split = shlex.split(cp_command)
             subprocess.run(cp_command)
 
