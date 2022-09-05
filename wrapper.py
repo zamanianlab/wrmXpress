@@ -4,6 +4,8 @@ import re
 import pandas as pd
 import subprocess
 import shlex
+import shutil
+import glob
 from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
@@ -99,6 +101,9 @@ if __name__ == "__main__":
             dir_comand = 'mkdir output/cellpose_masks/'
             dir_comand_split = shlex.split(dir_comand)
             subprocess.run(dir_comand_split)
+            os.mkdir("{}/cellpose_masks".format(g.output))
+            for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
+                shutil.copy(file, "{}/cellpose_masks".format(g.output))
             cp_command = 'cp {}/{}/TimePoint_1/*.png output/cellpose_masks/'.format(g.input, g.plate)
             cp_command_split = shlex.split(cp_command)
             subprocess.run(cp_command)
