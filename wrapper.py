@@ -101,9 +101,6 @@ if __name__ == "__main__":
             os.mkdir("{}/cellpose_masks".format(g.output))
             for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
                 shutil.copy(file, "{}/cellpose_masks".format(g.output))
-            cp_command = 'cp {}/{}/TimePoint_1/*.png output/cellpose_masks/'.format(g.input, g.plate)
-            cp_command_split = shlex.split(cp_command)
-            subprocess.run(cp_command)
 
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
