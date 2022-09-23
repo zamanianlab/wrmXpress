@@ -95,7 +95,7 @@ if __name__ == "__main__":
         g = g._replace(wells=wells)
 
         if 'cellpose' in pipeline:
-            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
+            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
             os.mkdir("{}/cellpose_masks".format(g.output))
