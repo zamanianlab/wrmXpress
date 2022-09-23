@@ -16,7 +16,7 @@ Experimental protocols used to generate images that are compatible with wrmXpres
 - [wrmXpress preprint](https://doi.org/10.1101/2022.05.18.492482)
     Contains all the wrmXpress details. See this preprint for an explanation of modules and pipelines included.
 - [Multivariate screening preprint](https://doi.org/10.1101/2022.07.25.501423)
-    Includes comprehensive protocols for microfilariae imaging (motility and viability) and adult filaria imaging (motility)
+    Includes comprehensive protocols for microfilariae imaging (motility and viability) and adult filaria imaging (motility). Detailed step-by-step procedures can be found at Protocol Exchange for the [bivariate high-content mf screen](https://doi.org/10.21203/rs.3.pex-1916/v1) and the [multivarite adult screen](https://doi.org/10.21203/rs.3.pex-1918/v1).
 - [*C. elegans* feeding preprint]()
     Includes details on the development and validation of a feeding protocol using fluorescent stains
 
