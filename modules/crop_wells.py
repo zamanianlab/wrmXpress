@@ -8,7 +8,11 @@ from skimage.draw import circle_perimeter
 from skimage.filters import sobel, threshold_triangle
 from skimage.transform import hough_circle, hough_circle_peaks
 from skimage.morphology import dilation, reconstruction
+from skimage.color import label2rgb
 from itertools import product
+
+import matplotlib.pyplot as plt
+from skimage.measure import label
 
 
 def auto_crop(g):
@@ -47,7 +51,7 @@ def auto_crop(g):
     radii = np.arange(radius - 2, radius + 2, 2)
     hough_res = hough_circle(binary, radii)
     accums, cx, cy, radii = hough_circle_peaks(
-        hough_res, radii, total_num_peaks=wells_per_image*50)
+        hough_res, radii, total_num_peaks=wells_per_image*2000)
 
     cy = np.ndarray.tolist(cy)
     cx = np.ndarray.tolist(cx)
@@ -62,27 +66,38 @@ def auto_crop(g):
     grid_mask = np.ones(vid_array.shape[1:3])
 
     for row in range(1, g.image_n_row):
-        start = y_interval * row - 50
-        stop = y_interval * row + 70
+        start = y_interval * row - 80
+        stop = y_interval * row + 80
         grid_mask[start:stop, :] = 0
-    grid_mask[0:y_interval // 3, :] = 0
-    grid_mask[grid_mask.shape[0] - y_interval // 2:grid_mask.shape[0] , :] = 0
+    grid_mask[0:int(y_interval // 2), :] = 0
+    grid_mask[grid_mask.shape[0] -
+              int(y_interval // 2):grid_mask.shape[0], :] = 0
     for col in range(1, g.image_n_col):
-        start = x_interval * col - 50
-        stop = x_interval * col + 70
+        start = x_interval * col - 80
+        stop = x_interval * col + 80
         grid_mask[:, start:stop] = 0
-    grid_mask[:, 0:x_interval // 3] = 0
-    grid_mask[:, grid_mask.shape[1] - x_interval // 2:grid_mask.shape[1]] = 0
-  
+    grid_mask[:, 0:int(x_interval // 2)] = 0
+    grid_mask[:, grid_mask.shape[1] -
+              int(x_interval // 2):grid_mask.shape[1]] = 0
+    # plt.imshow(grid_mask)
+    # plt.show()
+
     # centers of the hough transform == 1
     black = np.zeros(ave.shape[0:2])
     for center_y, center_x in zip(cy, cx):
         black[center_y, center_x] = 1
+    # plt.imshow(black)
+    # plt.show()
     black = black * grid_mask
+    # plt.imshow(black)
+    # plt.show()
     centers = tuple(zip(*np.where(black == 1)))
     for center_y, center_x, in centers:
         circy, circx = circle_perimeter(center_y, center_x, radius)
-        black[circy, circx] = 1
+        try:
+            black[circy, circx] = 1
+        except IndexError:
+            pass
 
     closed = dilation(black)
 
@@ -91,30 +106,56 @@ def auto_crop(g):
     mask = closed
 
     filled = reconstruction(seed, mask, method='erosion')
+    # plt.imshow(filled)
+    # plt.show()
 
-    lbl, objects = ndimage.label(filled)
+    lbl, num_objects = ndimage.label(filled)
     centers = ndimage.center_of_mass(filled, lbl, range(
         1, 1 + wells_per_image, 1))
-    
-    well_names = generate_well_names(centers, g.image_n_row, g.image_n_col)
 
-    well_arrays = {}
-    for index, row, in well_names.iterrows():
-        well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(
-            radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
-        well_arrays[row['well']] = well_array
+    if num_objects is wells_per_image:
+        print("{} wells found, auto-cropping.".format(wells_per_image))
+        well_names = generate_well_names(centers, g.image_n_row, g.image_n_col)
 
-    for timepoint in range(1, vid_array.shape[0] + 1, 1):
-        g.plate_dir.joinpath(
-            'TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
-        for well, well_array in well_arrays.items():
-            outpath = g.plate_dir.joinpath(
-                'TimePoint_' + str(timepoint), g.plate + '_' + well + '.TIF')
-            cv2.imwrite(str(outpath), well_array[timepoint - 1])
+        well_arrays = {}
+        dx_mask = np.zeros(ave_int.shape[:2])
 
-    g = g._replace(time_points=vid_array.shape[0])
+        for index, row, in well_names.iterrows():
+            well_array = vid_array[:, int(row['y'])-(radius + 10):int(row['y'])+(
+                radius + 10), int(row['x'])-(radius + 10):int(row['x'])+(radius + 10), :]
+            well_arrays[row['well']] = well_array
+            # draw the circle on the orginal image for dx
+            circy, circx = circle_perimeter(int(row['y']), int(row['x']), radius + 10)
+            dx_mask[circy, circx] = 1
 
-    create_htd(g, vid_array, well_names)
+        for timepoint in range(1, vid_array.shape[0] + 1, 1):
+            g.plate_dir.joinpath(
+                'TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
+            for well, well_array in well_arrays.items():
+                outpath = g.plate_dir.joinpath(
+                    'TimePoint_' + str(timepoint), g.plate + '_' + well + '.TIF')
+                cv2.imwrite(str(outpath), well_array[timepoint - 1])
+
+        h, w = dx_mask.shape[:2]
+        mask = np.zeros((h+2, w+2), np.uint8)
+        dx_mask = dx_mask.astype("uint8")
+        cv2.floodFill(dx_mask, mask, (0,0), 255)
+        dx_mask = cv2.bitwise_not(dx_mask)
+        lbl = label(dx_mask)
+        lbl_mask = label2rgb(lbl, image=ave_int, kind='overlay', saturation=1, bg_label=0)
+
+        outpath = g.output.joinpath('thumbs')
+        circ_png = g.work.joinpath(outpath,
+                                  g.plate + '_wells' + ".png")
+        plt.imsave(str(circ_png), lbl_mask)
+
+        g = g._replace(time_points=vid_array.shape[0])
+
+        create_htd(g, vid_array, well_names)
+
+    else:
+        print("{} wells not found using auto-crop, switching to grid-based cropping.".format(wells_per_image))
+        grid_crop(g)
 
     return g
 
@@ -142,8 +183,10 @@ def grid_crop(g):
     y_interval = int(height // g.image_n_row)
     radius = min(x_interval, y_interval) // 2
 
-    x_centers = [(x_interval / 2) + (x_interval * col) for col in range(g.image_n_col)]
-    y_centers = [(y_interval / 2) + (y_interval * row) for row in range(g.image_n_row)]
+    x_centers = [(x_interval / 2) + (x_interval * col)
+                 for col in range(g.image_n_col)]
+    y_centers = [(y_interval / 2) + (y_interval * row)
+                 for row in range(g.image_n_row)]
 
     centers = list(product(y_centers, x_centers))
 
@@ -151,8 +194,8 @@ def grid_crop(g):
 
     well_arrays = {}
     for index, row, in well_names.iterrows():
-        well_array = vid_array[:, int(row['y'])-radius:int(row['y'])+
-            radius, int(row['x'])-radius:int(row['x'])+radius, :]
+        well_array = vid_array[:, int(row['y'])-radius:int(row['y']) +
+                               radius, int(row['x'])-radius:int(row['x'])+radius, :]
         well_arrays[row['well']] = well_array
 
     for timepoint in range(1, vid_array.shape[0] + 1, 1):
@@ -167,10 +210,12 @@ def grid_crop(g):
 
     create_htd(g, vid_array, well_names)
 
+
 def create_htd(g, array, df):
 
     # make HTD for non-IX data
     lines = []
+    lines.append('"Description", ' + "AVI" + "\n")
     lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
     lines.append('"XWells", ' + str(len(pd.unique(df['col']))) + "\n")
     lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")

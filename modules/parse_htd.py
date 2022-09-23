@@ -42,7 +42,7 @@ def parse_htd(yaml, g_class):
     print("\t\trows: {}".format(rows))
     print("\t\tx sites: {}".format(x_sites))
     print("\t\ty sites: {}".format(y_sites))
-    print("\t\tnumber of wavelenghts: {}".format(n_waves))
+    print("\t\tnumber of wavelengths: {}".format(n_waves))
     print("\t\twavelengths: {}".format(wave_names))
 
     g = g_class(yaml.mode, yaml.file_structure, yaml.well_detection, yaml.image_n_row, yaml.image_n_col,
