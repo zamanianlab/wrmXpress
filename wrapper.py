@@ -1,9 +1,11 @@
 import argparse
-import sys
+import os
 import re
 import pandas as pd
 import subprocess
 import shlex
+import shutil
+import glob
 from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
@@ -61,6 +63,17 @@ if __name__ == "__main__":
         else:
             wells = g.wells
             plate_paths = get_image_paths(g, g.wells)
+            # remove files that aren't going to be processed
+            print('Removing unselected wells.')
+            all_wells = get_wells(g)
+            all_paths = get_image_paths(g, all_wells)
+            all_paths = [item for sublist in all_paths for item in sublist]
+            all_paths = [i.as_posix() for i in all_paths]
+            plate_paths = [item for sublist in plate_paths for item in sublist]
+            plate_paths = [i.as_posix() for i in plate_paths]
+            rm_paths = set(all_paths).difference(plate_paths)
+            for rm in rm_paths:
+                os.remove(rm)   
     except TypeError:
         print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
 
@@ -74,17 +87,32 @@ if __name__ == "__main__":
 
     if 'cellprofiler' in modules.keys():
         pipeline = modules['cellprofiler']['pipeline'][0]
+        
+        # rename TIF to tif to work with cellpose
+        for filepath in Path('input/{}/TimePoint_1'.format(g.plate)).glob('**/*'):
+            os.rename(filepath, str(filepath).replace('TIF', 'tif'))
+        wells = [well.replace('TIF', 'tif') for well in wells]
+        g = g._replace(wells=wells)
+
+        if 'cellpose' in pipeline:
+            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
+            cellpose_command_split = shlex.split(cellpose_command)
+            subprocess.run(cellpose_command_split)
+            os.mkdir("{}/cellpose_masks".format(g.output))
+            for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
+                shutil.copy(file, "{}/cellpose_masks".format(g.output))
+
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
             pipeline, g.plate, g.wells)
         fl_command_split = shlex.split(fl_command)
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
 
-        cp_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
+        cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
             pipeline, pipeline)
-        cp_command_split = shlex.split(cp_command)
+        cellprofiler_command_split = shlex.split(cellprofiler_command)
         print('Starting CellProfiler.')
-        subprocess.run(cp_command_split)
+        subprocess.run(cellprofiler_command_split)
 
         md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(
             g.plate, g.rows, g.columns)
@@ -107,7 +135,7 @@ if __name__ == "__main__":
         out_dict = defaultdict(list)
         cols = []
 
-    # start the well-by-well iterator
+        # start the well-by-well iterator
         for well, well_paths in zip(wells, plate_paths):
             print("Running well {}".format(well))
 

@@ -1,12 +1,15 @@
 # Images
 # *.png
 *.tiff
+cp_pipelines/worm_models/*.npy
+cp_pipelines/worm_models/*.tiff
+cp_pipelines/worm_models/*.tif
 
 # Model training
 cp_pipelines/worm_models/*.tiff
 cp_pipelines/worm_models/*.tif
 cp_pipelines/worm_models/*.npy
-cellpose_training
+cellpose_training/training_images/*
 
 # R
 .Rhistory

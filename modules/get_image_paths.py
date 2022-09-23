@@ -1,6 +1,7 @@
 from .stitch_sites import stitch_sites
 import cv2
 from skimage.transform import rescale
+from pathlib import Path
 from PIL import Image
 
 
