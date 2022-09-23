@@ -138,6 +138,11 @@ Implementation of `wormsize` that also measures worm fluorescence in a single wa
 
 Implementation of `wormsize` that also measures intensity features, which may be helpful for filtering non-worms.
 
+### wormsize_intensity_cellpose
+
+Implementation of `wormsize_intensity` that uses [Cellpose](https://github.com/MouseLand/cellpose) and a pre-trained model for *C. elegans* segmentation.
+
+
 # Issues
 
 Please use the provided issue template when submitting a bug report.
