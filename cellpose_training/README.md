@@ -29,7 +29,7 @@
     python -m cellpose
     ```
 
-5. Load and image by dragging the file into the GUI
+5. Load an image by dragging the file into the GUI
 
 6. Select a model from the "custom models" drop-down
     - If you don't see any of our custom models, click Models > Add custom torch model to GUI, and load the models found at `~/GitHub/wrmXpress/cellpose_training/models`

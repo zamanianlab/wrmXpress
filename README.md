@@ -84,6 +84,15 @@ Segments worms using a combination of Sobel and Gaussian filters. Has been teste
 <br>
 <br>
 
+### fecundity
+
+<img src="img/fecundity.png" alt="fecundity" align = "left" width="200" />
+
+Segments released microfilariae or eggs, depending on species. Has been tested with *Brugia* spp. and *Schistosoma* spp. If using schistosomes, adults do not need to be removed from the well prior to imaging.
+
+<br>
+<br>
+
 ### dx
 
 <img src="img/wormsize_dx.png" alt="wormsize" align = "left" width="200" />
