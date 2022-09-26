@@ -73,6 +73,7 @@ modules:
   cellprofiler:
     run: False
     pipeline:
+      - wormsize_intensity_cellpose
       # - mf_celltox
       # - feeding
       # - wormsize
