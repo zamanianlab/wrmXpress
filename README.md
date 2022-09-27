@@ -22,9 +22,11 @@ Experimental protocols used to generate images that are compatible with wrmXpres
 
 # Installation, dependencies, and usage
 
-The Zamanian lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker imaging containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-imgproc). A conda environment file has also been provided at `local_env/conda_env.yml`.
+The Zamanian lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker imaging containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-imgproc). A Conda environment file has also been provided at `local_env/conda_env.yml`.
 
 Activate the Docker/conda environment, clone the repository, update the YAML and run: `python wrmXpress.py {path/to/parameters.yml} {name of plate directory}`
+
+If using a CellProfiler pipeline that implements Cellpose for *C. elegans* segementation, training of a custom model may be required. Follow the instructions [here](cellpose_training/README.md) to train a model on custom images.
 
 For testing, example data for each module/pipline is provided in a [Zenodo repository](https://zenodo.org/record/7116648#.YzMK0OzMI-Q).
 
