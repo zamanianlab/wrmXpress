@@ -26,6 +26,8 @@ The Zamanian lab run all analyses on a node at the [Center for High-Throughput C
 
 Activate the Docker/conda environment, clone the repository, update the YAML and run: `python wrmXpress.py {path/to/parameters.yml} {name of plate directory}`
 
+For testing, example data for each module/pipline is provided in a [Zenodo repository](https://zenodo.org/record/7116648#.YzMK0OzMI-Q).
+
 # Structure
 
 Pipeline parameters are provided in a YAML file (a template with all the fields and options can be found at `local_env/parameters_template.yml`). Parameters are organized within the following headings:
