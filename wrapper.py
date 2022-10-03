@@ -89,17 +89,17 @@ if __name__ == "__main__":
         pipeline = modules['cellprofiler']['pipeline'][0]
         
         # rename TIF to tif to work with cellpose
-        for filepath in Path('input/{}/TimePoint1'.format(g.plate)).glob('**/*'):
+        for filepath in Path('input/{}/TimePoint_1'.format(g.plate)).glob('**/*'):
             os.rename(filepath, str(filepath).replace('TIF', 'tif'))
         wells = [well.replace('TIF', 'tif') for well in wells]
         g = g._replace(wells=wells)
 
         if 'cellpose' in pipeline:
-            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
+            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
             os.mkdir("{}/cellpose_masks".format(g.output))
-            for file in glob.glob("{}/{}/TimePoint1/*.png".format(g.input, g.plate)):
+            for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
                 shutil.copy(file, "{}/cellpose_masks".format(g.output))
 
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     ######### 7. GENERATE THUMBNAILS  #########
     ###########################################
     if 'dx' in modules.keys():
-        # one for each wavelength (TimePoint1)
+        # one for each wavelength (TimePoint_1)
         # this if/else is required because of an IX nomenclature quirk:
         #   if there is only one wavelength, there is no _w1 in the file name
         #   if there is > 1, each image has _w1, _w2, etc...
