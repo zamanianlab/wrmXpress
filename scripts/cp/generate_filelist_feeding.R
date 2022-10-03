@@ -9,7 +9,7 @@ wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
 
 image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
 
-input_files <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+input_files <- list.files(path = image_dir, pattern = '.*tif$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 tl <- input_files %>% magrittr::extract(dplyr::matches("w1", vars = .))
 gfp <- input_files %>% magrittr::extract(dplyr::matches("w2", vars = .))
 txrd <- input_files %>% magrittr::extract(dplyr::matches("w3", vars = .))
