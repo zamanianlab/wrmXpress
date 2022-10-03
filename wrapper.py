@@ -99,7 +99,7 @@ if __name__ == "__main__":
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
             os.mkdir("{}/cellpose_masks".format(g.output))
-            for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
+            for file in glob.glob("{}/{}/TimePoint1/*.png".format(g.input, g.plate)):
                 shutil.copy(file, "{}/cellpose_masks".format(g.output))
 
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
