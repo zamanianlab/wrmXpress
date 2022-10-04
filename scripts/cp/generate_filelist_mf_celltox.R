@@ -12,7 +12,7 @@ wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
 # stitched images are in work
 image_dir <- stringr::str_c(getwd(), 'work', plate, sep = '/')
 
-input_files <- list.files(path = image_dir, pattern = '.*tif$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+input_files <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 
 wd <- getwd() %>% str_remove(., '^/')
 
