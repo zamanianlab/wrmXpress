@@ -2,14 +2,16 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(tidymodels)))
 options(readr.show_col_types = FALSE,
         dplyr.summarise.inform = FALSE)
-# setwd('~/Desktop/temp_root/')
+setwd('~/Desktop/temp_root/')
 
 args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
 rows <- args[2]
 cols <- args[3]
-# plate <- '20220121-p05-NJW_1113'
+plate <- '20220929-p37-KTR_1809'
+rows <- '8'
+cols <- '12'
 
 metadata_dir <- stringr::str_c('metadata', plate, sep = '/')
 output_dir <- stringr::str_c('output', 'data/', sep = '/')
@@ -33,7 +35,7 @@ get_metadata <- function(...) {
 
   data <- readr::read_csv(df$path,
                           col_names = sprintf("%02d", seq(1:as.numeric(cols))),
-                          col_types = rep('c', as.numeric(cols))) %>%
+                          col_types = str_flatten(rep('c', as.numeric(cols)))) %>%
     dplyr::mutate(row = LETTERS[1:as.numeric(rows)], .before = `01`) %>%
     tidyr::pivot_longer(-row, names_to = 'col', values_to = df$category) %>%
     dplyr::mutate(well = stringr::str_c(row, col), plate = df$plate)
@@ -91,3 +93,4 @@ if (length(output_files$data_file) > 1) {
 
 final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>%
   readr::write_csv(file = stringr::str_c(output_dir, '/', plate, '_tidy.csv'))
+
