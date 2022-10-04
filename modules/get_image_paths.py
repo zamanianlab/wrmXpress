@@ -49,7 +49,7 @@ def get_image_paths(g, wells):
                         image_path = g.input.joinpath(g.plate, "TimePoint_1",
                                                       g.plate_short + "_" + well + '_s' + str(s) + '_w' + str(w) + ".TIF")
                         well_paths.append(image_path)
-                    print('Stitching w{} of multi-site images.'.format(w))
+                    print('Stitching w{} of {} images.'.format(w, well))
                     frame = stitch_sites(g, well_paths, 1)
                     well_paths = []
                     g.work.joinpath(g.plate, well, 'img').mkdir(
