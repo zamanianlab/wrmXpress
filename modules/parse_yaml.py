@@ -40,6 +40,16 @@ def parse_yaml(arg_parser, g_class):
     print("\t\twell rows per image: {}".format(image_n_row))
     print("\t\twell columns per image: {}".format(image_n_col))
 
+    # circular image mask settings
+    mask = conf.get('circular_mask')
+    print('circular mask:')
+    print("\t\trun: {}".format(mask))
+    if mask is True:
+        radius = float(conf.get('mask_radius'))
+    else:
+        radius = 'NA'
+    print("\t\tradius: {}".format(radius))
+
     # worm settings
     species = conf.get('species')[0]
     stages = conf.get('stages')[0]
@@ -83,6 +93,7 @@ def parse_yaml(arg_parser, g_class):
     print("\t\toutput directory: {}".format(str(output)))
 
     yaml_out = g_class(mode, file_structure, well_detection, image_n_row, image_n_col,
+                       mask, radius,
                        species, stages,
                        input, work, output, plate_dir, plate, plate_short,
                        '', '', '', '', '', '', '', '', wells, '')

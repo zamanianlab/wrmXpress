@@ -24,7 +24,6 @@ def segment_worms(g, well, well_paths):
 
     if g.species == 'Sma':
         height, width = image.shape
-        mask = create_circular_mask(height, width, radius=height / 2.1)
 
         # gaussian blur
         blur = ndimage.filters.gaussian_filter(image, 1.5)
@@ -33,7 +32,6 @@ def segment_worms(g, well, well_paths):
         # threshold = threshold_otsu(subtracted)
         threshold = np.percentile(blur, 1.5)
         binary = blur < threshold
-        binary = binary * mask
         binary = ndimage.binary_closing(binary, iterations=5)
 
         # remove small segmented debris
@@ -89,11 +87,9 @@ def segment_worms(g, well, well_paths):
         # gaussian blur
         blur = ndimage.filters.gaussian_filter(sobel, 1.25)
 
-        # set threshold, make binary, mask
+        # set threshold, make binary
         threshold = threshold_otsu(blur)
         binary = blur > threshold
-        mask = create_circular_mask(height, width, radius=height * .4)
-        binary = binary * mask
 
         sobel_png = g.work.joinpath(outpath,
                                     g.plate + "_" + well + '_edge' + ".png")
@@ -142,14 +138,3 @@ def segment_worms(g, well, well_paths):
               format(datetime.now() - start_time))
 
     return area
-
-# create a disk mask for 2X images
-def create_circular_mask(h, w, center=None, radius=None):
-    if center is None:  # make the center the center of the image
-        center = (int(w / 2), int(h / 2))
-    if radius is None:  # make the radius the size of the image
-        radius = min(center[0], center[1], w - center[0], h - center[1])
-    Y, X = np.ogrid[:h, :w]
-    dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
-    mask = dist_from_center <= radius
-    return mask

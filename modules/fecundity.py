@@ -6,9 +6,6 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 
 
-from modules.segment_worms import create_circular_mask
-
-
 def fecundity(g, well, well_paths):
     '''
     Segments worms to use for downstream normalization.
@@ -24,7 +21,7 @@ def fecundity(g, well, well_paths):
     image = cv2.imread(str(path), cv2.IMREAD_ANYDEPTH)
 
     height, width = image.shape
-    mask = create_circular_mask(height, width, radius=height / 2.2)
+
 
     # gaussian blur
     blur = ndimage.filters.gaussian_filter(image, 2.5)
@@ -35,7 +32,6 @@ def fecundity(g, well, well_paths):
     # set threshold, make binary, fill holes
     threshold = filters.threshold_otsu(sobel)
     binary = sobel > threshold
-    binary = binary * mask
 
     if g.species == 'Sma':
 

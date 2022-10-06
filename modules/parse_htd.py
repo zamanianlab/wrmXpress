@@ -46,7 +46,7 @@ def parse_htd(yaml, g_class):
     print("\t\twavelengths: {}".format(wave_names))
 
     g = g_class(yaml.mode, yaml.file_structure, yaml.well_detection, yaml.image_n_row, yaml.image_n_col,
-                yaml.species, yaml.stages,
+                yaml.mask, yaml.radius, yaml.species, yaml.stages,
                 yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short,
                 desc, time_points, columns, rows, x_sites, y_sites, n_waves, wave_name, yaml.wells, '')
 

@@ -6,6 +6,7 @@ import subprocess
 import shlex
 import shutil
 import glob
+import cv2
 from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
@@ -19,16 +20,18 @@ from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
 from modules.parse_htd import parse_htd
+from modules.mask_wells import create_circular_mask
 from modules.crop_wells import auto_crop, grid_crop
 from modules.parse_yaml import parse_yaml
 from modules.fecundity import fecundity
+
 
 
 if __name__ == "__main__":
 
     # create the class that will instantiate the namedtuple
     g_class = namedtuple(
-        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short desc time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
+        'g_class', 'mode file_structure well_detection image_n_row image_n_col mask radius species stages input work output plate_dir plate plate_short desc time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
@@ -73,13 +76,22 @@ if __name__ == "__main__":
             plate_paths = [i.as_posix() for i in plate_paths]
             rm_paths = set(all_paths).difference(plate_paths)
             for rm in rm_paths:
-                os.remove(rm)   
+                os.remove(rm)
     except TypeError:
         print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
-
-
+    
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
+ 
+    # apply circular mask
+    if g.mask is True:
+        for path in plate_paths:
+            for i in path:
+                image = cv2.imread(str(i), cv2.IMREAD_ANYDEPTH)
+                height, width = image.shape
+                mask = create_circular_mask(height, width, radius= g.radius * height)
+                cv2.imwrite(str(i), image * mask)
+
 
     ########################################
     ######### 4. RUN CELLPROFILER  #########
