@@ -14,10 +14,13 @@ This package contains a variety of Python and CellProfiler pipelines used for th
 Experimental protocols used to generate images that are compatible with wrmXpress can be found in the associated manuscripts and preprints:
 
 - [wrmXpress manuscript](https://doi.org/10.1371/journal.pntd.0010937)
+
     Contains all the wrmXpress details. See this manuscript for an explanation of modules and pipelines included.
 - [Multivariate screening preprint](https://doi.org/10.1101/2022.07.25.501423)
+
     Includes comprehensive protocols for microfilariae imaging (motility and viability) and adult filaria imaging (motility). Detailed step-by-step procedures can be found at Protocol Exchange for the [bivariate high-content mf screen](https://doi.org/10.21203/rs.3.pex-1916/v1) and the [multivarite adult screen](https://doi.org/10.21203/rs.3.pex-1918/v1).
 - [*C. elegans* feeding preprint](https://doi.org/10.1101/2022.08.31.506057)
+
     Includes details on the development and validation of a feeding protocol using fluorescent stains. Detailed step-by-step procedures for parts of this assay can be found [here](https://doi.org/10.21203/rs.3.pex-2018/v1).
 
 # Installation and usage
