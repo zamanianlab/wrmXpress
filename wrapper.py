@@ -18,17 +18,16 @@ from modules.convert_video import convert_video
 from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
-from modules.parse_htd import parse_htd
+# from modules.old.parse_htd_old import parse_htd
 from modules.crop_wells import auto_crop, grid_crop
-from modules.parse_yaml import parse_yaml
+# from modules.old.parse_yaml_old import parse_yaml
 from modules.fecundity import fecundity
 
 
 if __name__ == "__main__":
 
     # create the class that will instantiate the namedtuple
-    g_class = namedtuple(
-        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short desc time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
+    g_class = namedtuple('g_class', ['mode', 'file_structure', 'well_detection', 'image_n_row', 'image_n_col', 'input', 'work', 'output', 'plate_dir', 'plate', 'plate_short', 'desc', 'time_points', 'columns', 'rows', 'x_sites', 'y_sites', 'n_waves', 'wave_names', 'wells', 'plate_paths', 'circle_mask', 'circle_radius', 'square_mask', 'square_side'])
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
@@ -49,7 +48,7 @@ if __name__ == "__main__":
         elif g.well_detection == 'grid':
             grid_crop(g)
         else:
-            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode.')
+            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode).')
         g = parse_htd(g, g_class)
 
 
@@ -80,6 +79,17 @@ if __name__ == "__main__":
 
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
+
+    #########################################
+    ############## 4. MASKING  ##############
+    #########################################
+
+    if g.circle_mask:
+        # apply circle mask
+        pass
+    if g.square_mask:
+        # apply square mask
+        pass
 
     ########################################
     ######### 4. RUN CELLPROFILER  #########

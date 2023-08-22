@@ -15,6 +15,10 @@ def parse_htd(yaml, g_class):
             next((s for s in lines if 'XWells' in s), None).split(', ')[1])
         rows = int(
             next((s for s in lines if 'YWells' in s), None).split(', ')[1])
+        if columns != yaml.columns:
+            raise ValueError("Columns value does not match in yaml and HTD files.")
+        if rows != yaml.rows:
+            raise ValueError("Rows value does not match in yaml and HTD files.")
         if any("XSites" in line for line in lines):
             x_sites = int(
                 next((s for s in lines if 'XSites' in s), None).split(', ')[1])
@@ -46,8 +50,7 @@ def parse_htd(yaml, g_class):
     print("\t\twavelengths: {}".format(wave_names))
 
     g = g_class(yaml.mode, yaml.file_structure, yaml.well_detection, yaml.image_n_row, yaml.image_n_col,
-                yaml.species, yaml.stages,
                 yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short,
-                desc, time_points, columns, rows, x_sites, y_sites, n_waves, wave_name, yaml.wells, '')
+                desc, time_points, columns, rows, x_sites, y_sites, n_waves, wave_name, yaml.wells, '', yaml.circle_mask, yaml.circle_radius, yaml.square_mask, yaml.square_side)
 
     return g
