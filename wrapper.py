@@ -12,6 +12,7 @@ from collections import namedtuple
 
 from modules.parse_yaml import parse_yaml
 from modules.parse_htd import parse_htd
+from modules.utilities import avi_to_ix
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
@@ -19,7 +20,7 @@ from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
 # from modules.old.parse_htd_old import parse_htd
-from modules.crop_wells import auto_crop, grid_crop
+from modules.crop_wells import grid_crop
 # from modules.old.parse_yaml_old import parse_yaml
 from modules.fecundity import fecundity
 
@@ -27,7 +28,7 @@ from modules.fecundity import fecundity
 if __name__ == "__main__":
 
     # create the class that will instantiate the namedtuple
-    g_class = namedtuple('g_class', ['mode', 'file_structure', 'well_detection', 'image_n_row', 'image_n_col', 'input', 'work', 'output', 'plate_dir', 'plate', 'plate_short', 'desc', 'time_points', 'columns', 'rows', 'x_sites', 'y_sites', 'n_waves', 'wave_names', 'wells', 'plate_paths', 'circle_mask', 'circle_radius', 'square_mask', 'square_side'])
+    g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols', 'crop', 'x_sites', 'y_sites', 'join', 'input', 'work', 'output', 'plate_dir', 'plate', 'plate_short', 'wells', 'circle_mask', 'circle_radius', 'square_mask', 'square_side', 'desc', 'time_points', 'n_waves', 'wave_names', 'plate_paths'])
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
@@ -42,13 +43,17 @@ if __name__ == "__main__":
     if g.file_structure == 'imagexpress':
         g = parse_htd(g, g_class)
     else:
-         # crops_wells will write images in IX format to input/ and create an HTD
-        if g.well_detection == 'auto':
-            auto_crop(g)
-        elif g.well_detection == 'grid':
-            grid_crop(g)
+        # convert avi to tiffs if required and create HTD (done in avi_to_ix)
+        if g.file_structure == 'avi':
+            timepoints = avi_to_ix(g)
+        # crops_wells will write images in IX format to input/ and create an HTD
+        if g.crop == 'grid':
+            grid_crop(g, timepoints)
+        elif g.crop == 'auto':
+            # auto_crop(g)
+            pass
         else:
-            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode).')
+            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode.')
         g = parse_htd(g, g_class)
 
 

@@ -7,7 +7,7 @@ def parse_yaml(arg_parser, g_class):
 
     # required positional arguments
     arg_parser.add_argument('parameters',
-                            help='Path to the paramaters.yml file.')
+                            help='Path to the parameters.yml file.')
     arg_parser.add_argument('plate',
                             help='Plate to be analyzed.')
 
@@ -23,30 +23,41 @@ def parse_yaml(arg_parser, g_class):
         conf = yaml.load(f.read(), Loader=yaml.FullLoader)
 
     # instrument settings
-    mode = conf.get('imaging_mode')[0]
     file_structure = conf.get('file_structure')[0]
+    mode = conf.get('imaging_mode')[0]
     print('instrument settings:')
     print("\t\timaging mode: {}".format(mode))
     print("\t\tfile structure: {}".format(file_structure))
     # physical plate dimensions
     rows = int(conf.get('well-row'))
-    columns = int(conf.get('well-col'))
+    cols = int(conf.get('well-col'))
     if mode == 'multi-well':
-        well_detection = conf.get('multi-well-detection')
-        recorded_n_row = int(conf.get('multi-well-row'))
-        print("DEBUG", conf.get('multi-well-col'))
-        recorded_n_col = int(conf.get('multi-well-col'))
-        image_n_row = rows/recorded_n_row
-        image_n_col = columns/recorded_n_col
+        crop = conf.get('multi-well-detection')
+        rec_rows = int(conf.get('multi-well-row'))
+        rec_cols = int(conf.get('multi-well-col'))
+        image_n_row = rows/rec_rows
+        image_n_col = cols/rec_cols
     else:
-        well_detection = 'NA'
+        crop = 'NA'
+        rec_rows = rows
+        rec_cols = cols
         image_n_row = 'NA'
         image_n_col = 'NA'
+    if mode == 'multi-site':
+        x_sites = int(conf.get('x-sites'))
+        y_sites = int(conf.get('y-sites'))
+        join = True
+    else:
+        x_sites = 'NA'
+        y_sites = 'NA'
+        join = False
     print(f"\t\trows: {rows}")
-    print(f"\t\tcolumns: {columns}")
-    print(f"\t\twell detection: {well_detection}")
+    print(f"\t\tcolumns: {cols}")
+    print(f"\t\tcrop: {crop}")
     print(f"\t\twell rows per image: {image_n_row}")
     print(f"\t\twell columns per image: {image_n_col}")
+    print(f"\t\trecorded rows: {rec_rows}")
+    print(f"\t\trecorded cols: {rec_cols}")
 
     # read the modules, remove any where run is False
     modules = conf.get('modules')
@@ -96,9 +107,7 @@ def parse_yaml(arg_parser, g_class):
     elif square_mask == 'True':
         square_side = conf.get('square_side')
         pass
-
-    yaml_out = g_class(mode, file_structure, well_detection, image_n_row, image_n_col,
-                       input, work, output, plate_dir, plate, plate_short,
-                       '', '', columns, rows, '', '', '', '', wells, '', circle_mask, circle_radius, square_mask, square_side)
+    
+    yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols, crop, x_sites, y_sites, join, input, work, output, plate_dir, plate, plate_short, wells, circle_mask, circle_radius, square_mask, square_side, '', '', '', '', '')
 
     return yaml_out, modules
