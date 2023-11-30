@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import cv2
 import numpy as np
+import shutil
 
 def avi_to_ix(g):
     vid_path = Path.home().joinpath(g.plate_dir, g.plate + '.avi')
@@ -18,12 +19,11 @@ def avi_to_ix(g):
 
     timepoints = len(frames)
 
-    # outpath = g.plate_dir.joinpath('TimePoint_1_test.TIF')
-    # print("OUTPATH:", outpath)
-    # cv2.imwrite(str(outpath), frames[0])
-
     for timepoint in range(timepoints):
-        g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)).mkdir(parents=True, exist_ok=True)
+        dir = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1))
+        if dir.exists():
+            shutil.rmtree(dir)
+        dir.mkdir(parents=True, exist_ok=True)
         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01.TIF')
         cv2.imwrite(str(outpath), frames[timepoint])
 
@@ -64,6 +64,7 @@ def split_image(img_path, x, y):
     images = []
 
     # loop through grid and split the image
+    # place images into array row by row
     for i in range(y):
         for j in range(x):
             # calculate the coordinates for cropping

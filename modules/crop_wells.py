@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 from modules.utilities import split_image
+import re
 
 # from scipy import ndimage
 # from skimage.draw import circle_perimeter
@@ -17,34 +18,57 @@ from modules.utilities import split_image
 # from skimage.measure import label
 
 def grid_crop(g, timepoints):
+    rows_per_image = g.rows // g.rec_rows
+    cols_per_image = g.cols // g.rec_cols
     for timepoint in range(timepoints):
         original_images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
-        rows_per_image = g.rows // g.rec_rows
-        cols_per_image = g.cols // g.rec_cols
         for current in original_images:
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
             # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
-            # group refers to group of wells to be split
-            group_id = [capital_to_num(current_path[-7]), int(current_path[-6:-4]) - 1]
+            # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
+            # get group_id using regex by extracting column letter and row number from current
+            letter, number = extract_well_name(current)
+            group_id = [capital_to_num(letter), int(number) - 1]
             individual_wells = split_image(current_path, cols_per_image, rows_per_image)
             for i in range(rows_per_image):
                 for j in range(cols_per_image):
-                    well_name = generate_well_name(group_id, i, j, cols_per_image, rows_per_image)
+                    well_name = generate_well_name(group_id, i, j, cols_per_image, rows_per_image, g.cols)
                     # save current image as well name
                     outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}.TIF')
                     cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
+
+# extracts the column letter and row number from the image name
+def extract_well_name(well_string):
+    # regular expression pattern to match the format
+    pattern = r'_([A-Z])(\d+)\.TIF$'
+    match = re.search(pattern, well_string)
+    if match:
+        # extract column letter
+        letter = match.group(1)
+        # extract row number
+        number = match.group(2)
+        return letter, number
+    else:
+        # return None if the pattern doesn't match
+        return None, None
 
 # function that converts capital letters to numbers, where A is 0, B is 1, and so on
 def capital_to_num(alpha):
     return ord(alpha) - 65
 
-def generate_well_name(group_id, col, row, cols_per_image, rows_per_image):
+# generates well name using the provided group id
+def generate_well_name(group_id, col, row, cols_per_image, rows_per_image, total_cols):
     well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
     letter = chr(well_id[0] + 65)
+    # if statement determines number of preceding zeroes for single digit numbered columns - if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
     if well_id[1] < 9:
-        number = f"0{well_id[1] + 1}"
+        if total_cols >= 100:
+            num_zeroes = len(str(total_cols)) - 1
+            number = num_zeroes*"0" + str(well_id[1] + 1)
+        else:
+            number = f"0{well_id[1] + 1}"
     else:
-        number = str(well_id + 1)
+        number = str(well_id[1] + 1)
     return f"{letter}{number}"
 
 # def create_htd(g, array, df):
