@@ -4,7 +4,9 @@ import cv2
 import numpy as np
 import shutil
 
+# converts avi to imageXpress
 def avi_to_ix(g):
+    # this assumes that the avi file has the same name as the directory it is in
     vid_path = Path.home().joinpath(g.plate_dir, g.plate + '.avi')
 
     # gets avi information
@@ -24,6 +26,7 @@ def avi_to_ix(g):
         if dir.exists():
             shutil.rmtree(dir)
         dir.mkdir(parents=True, exist_ok=True)
+        # add '_A01_w1' to file name
         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01.TIF')
         cv2.imwrite(str(outpath), frames[timepoint])
 

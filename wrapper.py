@@ -1,6 +1,5 @@
 import argparse
 import os
-import re
 import pandas as pd
 import subprocess
 import shlex
@@ -56,7 +55,7 @@ if __name__ == "__main__":
         # auto_crop(g)
         pass
     
-    # TODO: SITE JOINING ()
+    # TODO: SITE JOINING (STITCHING)
 
     g = parse_htd(g, g_class)
     
