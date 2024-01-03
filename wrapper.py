@@ -11,7 +11,7 @@ from collections import namedtuple
 
 from modules.parse_yaml import parse_yaml
 from modules.parse_htd import parse_htd
-from modules.utilities import avi_to_ix
+from modules.utilities import avi_to_ix, rename_files
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
@@ -40,42 +40,26 @@ if __name__ == "__main__":
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
     #########################################################
     if g.file_structure == 'imagexpress':
-        pass
-        # g = parse_htd(g, g_class)
-        # TODO: check for w1 for single wavelength imaging (wasn't stitched on the instrument) and add w1
+        g = parse_htd(g, g_class)
+        # if single wavelength, '_w1' filename will not have '_w1' so it must be added
+        if g.n_waves == 1:
+            # TODO: check and add '_w1' if required to all files before '.TIF'
+            rename_files(g)
     elif g.file_structure == 'avi':
         # convert avi to tifs and create HTD (done in avi_to_ix)
-        timepoints = avi_to_ix(g)
+        avi_to_ix(g)
+        g = parse_htd(g, g_class)
     else:
         raise ValueError("Unsupported file structure.")
     
     if g.crop == 'grid':
-        grid_crop(g, timepoints)
+        grid_crop(g)
     elif g.crop == 'auto':
         # auto_crop(g)
         pass
     
     # TODO: SITE JOINING (STITCHING)
-
-    g = parse_htd(g, g_class)
     
-    # else:
-    #     # convert avi to tiffs if required and create HTD (done in avi_to_ix)
-    #     if g.file_structure == 'avi':
-    #         # TODO: add w1 to converted files in avi_to_ix
-    #         timepoints = avi_to_ix(g)
-    #     # crops_wells will write images in IX format to input/ and create an HTD
-    #     if g.crop == 'grid':
-    #         grid_crop(g, timepoints)
-    #     elif g.crop == 'auto':
-    #         # auto_crop(g)
-    #         pass
-    #     else:
-    #         raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode).')
-    #     g = parse_htd(g, g_class)
-
-    # TODO: join by sites
-
     #########################################
     ######### 3. GET WELLS & PATHS  #########
     #########################################

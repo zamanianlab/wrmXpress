@@ -17,40 +17,48 @@ import re
 # import matplotlib.pyplot as plt
 # from skimage.measure import label
 
-def grid_crop(g, timepoints):
+def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
     cols_per_image = g.cols // g.rec_cols
-    for timepoint in range(timepoints):
+    for timepoint in range(g.time_points):
         original_images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
         for current in original_images:
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
             # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
             # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
             # get group_id using regex by extracting column letter and row number from current
-            letter, number = extract_well_name(current)
+            letter, number, site, wavelength = extract_well_name(current)
             group_id = [capital_to_num(letter), int(number) - 1]
             individual_wells = split_image(current_path, cols_per_image, rows_per_image)
             for i in range(rows_per_image):
                 for j in range(cols_per_image):
                     well_name = generate_well_name(group_id, i, j, cols_per_image, rows_per_image, g.cols)
                     # save current image as well name
-                    outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}.TIF')
+                    if site:
+                        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                    else:
+                        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_w{wavelength}.TIF')
                     cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
 
-# extracts the column letter and row number from the image name
+    # '_([A-Z])(\d+)(_s\d+){0,1}_w\d+\.TIF$'
+
+# extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)\.TIF$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.TIF$'
     match = re.search(pattern, well_string)
+    # TODO: check number of groups to determine site number if applicable and well number
     if match:
         # extract column letter
         letter = match.group(1)
         # extract row number
         number = match.group(2)
-        return letter, number
+        site = match.group(3)
+        wavelength = match.group(4)
+        return letter, number, site, wavelength
     else:
         # return None if the pattern doesn't match
-        return None, None
+        return None, None, None, None
 
 # function that converts capital letters to numbers, where A is 0, B is 1, and so on
 def capital_to_num(alpha):

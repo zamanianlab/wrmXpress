@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import shutil
+import re
 
 # converts avi to imageXpress
 def avi_to_ix(g):
@@ -27,7 +28,7 @@ def avi_to_ix(g):
             shutil.rmtree(dir)
         dir.mkdir(parents=True, exist_ok=True)
         # add '_A01_w1' to file name
-        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01.TIF')
+        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01_w1.TIF')
         cv2.imwrite(str(outpath), frames[timepoint])
 
     create_htd(g, timepoints)
@@ -85,27 +86,13 @@ def split_image(img_path, x, y):
     os.remove(img_path)
     return images
 
-# def generate_well_names(coords, nrow, ncol):
-#     # make a data frame with well names linked to coordinates of centers
-#     # coords are in a list of tuples
-#     well_names = pd.DataFrame(coords, columns=['y', 'x'])
-#     well_names = well_names.sort_values(by=['y'])
-#     row_names = list(ascii_uppercase[0:nrow])
-#     col_names = list(range(1, ncol + 1, 1))
-
-#     row_names_df = []
-#     for name in row_names:
-#         for col in range(ncol):
-#             row_names_df.append(name)
-
-#     col_names_df = []
-#     for name in col_names:
-#         for row in range(nrow):
-#             col_names_df.append(str(name).zfill(2))
-
-#     well_names['row'] = row_names_df
-#     well_names = well_names.sort_values(by=['x'])
-#     well_names['col'] = col_names_df
-#     well_names['well'] = well_names['row'] + well_names['col']
-
-#     return well_names
+# checks and adds '_w1' at the end of all filenames within the given directory if it doesn't already exist
+def rename_files(g):
+    for timepoint in range(g.time_points):
+        images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
+        for current in images:
+            current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
+            if re.search(r'_w1\.TIF$', current_path, re.IGNORECASE):
+                continue
+            outpath = current_path[:-4] + '_w1.TIF'
+            os.rename(current_path, outpath)
