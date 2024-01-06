@@ -9,18 +9,14 @@ from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
 
-from modules.parse_yaml import parse_yaml
-from modules.parse_htd import parse_htd
-from modules.utilities import avi_to_ix, rename_files
+from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
+from modules.preprocessing.image_processing import avi_to_ix, grid_crop
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
 from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
-# from modules.old.parse_htd_old import parse_htd
-from modules.crop_wells import grid_crop
-# from modules.old.parse_yaml_old import parse_yaml
 from modules.fecundity import fecundity
 
 
@@ -39,11 +35,11 @@ if __name__ == "__main__":
     #########################################################
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
     #########################################################
+    # standardise file structure to imageXpress and parse HTD
     if g.file_structure == 'imagexpress':
         g = parse_htd(g, g_class)
         # if single wavelength, '_w1' filename will not have '_w1' so it must be added
         if g.n_waves == 1:
-            # TODO: check and add '_w1' if required to all files before '.TIF'
             rename_files(g)
     elif g.file_structure == 'avi':
         # convert avi to tifs and create HTD (done in avi_to_ix)
@@ -52,6 +48,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported file structure.")
     
+    # crop wells if specified
     if g.crop == 'grid':
         grid_crop(g)
     elif g.crop == 'auto':
@@ -59,6 +56,7 @@ if __name__ == "__main__":
         pass
     
     # TODO: SITE JOINING (STITCHING)
+
     
     #########################################
     ######### 3. GET WELLS & PATHS  #########
