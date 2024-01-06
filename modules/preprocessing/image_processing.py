@@ -39,16 +39,26 @@ def avi_to_ix(g):
 def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
     cols_per_image = g.cols // g.rec_cols
+
+    # loop through each timepoint folder
     for timepoint in range(g.time_points):
         original_images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
+
+        # loop through each image in timepoint folder
         for current in original_images:
+            # get path of current image
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
+
             # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
             # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
             # get group_id using regex by extracting column letter and row number from current
             letter, number, site, wavelength = __extract_well_name(current)
             group_id = [__capital_to_num(letter), int(number) - 1]
+
+            # split image into individual wells
             individual_wells = __split_image(current_path, cols_per_image, rows_per_image)
+
+            # loop through individual well images and save with corresponding well name
             for i in range(rows_per_image):
                 for j in range(cols_per_image):
                     well_name = __generate_well_name(group_id, i, j, cols_per_image, rows_per_image, g.cols)
@@ -81,14 +91,22 @@ def __extract_well_name(well_string):
     # regular expression pattern to match the format
     pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.TIF$'
     match = re.search(pattern, well_string)
+
     # check number of groups to determine site number if applicable and well number
     if match:
         # extract column letter
         letter = match.group(1)
+
         # extract row number
         number = match.group(2)
+
+        # extract site number
+        # if no site, site will be None
         site = match.group(3)
+
+        # extract wavelength number
         wavelength = match.group(4)
+
         return letter, number, site, wavelength
     else:
         # return None if the pattern doesn't match
@@ -134,9 +152,13 @@ def __split_image(img_path, x, y):
 
 # private method that generates well name using the provided group id
 def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, total_cols):
+    # calculate well_id
     well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
+
+    # extract letter
     letter = chr(well_id[0] + 65)
-    # if statement determines number of preceding zeroes for single digit numbered columns:
+    
+    # determine number of preceding zeroes for single digit numbered columns
     # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
     if well_id[1] < 9:
         if total_cols >= 100:
