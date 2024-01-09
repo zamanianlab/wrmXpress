@@ -1,9 +1,11 @@
 from pathlib import Path
 from string import ascii_uppercase
+from PIL import Image
 import cv2
 import os
 import re
 import shutil
+import math
 
 # converts avi to imageXpress
 def avi_to_ix(g):
@@ -22,6 +24,7 @@ def avi_to_ix(g):
 
     timepoints = len(frames)
 
+    # loop through each timepoint
     for timepoint in range(timepoints):
         dir = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1))
         if dir.exists():
@@ -69,6 +72,42 @@ def grid_crop(g):
                         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_w{wavelength}.TIF')
                     cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
 
+# stitches all sites into wells by well ID (e.g. all files of well C03 will be stitched together)
+def stitch(g):
+    # loop through each timepoint folder
+    for timepoint in range(g.time_points):
+        # get current directory
+        current_dir = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1))
+
+        # ensure that current directory is valid
+        if not os.path.isdir(current_dir):
+            raise ValueError("Path is not a directory.")
+        
+        # use regex to parse filename and extract well ID
+        pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_s(\d+)_w(\d+)\.(tif|TIF)$')
+
+        # group images by well ID and wavelength number (e.g. all sites with 'A01' and 'w2' will be stitched together)
+        images = {}
+        for filename in os.listdir(current_dir):
+            if filename.lower().endswith('.tif'):
+                match = pattern.match(filename)
+                if match:
+                    well_id = match.group(2)
+                    wavelength_num = match.group(4)
+                    if (well_id, wavelength_num) not in images:
+                        images[(well_id, wavelength_num)] = []
+                    images[(well_id, wavelength_num)].append(os.path.join(current_dir, filename))
+        
+        # print(images[('A01', '1')])
+        # print("DEBUG:", sorted(images[('A01', '1')])) 
+        # return
+
+        # stitch images for each well ID and save them in the current folder
+        for file_info, image_paths in images.items():
+            stitched_image = __stitch_images(sorted(image_paths))
+            outpath = g.plate_dir.joinpath('Timepoint_' + str(timepoint + 1), g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
+            stitched_image.save(outpath)
+
 # creates HTD for avi input
 def __create_htd(g, timepoints):
     # make HTD for non-IX data
@@ -86,10 +125,10 @@ def __create_htd(g, timepoints):
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
 
-# private method that extracts the column letter, row number, site number, and wavelength number from the image name
+# extracts the column letter, row number, site number, and wavelength number from the image name
 def __extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.TIF$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.(tif|TIF)$'
     match = re.search(pattern, well_string)
 
     # check number of groups to determine site number if applicable and well number
@@ -112,11 +151,11 @@ def __extract_well_name(well_string):
         # return None if the pattern doesn't match
         return None, None, None, None
 
-# private method that converts capital letters to numbers, where A is 0, B is 1, and so on
+# converts capital letters to numbers, where A is 0, B is 1, and so on
 def __capital_to_num(alpha):
     return ord(alpha) - 65
 
-# private method that splits image into x by y images and delete original image
+# splits image into x by y images and delete original image
 def __split_image(img_path, x, y):
     original_img = cv2.imread(img_path)
     if original_img is None:
@@ -147,17 +186,19 @@ def __split_image(img_path, x, y):
             # append the small image to the array
             images.append(cropped_img)
 
+    # delete original uncropped image
     os.remove(img_path)
+
     return images
 
-# private method that generates well name using the provided group id
+# generates well name using the provided group id
 def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, total_cols):
     # calculate well_id
     well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
 
     # extract letter
     letter = chr(well_id[0] + 65)
-    
+
     # determine number of preceding zeroes for single digit numbered columns
     # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
     if well_id[1] < 9:
@@ -169,3 +210,37 @@ def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, tot
     else:
         number = str(well_id[1] + 1)
     return f"{letter}{number}"
+
+# stitches sites into an n by n square image and fills extra space with black
+def __stitch_images(image_paths):
+    if not image_paths:
+        raise ValueError("The list of image paths is empty.")
+
+    # Load the first image to determine individual image size
+    with Image.open(image_paths[0]) as img:
+        img_width, img_height = img.size
+
+    if img_width != img_height:
+        raise ValueError("Images are not square.")
+
+    # Calculate dimensions for the output image
+    num_images = len(image_paths)
+    side_length = math.ceil(math.sqrt(num_images))
+    canvas_size = side_length * img_width
+
+    # Create a new image with a black background
+    stitched_image = Image.new('RGB', (canvas_size, canvas_size), (0, 0, 0))
+
+    # Place each image into the stitched_image
+    for i, img_path in enumerate(image_paths):
+        with Image.open(img_path) as img:
+            if img.size != (img_width, img_height):
+                raise ValueError(f"Image at {img_path} is not of the correct size.")
+            x = (i % side_length) * img_width
+            y = (i // side_length) * img_height
+            stitched_image.paste(img, (x, y))
+        
+        # delete original image
+        os.remove(img_path)
+
+    return stitched_image

@@ -10,7 +10,7 @@ from collections import defaultdict
 from collections import namedtuple
 
 from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
-from modules.preprocessing.image_processing import avi_to_ix, grid_crop
+from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
@@ -55,8 +55,9 @@ if __name__ == "__main__":
         # auto_crop(g)
         pass
     
-    # TODO: SITE JOINING (STITCHING)
-
+    # stitch sites
+    if g.join:
+        stitch(g)
     
     #########################################
     ######### 3. GET WELLS & PATHS  #########

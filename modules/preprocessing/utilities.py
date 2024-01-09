@@ -175,7 +175,7 @@ def rename_files(g):
         images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
         for current in images:
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
-            if re.search(r'_w1\.TIF$', current_path, re.IGNORECASE):
+            if re.search(r'_w1\.(tif|TIF)$', current_path, re.IGNORECASE):
                 continue
             outpath = current_path[:-4] + '_w1.TIF'
             os.rename(current_path, outpath)
