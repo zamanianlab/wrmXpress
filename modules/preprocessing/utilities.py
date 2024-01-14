@@ -47,11 +47,11 @@ def parse_yaml(arg_parser, g_class):
     if mode == 'multi-site':
         x_sites = int(conf.get('x-sites'))
         y_sites = int(conf.get('y-sites'))
-        join = True
+        stitch = conf.get('stitch')
     else:
         x_sites = 'NA'
         y_sites = 'NA'
-        join = False
+        stitch = False
     print(f"\t\trows: {rows}")
     print(f"\t\tcolumns: {cols}")
     print(f"\t\tcrop: {crop}")
@@ -96,20 +96,24 @@ def parse_yaml(arg_parser, g_class):
     print("\t\toutput directory: {}".format(str(output)))
 
     # add masks (could have mask field which is 'circle', 'square', or 'NA')
-    circle_mask = conf.get('circle_mask')
-    square_mask = conf.get('square_mask')
-    circle_radius = ''
-    square_side = ''
-    if circle_mask == 'True' and square_mask == 'True':
-        raise ValueError("circle_mask and square_mask cannot both be True.")
-    elif circle_mask == 'True':
-        circle_radius = conf.get('circle_radius')
-        pass
-    elif square_mask == 'True':
-        square_side = conf.get('square_side')
-        pass
+    circle_diameter = conf.get('circle_diameter')
+    square_side = conf.get('square_side')
+    if circle_diameter != 'NA' and square_side != 'NA':
+        raise ValueError("Cannot apply circle mask and square mask at the same time.")
+    # circle_mask = conf.get('circle_mask')
+    # square_mask = conf.get('square_mask')
+    # circle_radius = ''
+    # square_side = ''
+    # if circle_mask == 'True' and square_mask == 'True':
+    #     raise ValueError("circle_mask and square_mask cannot both be True.")
+    # elif circle_mask == 'True':
+    #     circle_radius = conf.get('circle_radius')
+    #     pass
+    # elif square_mask == 'True':
+    #     square_side = conf.get('square_side')
+    #     pass
     
-    yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols, crop, x_sites, y_sites, join, input, work, output, plate_dir, plate, plate_short, wells, circle_mask, circle_radius, square_mask, square_side, '', '', '', '', '')
+    yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols, crop, x_sites, y_sites, stitch, input, work, output, plate_dir, plate, plate_short, wells, circle_diameter, square_side, '', '', '', '', '')
 
     return yaml_out, modules
 
@@ -163,8 +167,8 @@ def parse_htd(yaml, g_class):
     print("\t\tnumber of wavelengths: {}".format(n_waves))
     print("\t\twavelengths: {}".format(wave_names))
 
-    g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols, yaml.crop, yaml.x_sites, yaml.y_sites, yaml.join,
-                yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells, yaml.circle_mask, yaml.circle_radius, yaml.square_mask, yaml.square_side,
+    g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols, yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch,
+                yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells, yaml.circle_diameter, yaml.square_side,
                 desc, time_points, n_waves, wave_names, '')
 
     return g
@@ -175,7 +179,7 @@ def rename_files(g):
         images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
         for current in images:
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
-            if re.search(r'_w1\.(tif|TIF)$', current_path, re.IGNORECASE):
+            if re.search(r'_w1\.(tif|TIF)$', current_path, re.IGNORECASE) or not re.search(r'\.(tif|TIF)$', current_path, re.IGNORECASE):
                 continue
             outpath = current_path[:-4] + '_w1.TIF'
             os.rename(current_path, outpath)

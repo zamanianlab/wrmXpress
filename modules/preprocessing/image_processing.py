@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import math
+import numpy as np
 
 # converts avi to imageXpress
 def avi_to_ix(g):
@@ -83,10 +84,11 @@ def stitch(g):
         if not os.path.isdir(current_dir):
             raise ValueError("Path is not a directory.")
         
-        # use regex to parse filename and extract well ID
+        # use regex to parse filename and extract well ID and wavelength number
         pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_s(\d+)_w(\d+)\.(tif|TIF)$')
 
         # group images by well ID and wavelength number (e.g. all sites with 'A01' and 'w2' will be stitched together)
+        # TODO: add notes about key value pairings
         images = {}
         for filename in os.listdir(current_dir):
             if filename.lower().endswith('.tif'):
@@ -97,16 +99,15 @@ def stitch(g):
                     if (well_id, wavelength_num) not in images:
                         images[(well_id, wavelength_num)] = []
                     images[(well_id, wavelength_num)].append(os.path.join(current_dir, filename))
-        
-        # print(images[('A01', '1')])
-        # print("DEBUG:", sorted(images[('A01', '1')])) 
-        # return
 
         # stitch images for each well ID and save them in the current folder
         for file_info, image_paths in images.items():
             stitched_image = __stitch_images(sorted(image_paths))
             outpath = g.plate_dir.joinpath('Timepoint_' + str(timepoint + 1), g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
-            stitched_image.save(outpath)
+            if g.circle_diameter != 'NA':
+                __circular_mask(stitched_image, g.circle_diameter).save(outpath)
+            else:
+                stitched_image.save(outpath)
 
 # creates HTD for avi input
 def __create_htd(g, timepoints):
@@ -229,9 +230,10 @@ def __stitch_images(image_paths):
     canvas_size = side_length * img_width
 
     # Create a new image with a black background
-    stitched_image = Image.new('RGB', (canvas_size, canvas_size), (0, 0, 0))
+    stitched_image = Image.new('I;16', (canvas_size, canvas_size), 0)
 
     # Place each image into the stitched_image
+    # assumes that stitched sites form a square (if requires change in the future, use x_sites and y_sites)
     for i, img_path in enumerate(image_paths):
         with Image.open(img_path) as img:
             if img.size != (img_width, img_height):
@@ -244,3 +246,26 @@ def __stitch_images(image_paths):
         os.remove(img_path)
 
     return stitched_image
+
+def __circular_mask(image, circle_diameter):
+    width, height = image.size
+
+    # ensure the image is square
+    if width != height:
+        raise ValueError("Image must be square")
+
+    # calculate the circle's radius
+    radius = (width * circle_diameter) / 2
+
+    # create a circular mask
+    y, x = np.ogrid[:height, :width]
+    center = (width // 2, height // 2)
+    # find squared distance of each coordinate from the centre and return True if it is within the mask area
+    mask_area = (x - center[0])**2 + (y - center[1])**2 > radius**2
+
+    # apply the mask to the image
+    masked_array = np.array(image)
+    masked_array[mask_area] = 0
+    masked_image = Image.fromarray(masked_array, mode='I;16')
+
+    return masked_image

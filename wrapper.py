@@ -23,7 +23,11 @@ from modules.fecundity import fecundity
 if __name__ == "__main__":
 
     # create the class that will instantiate the namedtuple
-    g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols', 'crop', 'x_sites', 'y_sites', 'join', 'input', 'work', 'output', 'plate_dir', 'plate', 'plate_short', 'wells', 'circle_mask', 'circle_radius', 'square_mask', 'square_side', 'desc', 'time_points', 'n_waves', 'wave_names', 'plate_paths'])
+    g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols',
+                                     'crop', 'x_sites', 'y_sites', 'stitch', 'input', 'work', 'output',
+                                     'plate_dir', 'plate', 'plate_short', 'wells',
+                                     'circle_diameter', 'square_side',
+                                     'desc', 'time_points', 'n_waves', 'wave_names', 'plate_paths'])
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
@@ -54,9 +58,8 @@ if __name__ == "__main__":
     elif g.crop == 'auto':
         # auto_crop(g)
         pass
-    
-    # stitch sites
-    if g.join:
+
+    if g.stitch:
         stitch(g)
     
     #########################################
