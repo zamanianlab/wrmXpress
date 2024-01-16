@@ -100,12 +100,14 @@ def stitch(g):
                         images[(well_id, wavelength_num)] = []
                     images[(well_id, wavelength_num)].append(os.path.join(current_dir, filename))
 
-        # stitch images for each well ID and save them in the current folder
+        # stitch images for each well ID, apply mask if applicable, and save them in the current folder
         for file_info, image_paths in images.items():
             stitched_image = __stitch_images(sorted(image_paths))
             outpath = g.plate_dir.joinpath('Timepoint_' + str(timepoint + 1), g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
             if g.circle_diameter != 'NA':
-                __circular_mask(stitched_image, g.circle_diameter).save(outpath)
+                __apply_mask(stitched_image, g.circle_diameter, 'circle').save(outpath)
+            elif g.square_side != 'NA':
+                __apply_mask(stitched_image, g.square_side, 'square').save(outpath)
             else:
                 stitched_image.save(outpath)
 
@@ -247,25 +249,45 @@ def __stitch_images(image_paths):
 
     return stitched_image
 
-def __circular_mask(image, circle_diameter):
+# apply a circle or square mask as specified by the type parameter
+# mask_size is a fraction of the current image size
+# circle mask will add a black border around the specified size of circle while square mask  crops the image to the specified size
+def __apply_mask(image, mask_size, type):
+    # get current height and width of image
     width, height = image.size
 
     # ensure the image is square
     if width != height:
         raise ValueError("Image must be square")
+    
+    # square mask
+    if type == 'square':
+        new_side_length = width * mask_size
+        # calculate the coordinates to crop the image
+        left = (width - new_side_length) // 2
+        top = (height - new_side_length) // 2
+        right = (width + new_side_length) // 2
+        bottom = (height + new_side_length) // 2
 
-    # calculate the circle's radius
-    radius = (width * circle_diameter) / 2
+        # crop the image
+        masked_image = image.crop((left, top, right, bottom))
 
-    # create a circular mask
-    y, x = np.ogrid[:height, :width]
-    center = (width // 2, height // 2)
-    # find squared distance of each coordinate from the centre and return True if it is within the mask area
-    mask_area = (x - center[0])**2 + (y - center[1])**2 > radius**2
+        return masked_image
+    
+    #circle mask
+    elif type == 'circle':
+        # calculate the circle's radius
+        radius = (width * mask_size) / 2
 
-    # apply the mask to the image
-    masked_array = np.array(image)
-    masked_array[mask_area] = 0
-    masked_image = Image.fromarray(masked_array, mode='I;16')
+        # create a circular mask
+        y, x = np.ogrid[:height, :width]
+        center = (width // 2, height // 2)
+        # find squared distance of each coordinate from the centre and return True if it is within the mask area
+        mask_area = (x - center[0])**2 + (y - center[1])**2 > radius**2
 
-    return masked_image
+        # apply the mask to the image
+        masked_array = np.array(image)
+        masked_array[mask_area] = 0
+        masked_image = Image.fromarray(masked_array, mode='I;16')
+
+        return masked_image
