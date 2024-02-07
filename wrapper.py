@@ -11,6 +11,7 @@ from collections import namedtuple
 
 from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
 from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch
+from modules.diagnostics import static_dx
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
@@ -35,6 +36,8 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     g, modules = parse_yaml(arg_parser, g_class)
 
+    # print("PLATE PATHS:", g.plate_dir, g.work, g.plate_short, g.plate_short)
+    # raise Exception()
 
     #########################################################
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
@@ -52,15 +55,26 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported file structure.")
     
-    # crop wells if specified
+    # crop/stitch wells if specified and apply mask if required
     if g.crop == 'grid':
         grid_crop(g)
     elif g.crop == 'auto':
         # auto_crop(g)
         pass
-
-    if g.stitch:
+    elif g.stitch:
         stitch(g)
+    elif g.circle_diameter != 'NA':
+        pass
+    elif g.square_side != 'NA':
+        pass
+
+    ###################################
+    ######### 3. DIAGNOSTICS  #########
+    ###################################
+
+    print("MODULES:", modules)
+    if 'static_dx' in modules:
+        static_dx(g, modules['static_dx']['rescale_multiplier'])
     
     #########################################
     ######### 3. GET WELLS & PATHS  #########

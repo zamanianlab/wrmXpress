@@ -1,6 +1,7 @@
 import yaml
 import os
 import re
+
 from pathlib import Path
 
 # parses yaml
@@ -113,7 +114,11 @@ def parse_yaml(arg_parser, g_class):
     #     square_side = conf.get('square_side')
     #     pass
     
-    yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols, crop, x_sites, y_sites, stitch, input, work, output, plate_dir, plate, plate_short, wells, circle_diameter, square_side, '', '', '', '', '')
+    yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
+                       crop, x_sites, y_sites, stitch, input, work, output,
+                       plate_dir, plate, plate_short, wells,
+                       circle_diameter, square_side,
+                       '', '', '', '', '')
 
     return yaml_out, modules
 
@@ -167,8 +172,10 @@ def parse_htd(yaml, g_class):
     print("\t\tnumber of wavelengths: {}".format(n_waves))
     print("\t\twavelengths: {}".format(wave_names))
 
-    g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols, yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch,
-                yaml.input, yaml.work, yaml.output, yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells, yaml.circle_diameter, yaml.square_side,
+    g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols,
+                yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output,
+                yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
+                yaml.circle_diameter, yaml.square_side,
                 desc, time_points, n_waves, wave_names, '')
 
     return g

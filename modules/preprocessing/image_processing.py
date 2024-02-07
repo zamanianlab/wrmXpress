@@ -33,7 +33,14 @@ def avi_to_ix(g):
         dir.mkdir(parents=True, exist_ok=True)
         # add '_A01_w1' to file name
         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01_w1.TIF')
+        # save the frame
         cv2.imwrite(str(outpath), frames[timepoint])
+
+        # cv2.imwrite(str(outpath), frames[timepoint], [cv2.IMWRITE_TIFF_COMPRESSION, 1])  # Compression level 1
+        # cv2.imwrite(str(outpath), frames[timepoint], [cv2.IMWRITE_TIFF_RESUNIT, 1])  # "I;16" TIF format
+
+        # pil_image = Image.fromarray(frames[timepoint])
+        # pil_image.save(str(outpath), compression="tiff_lzw", bits=16)
 
     __create_htd(g, timepoints)
 
@@ -56,7 +63,7 @@ def grid_crop(g):
             # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
             # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
             # get group_id using regex by extracting column letter and row number from current
-            letter, number, site, wavelength = __extract_well_name(current)
+            letter, number, site, wavelength = extract_well_name(current)
             group_id = [__capital_to_num(letter), int(number) - 1]
 
             # split image into individual wells
@@ -71,10 +78,19 @@ def grid_crop(g):
                         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
                     else:
                         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_w{wavelength}.TIF')
-                    cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
+                    # original:
+                    # cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
+                    if g.circle_diameter != 'NA':
+                        __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
+                    elif g.square_side != 'NA':
+                        __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(outpath)
+                    else:
+                        individual_wells[i * cols_per_image + j].save(outpath)
+                    
 
 # stitches all sites into wells by well ID (e.g. all files of well C03 will be stitched together)
-def stitch(g):
+# if dx option is True, save images in 'work/dx' directory
+def stitch(g, dx=False):
     # loop through each timepoint folder
     for timepoint in range(g.time_points):
         # get current directory
@@ -102,34 +118,28 @@ def stitch(g):
 
         # stitch images for each well ID, apply mask if applicable, and save them in the current folder
         for file_info, image_paths in images.items():
-            stitched_image = __stitch_images(sorted(image_paths))
-            outpath = g.plate_dir.joinpath('Timepoint_' + str(timepoint + 1), g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
-            if g.circle_diameter != 'NA':
-                __apply_mask(stitched_image, g.circle_diameter, 'circle').save(outpath)
-            elif g.square_side != 'NA':
-                __apply_mask(stitched_image, g.square_side, 'square').save(outpath)
-            else:
+            stitched_image = __stitch_images(sorted(image_paths), dx)
+            # if run through diagnostic function, save output in work folder
+            if dx:
+                # create 'dx/TimePoint_1' directory in work if it doesn't already exist
+                out_dir = Path.home().joinpath(g.work, 'dx', 'TimePoint_1')
+                os.makedirs(out_dir, exist_ok=True)
+
+                # save image in 'work/dx'
+                outpath = Path.home().joinpath(out_dir, g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
                 stitched_image.save(outpath)
-
-# creates HTD for avi input
-def __create_htd(g, timepoints):
-    # make HTD for non-IX data
-    lines = []
-    lines.append('"Description", ' + "AVI" + "\n")
-    lines.append('"TimePoints", ' + str(timepoints) + "\n")
-    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
-    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
-    lines.append('"XSites", ' + "1" + "\n")
-    lines.append('"YSites", ' + "1" + "\n")
-    lines.append('"NWavelengths", ' + "1" + "\n")
-    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
-
-    htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
-    with open(htd_path, mode='w') as htd_file:
-        htd_file.writelines(lines)
+            # else apply mask and save in input folder
+            else:
+                outpath = g.plate_dir.joinpath('Timepoint_' + str(timepoint + 1), g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
+                if g.circle_diameter != 'NA':
+                    __apply_mask(stitched_image, g.circle_diameter, 'circle').save(outpath)
+                elif g.square_side != 'NA':
+                    __apply_mask(stitched_image, g.square_side, 'square').save(outpath)
+                else:
+                    stitched_image.save(outpath)
 
 # extracts the column letter, row number, site number, and wavelength number from the image name
-def __extract_well_name(well_string):
+def extract_well_name(well_string):
     # regular expression pattern to match the format
     pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.(tif|TIF)$'
     match = re.search(pattern, well_string)
@@ -154,22 +164,39 @@ def __extract_well_name(well_string):
         # return None if the pattern doesn't match
         return None, None, None, None
 
+# creates HTD for avi input
+def __create_htd(g, timepoints):
+    # make HTD for non-IX data
+    lines = []
+    lines.append('"Description", ' + "AVI" + "\n")
+    lines.append('"TimePoints", ' + str(timepoints) + "\n")
+    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
+    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
+    lines.append('"XSites", ' + "1" + "\n")
+    lines.append('"YSites", ' + "1" + "\n")
+    lines.append('"NWavelengths", ' + "1" + "\n")
+    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
+
+    htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
+    with open(htd_path, mode='w') as htd_file:
+        htd_file.writelines(lines)
+
 # converts capital letters to numbers, where A is 0, B is 1, and so on
 def __capital_to_num(alpha):
     return ord(alpha) - 65
 
 # splits image into x by y images and delete original image
 def __split_image(img_path, x, y):
-    original_img = cv2.imread(img_path)
+    original_img = Image.open(img_path)
     if original_img is None:
         raise ValueError("Could not load the image")
-    
+
     # get dimensions of original image
-    original_height, original_width, unused = original_img.shape
+    original_width, original_height = original_img.size
 
     # calculate dimensions of cropped images
-    height = original_height // y
     width = original_width // x
+    height = original_height // y
 
     images = []
 
@@ -178,13 +205,13 @@ def __split_image(img_path, x, y):
     for i in range(y):
         for j in range(x):
             # calculate the coordinates for cropping
-            start_x = j * width
-            end_x = (j + 1) * width
-            start_y = i * height
-            end_y = (i + 1) * height
+            left = j * width
+            upper = i * height
+            right = (j + 1) * width
+            lower = (i + 1) * height
 
             # crop the region from the original image
-            cropped_img = original_img[start_y:end_y, start_x:end_x]
+            cropped_img = original_img.crop((left, upper, right, lower))
 
             # append the small image to the array
             images.append(cropped_img)
@@ -193,6 +220,7 @@ def __split_image(img_path, x, y):
     os.remove(img_path)
 
     return images
+
 
 # generates well name using the provided group id
 def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, total_cols):
@@ -215,7 +243,7 @@ def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, tot
     return f"{letter}{number}"
 
 # stitches sites into an n by n square image and fills extra space with black
-def __stitch_images(image_paths):
+def __stitch_images(image_paths, dx):
     if not image_paths:
         raise ValueError("The list of image paths is empty.")
 
@@ -244,8 +272,9 @@ def __stitch_images(image_paths):
             y = (i // side_length) * img_height
             stitched_image.paste(img, (x, y))
         
-        # delete original image
-        os.remove(img_path)
+        # delete original image if not diagnostic image
+        if not dx:
+            os.remove(img_path)
 
     return stitched_image
 
@@ -257,12 +286,12 @@ def __apply_mask(image, mask_size, type):
     width, height = image.size
 
     # ensure the image is square
-    if width != height:
-        raise ValueError("Image must be square")
+    # if width != height:
+    #     raise ValueError("Image must be square")
     
     # square mask
     if type == 'square':
-        new_side_length = width * mask_size
+        new_side_length = height * mask_size
         # calculate the coordinates to crop the image
         left = (width - new_side_length) // 2
         top = (height - new_side_length) // 2
@@ -277,7 +306,7 @@ def __apply_mask(image, mask_size, type):
     #circle mask
     elif type == 'circle':
         # calculate the circle's radius
-        radius = (width * mask_size) / 2
+        radius = (height * mask_size) / 2
 
         # create a circular mask
         y, x = np.ogrid[:height, :width]
