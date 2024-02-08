@@ -72,9 +72,10 @@ if __name__ == "__main__":
     ######### 3. DIAGNOSTICS  #########
     ###################################
 
-    print("MODULES:", modules)
     if 'static_dx' in modules:
         static_dx(g, modules['static_dx']['rescale_multiplier'])
+
+    raise Exception("CODE STOPS HERE")
     
     #########################################
     ######### 3. GET WELLS & PATHS  #########

@@ -1,4 +1,5 @@
 from PIL import Image
+import cv2
 import os
 import re
 from pathlib import Path
@@ -18,41 +19,40 @@ def static_dx(g, rescale_factor):
     if not os.path.isdir(current_dir):
         print(current_dir)
         raise ValueError("Path is not a directory.")
+    
+    # use regex to parse filename and extract well ID and wavelength number
+    pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_w(\d+)\.(tif|TIF)$')
 
-    # if only one wavelength, just stitch wells from first timepoint
-    if g.n_waves == 1:
-        image_paths = []
-        for image_path in os.listdir(current_dir):
-            if image_path.lower().endswith('.tif'):
-                image_paths.append(os.path.join(current_dir, image_path))
+    # create set of selected wells; if all wells selected, set wells variable as None
+    if g.wells == ['All']:
+        wells = None
+    else:
+        wells = set(g.wells)
+
+    # group images by wavelength number (e.g. all wells with 'w2' will be stitched together)
+    images = {}
+    for filename in os.listdir(current_dir):
+        if filename.lower().endswith('.tif'):
+            match = pattern.match(filename)
+            if match:
+                well = match.group(2)
+                # if not all wells are selected and current well is not selected, skip over the file
+                if wells and well not in wells:
+                    continue
+                wavelength_num = match.group(3)
+                if (wavelength_num) not in images:
+                    images[wavelength_num] = []
+                images[wavelength_num].append(os.path.join(current_dir, filename))
+
+    # create output directory if it doesn't already exist
+    out_dir = os.path.join(g.output, 'dx')
+    os.makedirs(out_dir, exist_ok=True)
+
+    # stitch images for each wavelength and save them in the output folder
+    for wavelength_num, image_paths in images.items():
         dx_image = __sdx_stitch(g, image_paths, rescale_factor)
-        out_dir = os.path.join(g.output, 'dx')
-        os.makedirs(out_dir, exist_ok=True)
-        outpath = os.path.join(out_dir, g.plate + f'_w1_dx.TIF')
+        outpath = Path.home().joinpath(out_dir, g.plate + f'_w{wavelength_num}_dx.TIF')
         dx_image.save(outpath)
-        return
-
-    # if multiple wavelengths, stitch wells from first timepoint for each wavelength
-    elif g.n_waves > 1:
-        # use regex to parse filename and extract well ID and wavelength number
-        pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_w(\d+)\.(tif|TIF)$')
-
-        # group images by wavelength number (e.g. all wells with 'w2' will be stitched together)
-        images = {}
-        for filename in os.listdir(current_dir):
-            if filename.lower().endswith('.tif'):
-                match = pattern.match(filename)
-                if match:
-                    wavelength_num = match.group(3)
-                    if (wavelength_num) not in images:
-                        images[wavelength_num] = []
-                    images[wavelength_num].append(os.path.join(current_dir, filename))
-
-        # stitch images for each wavelength and save them in the output folder
-        for wavelength_num, image_paths in images.items():
-            dx_image = __sdx_stitch(g, image_paths, rescale_factor)
-            outpath = Path.home().joinpath(g.output, g.plate + f'_w{wavelength_num}_dx.TIF')
-            dx_image.save(outpath)
 
 # takes a list of image paths and stitches all the specified wells together
 def __sdx_stitch(g, image_paths, rescale_factor):
@@ -99,3 +99,28 @@ def __rescale_image(image_path, rescale_factor):
             rescaled_image = img.resize(size, resample=Image.NEAREST)
 
     return rescaled_image
+
+def tif_to_avi(g, image_paths, wavelength_num, fps=30):
+    """
+    Convert a list of TIF images to an AVI video.
+
+    fps (int, optional): Frames per second for the output video. Default is 30.
+    """
+
+    outpath = Path.home().joinpath(g.output, g.plate + f'_w{wavelength_num}_dx.TIF')
+
+    # get the first image to extract dimensions
+    first_image = cv2.imread(image_paths[0])
+    height, width, _ = first_image.shape
+
+    # define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(outpath, fourcc, fps, (width, height))
+
+    # iterate through each image and add it to the video
+    for image_path in image_paths:
+        image = cv2.imread(image_path)
+        video.write(image)
+
+    # release the video writer
+    video.release()
