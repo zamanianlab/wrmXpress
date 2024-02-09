@@ -1,0 +1,6 @@
+# Images
+**/*.tif
+**/*.tiff
+**/*.TIF
+**/*.png
+**/*.npy
