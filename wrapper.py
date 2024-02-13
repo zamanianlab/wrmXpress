@@ -108,8 +108,8 @@ if __name__ == "__main__":
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
 
-        cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
-            pipeline, pipeline)
+        cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file={}/image_paths_{}.csv'.format(
+            pipeline, g.input, pipeline)
         cellprofiler_command_split = shlex.split(cellprofiler_command)
         print('Starting CellProfiler.')
         subprocess.run(cellprofiler_command_split)
