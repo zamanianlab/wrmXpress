@@ -7,8 +7,8 @@ suppressWarnings(suppressMessages(library(readr)))
 args <- commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-wells <- args[2:length(args)] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
-input <- args[3]
+wells <- args[2:length(args) - 1] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
+input <- args[length(args)]
 
 image_dir <- stringr::str_c(input, plate, sep = "/")
 print(image_dir)

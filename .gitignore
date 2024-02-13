@@ -11,6 +11,7 @@ cp_pipelines/worm_models/*.tif
 cp_pipelines/worm_models/*.tiff
 cp_pipelines/worm_models/*.tif
 cp_pipelines/worm_models/*.npy
+cp_pipelines/worm_classification
 cellpose_training/training_images/*
 
 # R
