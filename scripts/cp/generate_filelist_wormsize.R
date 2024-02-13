@@ -8,8 +8,9 @@ args <- commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
 wells <- args[2:length(args)] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
+input <- args[3]
 
-image_dir <- stringr::str_c(getwd(), "input", plate, sep = "/")
+image_dir <- stringr::str_c(input, plate, sep = "/")
 
 input_files <- list.files(path = image_dir, pattern = ".*TIF$", recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- "well_mask.png"
@@ -40,4 +41,4 @@ load_csv <- dplyr::tibble(
   Metadata_Well = stringr::str_extract(FileName_RawImage, "[A-H][0,1]{1}[0-9]{1}")
 )
 
-readr::write_csv(load_csv, file = stringr::str_c("/", wd, "/input", "/image_paths_wormsize.csv", sep = ""))
+readr::write_csv(load_csv, file = stringr::str_c(input, "/image_paths_wormsize.csv", sep = ""))

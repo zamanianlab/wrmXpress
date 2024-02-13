@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 shutil.copy(file, "{}/cellpose_masks".format(g.output))
 
         fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
-            pipeline, g.plate, g.wells)
+            pipeline, g.plate, g.wells, g.input)
         fl_command_split = shlex.split(fl_command)
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
