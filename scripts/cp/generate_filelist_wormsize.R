@@ -11,8 +11,10 @@ wells <- args[2:length(args)] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
 input <- args[3]
 
 image_dir <- stringr::str_c(input, plate, sep = "/")
+print(image_dir)
 
 input_files <- list.files(path = image_dir, pattern = ".*TIF$", recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+print(input_files)
 mask <- "well_mask.png"
 
 wd <- getwd() %>% str_remove(., "^/")
@@ -20,8 +22,8 @@ wd <- getwd() %>% str_remove(., "^/")
 load_csv <- dplyr::tibble(
   Group_Number = 1,
   Group_Index = seq(1, length(input_files)),
-  URL_RawImage = stringr::str_c("file:", wd, "input", plate, input_files, sep = "/"),
-  URL_WellMask = stringr::str_c("file:", wd, "wrmXpress", "cp_pipelines", "masks", mask, sep = "/"),
+  URL_RawImage = stringr::str_c("file:", input, plate, input_files, sep = "/"),
+  URL_WellMask = stringr::str_c("file:", "/wrmXpress", "cp_pipelines", "masks", mask, sep = "/"),
   PathName_RawImage = stringr::str_remove(URL_RawImage, pattern = "/[^/]*$") %>% str_remove(., "file:"),
   PathName_WellMask = stringr::str_remove(URL_WellMask, mask) %>% str_remove(., "file:") %>% str_remove(., "/$"),
   FileName_RawImage = input_files,
