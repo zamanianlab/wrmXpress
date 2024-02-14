@@ -226,7 +226,7 @@ SaveImages:[module_num:16|svn_version:'Unknown'|variable_revision_number:16|show
     Append a suffix to the image file name?:No
     Text to append to the image name:
     Saved file format:tiff
-    Output file location:Elsewhere...|output/straightened_worms
+    Output file location:Elsewhere...|/home/output/straightened_worms
     Image bit depth:32-bit floating point
     Overwrite existing files without warning?:Yes
     When to save:Every cycle
@@ -244,7 +244,7 @@ ExportToSpreadsheet:[module_num:17|svn_version:'Unknown'|variable_revision_numbe
     Calculate the per-image mean values for object measurements?:No
     Calculate the per-image median values for object measurements?:No
     Calculate the per-image standard deviation values for object measurements?:No
-    Output file location:Elsewhere...|output/data/
+    Output file location:Elsewhere...|/home/output/data/
     Create a GenePattern GCT file?:No
     Select source of sample row name:Metadata
     Select the image to use as the identifier:None
