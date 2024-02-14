@@ -6,20 +6,50 @@ from pathlib import Path
 from modules.preprocessing.image_processing import stitch, extract_well_name
 import numpy as np
 
-def static_dx(g, rescale_factor):
+# stitches all selected wells from timepoint 1 into diagnostic image of plate and saves it in 'output/dx' for each wavelength
+# if video is flagged as True, do not save the images and simply return them in a list
+def static_dx(g, rescale_factor, timepoint=1):
     # get current directory
     # if images are at the site level, they must be stitched first and placed in generated 'work/dx' folder
     if g.mode == 'multi-site' and g.stitch == False:
-        stitch(g, dx=True)
-        current_dir = os.path.join(g.work, 'dx', 'Timepoint_1')
+        stitch(g, dx='static')
+        current_dir = os.path.join(g.work, 'dx', f'Timepoint_{timepoint}')
     else:
-        current_dir = os.path.join(g.plate_dir, 'TimePoint_1')
+        current_dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint}')
 
     # ensure that current directory is valid
     if not os.path.isdir(current_dir):
         print(current_dir)
         raise ValueError("Path is not a directory.")
     
+    # group images by wavelength number (e.g. all wells with 'w2' will be stitched together)
+    # images has a key of wavelength number and value of list of all the corresponding files for that wavelength number
+    images = __group_images(g, current_dir)
+
+    # create output directory if it doesn't already exist for static_dx
+    out_dir = os.path.join(g.output, 'dx')
+    os.makedirs(out_dir, exist_ok=True)
+
+    # stitch images for each wavelength and save them in the output folder
+    for wavelength_num, image_paths in images.items():
+        dx_image = __stitch_plate(g, image_paths, rescale_factor)
+        outpath = Path.home().joinpath(out_dir, g.plate + f'_w{wavelength_num}_dx.TIF')
+        dx_image.save(outpath)
+
+def video_dx(g, rescale_factor):
+    if g.time_points == 1:
+        static_dx(g, rescale_factor)
+    # TODO: if all wells selected, generate video of whole plate across all timepoints
+    if g.wells == ['All']:
+        # stitch wells from each timepoint and append to list
+        pass
+    # TODO: if specific wells selected, generate videos of selected wells across all timepoints
+    else:
+        pass
+
+# given a timepoint directory, group images by wavelength number (e.g. all wells with 'w2' will be placed in the same list together in a dictionary where the key is the wavelength number)
+# only include selected wells as in g.wells
+def __group_images(g, current_dir):
     # use regex to parse filename and extract well ID and wavelength number
     pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_w(\d+)\.(tif|TIF)$')
 
@@ -44,18 +74,10 @@ def static_dx(g, rescale_factor):
                     images[wavelength_num] = []
                 images[wavelength_num].append(os.path.join(current_dir, filename))
 
-    # create output directory if it doesn't already exist
-    out_dir = os.path.join(g.output, 'dx')
-    os.makedirs(out_dir, exist_ok=True)
-
-    # stitch images for each wavelength and save them in the output folder
-    for wavelength_num, image_paths in images.items():
-        dx_image = __sdx_stitch(g, image_paths, rescale_factor)
-        outpath = Path.home().joinpath(out_dir, g.plate + f'_w{wavelength_num}_dx.TIF')
-        dx_image.save(outpath)
+    return images
 
 # takes a list of image paths and stitches all the specified wells together
-def __sdx_stitch(g, image_paths, rescale_factor):
+def __stitch_plate(g, image_paths, rescale_factor):
     # create an empty plate image based on the size of the well images (rescaled if required)
     first_image = __rescale_image(image_paths[0], rescale_factor)
     height = first_image.size[0]
@@ -100,7 +122,8 @@ def __rescale_image(image_path, rescale_factor):
 
     return rescaled_image
 
-def tif_to_avi(g, image_paths, wavelength_num, fps=30):
+# converts a list of TIFs to an AVI video and saves it in the 'output/dx' folder
+def __tif_to_avi(g, image_paths, wavelength_num, fps=30):
     """
     Convert a list of TIF images to an AVI video.
 

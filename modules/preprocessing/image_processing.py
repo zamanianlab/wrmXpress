@@ -90,7 +90,7 @@ def grid_crop(g):
 
 # stitches all sites into wells by well ID (e.g. all files of well C03 will be stitched together)
 # if dx option is True, save images in 'work/dx' directory
-def stitch(g, dx=False):
+def stitch(g, dx=None):
     # loop through each timepoint folder
     for timepoint in range(g.time_points):
         # get current directory
@@ -121,8 +121,8 @@ def stitch(g, dx=False):
             stitched_image = __stitch_images(sorted(image_paths), dx)
             # if run through diagnostic function, save output in work folder
             if dx:
-                # create 'dx/TimePoint_1' directory in work if it doesn't already exist
-                out_dir = Path.home().joinpath(g.work, 'dx', 'TimePoint_1')
+                # create 'dx/TimePoint_{timepoint number}' directory in work if it doesn't already exist
+                out_dir = Path.home().joinpath(g.work, 'dx', f'TimePoint_{timepoint+1}')
                 os.makedirs(out_dir, exist_ok=True)
 
                 # save image in 'work/dx'
@@ -137,6 +137,9 @@ def stitch(g, dx=False):
                     __apply_mask(stitched_image, g.square_side, 'square').save(outpath)
                 else:
                     stitched_image.save(outpath)
+        # if static_dx, only run on first timepoint folder
+        if dx == 'static':
+            return
 
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):

@@ -63,6 +63,7 @@ if __name__ == "__main__":
         pass
     elif g.stitch:
         stitch(g)
+    # TODO: run mask when no cropping or stitching
     elif g.circle_diameter != 'NA':
         pass
     elif g.square_side != 'NA':
@@ -74,6 +75,8 @@ if __name__ == "__main__":
 
     if 'static_dx' in modules:
         static_dx(g, modules['static_dx']['rescale_multiplier'])
+    if 'video_dx' in modules:
+        pass
 
     raise Exception("CODE STOPS HERE")
     
