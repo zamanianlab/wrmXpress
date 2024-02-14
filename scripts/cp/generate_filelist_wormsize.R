@@ -8,7 +8,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 input <- args[1]
 plate <- args[2]
-wells <- args[3:length(args) - 1] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
+wells <- args[3:length(args)] %>% stringr::str_remove_all(., "[,|\\[|\\]]")
 
 image_dir <- stringr::str_c(input, plate, sep = "/")
 
