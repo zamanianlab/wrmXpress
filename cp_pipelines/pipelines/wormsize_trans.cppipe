@@ -126,7 +126,7 @@ UntangleWorms:[module_num:10|svn_version:'Unknown'|variable_revision_number:2|sh
     Overlap style:Both
     Name the output overlapping worm objects:OverlappingWorms
     Name the output non-overlapping worm objects:NonOverlappingWorms
-    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/tmp/wrmXpress/cp_pipelines/worm_models
     Training set file name:WheelerAdultTrainingSet.xml
     Use training set weights?:Yes
     Overlap weight:5.0
@@ -183,7 +183,7 @@ StraightenWorms:[module_num:12|svn_version:'Unknown'|variable_revision_number:3|
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/tmp/wrmXpress/cp_pipelines/worm_models
     Training set file name:WheelerAdultTrainingSet.xml
     Image count:1
     Measure intensity distribution?:Yes
