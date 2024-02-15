@@ -8,19 +8,16 @@ options(
   readr.show_col_types = FALSE,
   dplyr.summarise.inform = FALSE
 )
-# setwd('~/Desktop/temp_root/')
 
 args <- commandArgs(trailingOnly = TRUE)
 
-plate <- args[1]
-rows <- args[2]
-cols <- args[3]
-# plate <- '20220929-p37-KTR_1809'
-# rows <- '8'
-# cols <- '12'
+input <- args[1]
+plate <- args[2]
+rows <- args[3]
+cols <- args[4]
 
-metadata_dir <- stringr::str_c("metadata", plate, sep = "/")
-output_dir <- stringr::str_c("output", "data/", sep = "/")
+metadata_dir <- stringr::str_c(str_remove(input, "/input"), "metadata", plate, sep = "/")
+output_dir <- stringr::str_c(str_remove(input, "/input"), "output", "data/", sep = "/")
 
 # get the paths to all the metadata files
 metadata_files <- dplyr::tibble(

@@ -2,7 +2,6 @@ suppressWarnings(suppressMessages(library(stringr)))
 suppressWarnings(suppressMessages(library(magrittr)))
 suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(readr)))
-# setwd('~/Desktop/')
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -14,8 +13,6 @@ image_dir <- stringr::str_c(input, plate, sep = "/")
 
 input_files <- list.files(path = image_dir, pattern = ".*TIF$", recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- "well_mask.png"
-
-wd <- getwd() %>% str_remove(., "^/")
 
 load_csv <- dplyr::tibble(
   Group_Number = 1,

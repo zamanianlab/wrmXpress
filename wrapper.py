@@ -114,8 +114,8 @@ if __name__ == "__main__":
         print('Starting CellProfiler.')
         subprocess.run(cellprofiler_command_split)
 
-        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(
-            g.plate, g.rows, g.columns)
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {} {}'.format(
+            g.input, g.plate, g.rows, g.columns)
         md_command_split = shlex.split(md_command)
         print('Joining experiment metadata and tidying.')
         subprocess.run(md_command_split)
