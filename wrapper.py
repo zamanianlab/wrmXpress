@@ -10,7 +10,7 @@ from collections import defaultdict
 from collections import namedtuple
 
 from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
-from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch
+from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch, apply_masks
 from modules.diagnostics import static_dx
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
@@ -64,17 +64,17 @@ if __name__ == "__main__":
     elif g.stitch:
         stitch(g)
     # TODO: run mask when no cropping or stitching
-    elif g.circle_diameter != 'NA':
-        pass
-    elif g.square_side != 'NA':
-        pass
+    else:
+        apply_masks(g)
 
     ###################################
     ######### 3. DIAGNOSTICS  #########
     ###################################
 
+    # generate static_dx
     if 'static_dx' in modules:
         static_dx(g, modules['static_dx']['rescale_multiplier'])
+    # generate video_dx
     if 'video_dx' in modules:
         pass
 

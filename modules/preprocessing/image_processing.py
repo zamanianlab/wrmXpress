@@ -21,6 +21,8 @@ def avi_to_ix(g):
         # returns next frame
         ret, img = vid.read()
         if ret:
+            # convert image to unsigned 16-bit format
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
             frames.append(img)
 
     timepoints = len(frames)
@@ -35,12 +37,6 @@ def avi_to_ix(g):
         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01_w1.TIF')
         # save the frame
         cv2.imwrite(str(outpath), frames[timepoint])
-
-        # cv2.imwrite(str(outpath), frames[timepoint], [cv2.IMWRITE_TIFF_COMPRESSION, 1])  # Compression level 1
-        # cv2.imwrite(str(outpath), frames[timepoint], [cv2.IMWRITE_TIFF_RESUNIT, 1])  # "I;16" TIF format
-
-        # pil_image = Image.fromarray(frames[timepoint])
-        # pil_image.save(str(outpath), compression="tiff_lzw", bits=16)
 
     __create_htd(g, timepoints)
 
@@ -72,7 +68,7 @@ def grid_crop(g):
             # loop through individual well images and save with corresponding well name
             for i in range(rows_per_image):
                 for j in range(cols_per_image):
-                    well_name = __generate_well_name(group_id, i, j, cols_per_image, rows_per_image, g.cols)
+                    well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
                     # save current image as well name
                     if site:
                         outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
@@ -140,6 +136,33 @@ def stitch(g, dx=None):
         # if static_dx, only run on first timepoint folder
         if dx == 'static':
             return
+
+# loop through all files and apply masks (used when grid_crop or stitch are not run)
+def apply_masks(g):
+    # return if no masking required
+    if g.circle_diameter == 'NA' and g.square_side == 'NA':
+        return
+    if g.mode == 'multi-site' and g.stitch == False:
+        print("Masks cannot be applied at the site-level.")
+        return
+    # loop through timepoints
+    for timepoint in range(g.time_points):
+        # loop through wavelengths
+        for wavelength in range(g.n_waves):
+            # loop through individual wells
+            for row in range(g.rows):
+                for col in range(g.cols):
+                    # generate well id
+                    well_id = __well_idx_to_name(g, row, col)
+                    # get path of current image
+                    img_path = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                    # open current image, apply mask, and save
+                    with Image.open(img_path) as img:
+                        if g.circle_diameter != 'NA':
+                            __apply_mask(img, g.circle_diameter, 'circle').save(img_path)
+                        elif g.square_side != 'NA':
+                            __apply_mask(img, g.square_side, 'square').save(img_path)
+
 
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
@@ -224,25 +247,42 @@ def __split_image(img_path, x, y):
 
     return images
 
-
 # generates well name using the provided group id
-def __generate_well_name(group_id, col, row, cols_per_image, rows_per_image, total_cols):
+def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
     # calculate well_id
     well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
 
-    # extract letter
+    return __well_idx_to_name(g, well_id[0], well_id[1])
+
+    # generate letter
     letter = chr(well_id[0] + 65)
 
     # determine number of preceding zeroes for single digit numbered columns
     # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
     if well_id[1] < 9:
-        if total_cols >= 100:
-            num_zeroes = len(str(total_cols)) - 1
+        if g.cols >= 100:
+            num_zeroes = len(str(g.cols)) - 1
             number = num_zeroes*"0" + str(well_id[1] + 1)
         else:
             number = f"0{well_id[1] + 1}"
     else:
         number = str(well_id[1] + 1)
+    return f"{letter}{number}"
+
+def __well_idx_to_name(g, row, col):
+    # generate letter
+    letter = chr(row + 65)
+
+    # determine number of preceding zeroes for single digit numbered columns
+    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
+    if col < 9:
+        if g.cols >= 100:
+            num_zeroes = len(str(g.cols)) - 1
+            number = num_zeroes*"0" + str(col + 1)
+        else:
+            number = f"0{col + 1}"
+    else:
+        number = str(col + 1)
     return f"{letter}{number}"
 
 # stitches sites into an n by n square image and fills extra space with black

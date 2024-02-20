@@ -60,6 +60,8 @@ def parse_yaml(arg_parser, g_class):
     print(f"\t\twell columns per image: {image_n_col}")
     print(f"\t\trecorded rows: {rec_rows}")
     print(f"\t\trecorded cols: {rec_cols}")
+    print(f"\t\tx-sites: {x_sites}")
+    print(f"\t\ty-sites: {y_sites}")
 
     # read the modules, remove any where run is False
     modules = conf.get('modules')
@@ -101,18 +103,6 @@ def parse_yaml(arg_parser, g_class):
     square_side = conf.get('square_side')
     if circle_diameter != 'NA' and square_side != 'NA':
         raise ValueError("Cannot apply circle mask and square mask at the same time.")
-    # circle_mask = conf.get('circle_mask')
-    # square_mask = conf.get('square_mask')
-    # circle_radius = ''
-    # square_side = ''
-    # if circle_mask == 'True' and square_mask == 'True':
-    #     raise ValueError("circle_mask and square_mask cannot both be True.")
-    # elif circle_mask == 'True':
-    #     circle_radius = conf.get('circle_radius')
-    #     pass
-    # elif square_mask == 'True':
-    #     square_side = conf.get('square_side')
-    #     pass
     
     yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
                        crop, x_sites, y_sites, stitch, input, work, output,
