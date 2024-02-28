@@ -40,7 +40,7 @@ def video_dx(g, rescale_factor):
     if g.wells == ['All']:
         # if images are at the site level, they must be stitched first and placed in generated 'work/dx' folder
         if g.mode == 'multi-site' and g.stitch == False:
-            stitch(g, dx='static')
+            stitch(g, dx='video')
             base_dir = os.path.join(g.work, 'dx')
         else:
             base_dir = g.plate_dir
@@ -56,6 +56,7 @@ def video_dx(g, rescale_factor):
 
         # create a dictionary where the key is wavelength number and the value is the list holding the path of every frame of that wavelength for the entire plate
         frames = {}
+        # create frames - save them in 'work/video_dx' and save paths for frames in dictionary
         # populate dictionary
         for timepoint in range(g.time_points):
             current_dir = os.path.join(base_dir, f'TimePoint_{timepoint + 1}')
@@ -67,7 +68,7 @@ def video_dx(g, rescale_factor):
                     for col in range(g.cols):
                         # generate well id
                         well_id = well_idx_to_name(g, row, col)
-                        # get path of current image of well
+                        # get path of current well image
                         img_path = os.path.join(current_dir, g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
                         # add well to current frame
                         current_frame.append(img_path)
@@ -77,7 +78,7 @@ def video_dx(g, rescale_factor):
                 out_dir = os.path.join(g.work, 'video_dx', f'TimePoint_{timepoint + 1}')
                 os.makedirs(out_dir, exist_ok=True)
                 # save current frame in 'work/video_dx' and append its outpath to frames
-                outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.TIF')
+                outpath = os.path.join(out_dir, g.plate + f'_w{wavelength + 1}_dx.TIF')
                 dx_image.save(outpath)
                 # create key-value pair if it doesn't exist
                 if wavelength not in frames:
@@ -175,54 +176,27 @@ def __rescale_image(image_path, rescale_factor):
     return rescaled_image
 
 # converts a list of image paths to an AVI video and saves it in the 'output/dx' folder
-def create_video(image_paths, output_video_path, duration=15):
-    # Check if duration is specified in seconds
-    if not isinstance(duration, (int, float)) or duration <= 0:
-        raise ValueError("Duration must be a positive number in seconds.")
-
-    # Read the first image to get dimensions
-    first_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED)
-    height, width = first_image.shape[:2]
-
-    # Define the codec and create a VideoWriter object
-    fourcc = 0
-    fps = len(image_paths) / duration
-    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
-
-    # Iterate over image paths, convert to 8-bit, and add them to the video
-    for image_path in image_paths:
-        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
-        # Normalize pixel values to fit into 8-bit range
-        img_normalized = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        # Convert to 3-channel (grayscale to BGR)
-        img_bgr = cv2.cvtColor(img_normalized, cv2.COLOR_GRAY2BGR)
-        video_writer.write(img_bgr)
-
-    # Release the VideoWriter and close all windows
-    video_writer.release()
-    cv2.destroyAllWindows()
-
 def __create_video(image_paths, output_video_path, duration=15):
-    # Check if duration is specified in seconds
+    # check if duration is specified in seconds
     if not isinstance(duration, (int, float)) or duration <= 0:
         raise ValueError("Duration must be a positive number in seconds.")
 
-    # Read the first image to get dimensions
+    # read the first image to get dimensions
     first_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED)
     height, width = first_image.shape[:2]
 
-    # Define the codec and create a VideoWriter object
+    # define the codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     fps = len(image_paths) / duration
     video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height), isColor=False)
 
-    # Iterate over image paths, convert to 8-bit, and add them to the video
+    # iterate over image paths, convert to 8-bit, and add them to the video
     for image_path in image_paths:
         img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
-        # Normalize pixel values to fit into 8-bit range
+        # normalize pixel values to fit into 8-bit range
         img_normalized = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
         video_writer.write(img_normalized)
 
-    # Release the VideoWriter and close all windows
+    # release the VideoWriter and close all windows
     video_writer.release()
     cv2.destroyAllWindows()
