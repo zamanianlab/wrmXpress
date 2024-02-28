@@ -1,4 +1,3 @@
-from pathlib import Path
 from string import ascii_uppercase
 from PIL import Image
 import cv2
@@ -11,7 +10,7 @@ import numpy as np
 # converts avi to imageXpress
 def avi_to_ix(g):
     # this assumes that the avi file has the same name as the directory it is in
-    vid_path = Path.home().joinpath(g.plate_dir, g.plate + '.avi')
+    vid_path = os.path.join(g.plate_dir, g.plate + '.avi')
 
     # gets avi information
     vid = cv2.VideoCapture(str(vid_path))
@@ -29,12 +28,14 @@ def avi_to_ix(g):
 
     # loop through each timepoint
     for timepoint in range(timepoints):
-        dir = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1))
-        if dir.exists():
+        # create directory for timepoint if it doesn't already exist
+        # if it does exist, delete all the files in it
+        dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+        if os.path.isdir(dir):
             shutil.rmtree(dir)
-        dir.mkdir(parents=True, exist_ok=True)
+        os.makedirs(dir)
         # add '_A01_w1' to file name
-        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + '_A01_w1.TIF')
+        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + '_A01_w1.TIF')
         # save the frame
         cv2.imwrite(str(outpath), frames[timepoint])
 
@@ -49,7 +50,7 @@ def grid_crop(g):
 
     # loop through each timepoint folder
     for timepoint in range(g.time_points):
-        original_images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
+        original_images = os.listdir(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}'))
 
         # loop through each image in timepoint folder
         for current in original_images:
@@ -71,9 +72,9 @@ def grid_crop(g):
                     well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
                     # save current image as well name
                     if site:
-                        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
                     else:
-                        outpath = g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1), g.plate + f'_{well_name}_w{wavelength}.TIF')
+                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_w{wavelength}.TIF')
                     # original:
                     # cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
                     if g.circle_diameter != 'NA':
@@ -114,15 +115,15 @@ def stitch(g, dx=None):
 
         # stitch images for each well ID, apply mask if applicable, and save them in the current folder
         for file_info, image_paths in images.items():
-            stitched_image = __stitch_images(sorted(image_paths), dx)
+            stitched_image = __stitch_sites(sorted(image_paths), dx)
             # if run through diagnostic function, save output in work folder
             if dx:
                 # create 'dx/TimePoint_{timepoint number}' directory in work if it doesn't already exist
-                out_dir = Path.home().joinpath(g.work, 'dx', f'TimePoint_{timepoint+1}')
+                out_dir = os.path.join(g.work, 'dx', f'TimePoint_{timepoint+1}')
                 os.makedirs(out_dir, exist_ok=True)
 
                 # save image in 'work/dx'
-                outpath = Path.home().joinpath(out_dir, g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
+                outpath = os.path.join(out_dir, g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
                 stitched_image.save(outpath)
             # else apply mask and save in input folder
             else:
@@ -153,7 +154,7 @@ def apply_masks(g):
             for row in range(g.rows):
                 for col in range(g.cols):
                     # generate well id
-                    well_id = __well_idx_to_name(g, row, col)
+                    well_id = well_idx_to_name(g, row, col)
                     # get path of current image
                     img_path = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
                     # open current image, apply mask, and save
@@ -190,6 +191,22 @@ def extract_well_name(well_string):
         # return None if the pattern doesn't match
         return None, None, None, None
 
+def well_idx_to_name(g, row, col):
+    # generate letter
+    letter = chr(row + 65)
+
+    # determine number of preceding zeroes for single digit numbered columns
+    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
+    if col < 9:
+        if g.cols >= 100:
+            num_zeroes = len(str(g.cols)) - 1
+            number = num_zeroes*"0" + str(col + 1)
+        else:
+            number = f"0{col + 1}"
+    else:
+        number = str(col + 1)
+    return f"{letter}{number}"
+
 # creates HTD for avi input
 def __create_htd(g, timepoints):
     # make HTD for non-IX data
@@ -203,7 +220,7 @@ def __create_htd(g, timepoints):
     lines.append('"NWavelengths", ' + "1" + "\n")
     lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
 
-    htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
+    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
 
@@ -252,41 +269,11 @@ def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
     # calculate well_id
     well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
 
-    return __well_idx_to_name(g, well_id[0], well_id[1])
-
-    # generate letter
-    letter = chr(well_id[0] + 65)
-
-    # determine number of preceding zeroes for single digit numbered columns
-    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
-    if well_id[1] < 9:
-        if g.cols >= 100:
-            num_zeroes = len(str(g.cols)) - 1
-            number = num_zeroes*"0" + str(well_id[1] + 1)
-        else:
-            number = f"0{well_id[1] + 1}"
-    else:
-        number = str(well_id[1] + 1)
-    return f"{letter}{number}"
-
-def __well_idx_to_name(g, row, col):
-    # generate letter
-    letter = chr(row + 65)
-
-    # determine number of preceding zeroes for single digit numbered columns
-    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
-    if col < 9:
-        if g.cols >= 100:
-            num_zeroes = len(str(g.cols)) - 1
-            number = num_zeroes*"0" + str(col + 1)
-        else:
-            number = f"0{col + 1}"
-    else:
-        number = str(col + 1)
-    return f"{letter}{number}"
+    return well_idx_to_name(g, well_id[0], well_id[1])
 
 # stitches sites into an n by n square image and fills extra space with black
-def __stitch_images(image_paths, dx):
+# TODO: allow for non-square sites?
+def __stitch_sites(image_paths, dx):
     if not image_paths:
         raise ValueError("The list of image paths is empty.")
 

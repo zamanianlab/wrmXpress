@@ -8,10 +8,11 @@ import glob
 from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
+import time
 
 from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
 from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch, apply_masks
-from modules.diagnostics import static_dx
+from modules.diagnostics import static_dx, video_dx
 from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
@@ -22,6 +23,8 @@ from modules.fecundity import fecundity
 
 
 if __name__ == "__main__":
+
+    start = time.time()
 
     # create the class that will instantiate the namedtuple
     g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols',
@@ -54,7 +57,7 @@ if __name__ == "__main__":
         g = parse_htd(g, g_class)
     else:
         raise ValueError("Unsupported file structure.")
-    
+
     # crop/stitch wells if specified and apply mask if required
     if g.crop == 'grid':
         grid_crop(g)
@@ -63,7 +66,7 @@ if __name__ == "__main__":
         pass
     elif g.stitch:
         stitch(g)
-    # TODO: run mask when no cropping or stitching
+    # run mask when no cropping or stitching
     else:
         apply_masks(g)
 
@@ -76,8 +79,10 @@ if __name__ == "__main__":
         static_dx(g, modules['static_dx']['rescale_multiplier'])
     # generate video_dx
     if 'video_dx' in modules:
-        pass
+        video_dx(g, modules['video_dx']['rescale_multiplier'])
 
+    end = time.time()
+    print("Time elapsed (seconds):", end-start)
     raise Exception("CODE STOPS HERE")
     
     #########################################

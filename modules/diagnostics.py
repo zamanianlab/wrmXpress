@@ -2,8 +2,7 @@ from PIL import Image
 import cv2
 import os
 import re
-from pathlib import Path
-from modules.preprocessing.image_processing import stitch, extract_well_name
+from modules.preprocessing.image_processing import stitch, extract_well_name, well_idx_to_name
 import numpy as np
 
 # stitches all selected wells from timepoint 1 into diagnostic image of plate and saves it in 'output/dx' for each wavelength
@@ -26,23 +25,75 @@ def static_dx(g, rescale_factor, timepoint=1):
     # images has a key of wavelength number and value of list of all the corresponding files for that wavelength number
     images = __group_images(g, current_dir)
 
-    # create output directory if it doesn't already exist for static_dx
+    # create 'output/dx' directory if it doesn't already exist
     out_dir = os.path.join(g.output, 'dx')
     os.makedirs(out_dir, exist_ok=True)
 
     # stitch images for each wavelength and save them in the output folder
     for wavelength_num, image_paths in images.items():
         dx_image = __stitch_plate(g, image_paths, rescale_factor)
-        outpath = Path.home().joinpath(out_dir, g.plate + f'_w{wavelength_num}_dx.TIF')
+        outpath = os.path.join(out_dir, g.plate + f'_w{wavelength_num}_dx.TIF')
         dx_image.save(outpath)
 
 def video_dx(g, rescale_factor):
-    if g.time_points == 1:
-        static_dx(g, rescale_factor)
-    # TODO: if all wells selected, generate video of whole plate across all timepoints
+    # if all wells selected, generate video of whole plate across all timepoints
     if g.wells == ['All']:
-        # stitch wells from each timepoint and append to list
-        pass
+        # if images are at the site level, they must be stitched first and placed in generated 'work/dx' folder
+        if g.mode == 'multi-site' and g.stitch == False:
+            stitch(g, dx='static')
+            base_dir = os.path.join(g.work, 'dx')
+        else:
+            base_dir = g.plate_dir
+        
+        # ensure that current directory is valid
+        if not os.path.isdir(base_dir):
+            print(base_dir)
+            raise ValueError("Path is not a directory.")
+
+        # create 'output/dx' directory if it doesn't already exist
+        out_dir = os.path.join(g.output, 'dx')
+        os.makedirs(out_dir, exist_ok=True)
+
+        # create a dictionary where the key is wavelength number and the value is the list holding the path of every frame of that wavelength for the entire plate
+        frames = {}
+        # populate dictionary
+        for timepoint in range(g.time_points):
+            current_dir = os.path.join(base_dir, f'TimePoint_{timepoint + 1}')
+            # stitch wells into plates for each wavelength and save them in the work folder
+            for wavelength in range(g.n_waves):
+                # loop through individual wells and stitch them into full plate image
+                current_frame = []
+                for row in range(g.rows):
+                    for col in range(g.cols):
+                        # generate well id
+                        well_id = well_idx_to_name(g, row, col)
+                        # get path of current image of well
+                        img_path = os.path.join(current_dir, g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                        # add well to current frame
+                        current_frame.append(img_path)
+                # stitch current frame and save it in work/video_dx
+                dx_image = __stitch_plate(g, current_frame, rescale_factor)
+                # create 'video_dx' directory in work if it doesn't already exist
+                out_dir = os.path.join(g.work, 'video_dx', f'TimePoint_{timepoint + 1}')
+                os.makedirs(out_dir, exist_ok=True)
+                # save current frame in 'work/video_dx' and append its outpath to frames
+                outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.TIF')
+                dx_image.save(outpath)
+                # create key-value pair if it doesn't exist
+                if wavelength not in frames:
+                    frames[wavelength] = []
+                # add current frame path to list for corresponding wavelength
+                frames[wavelength].append(outpath)
+
+        # create 'output/dx' directory if it doesn't already exist
+        out_dir = os.path.join(g.output, 'dx')
+        os.makedirs(out_dir, exist_ok=True)
+        
+        # for each wavelength, create and save the video in 'output/dx'
+        for wavelength in range(g.n_waves):
+            outpath = outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.AVI')
+            __create_video(frames[wavelength], outpath)
+        
     # TODO: if specific wells selected, generate videos of selected wells across all timepoints
     else:
         pass
@@ -77,11 +128,12 @@ def __group_images(g, current_dir):
     return images
 
 # takes a list of image paths and stitches all the specified wells together
+# returns a PIL image
 def __stitch_plate(g, image_paths, rescale_factor):
     # create an empty plate image based on the size of the well images (rescaled if required)
     first_image = __rescale_image(image_paths[0], rescale_factor)
-    height = first_image.size[0]
-    width = first_image.size[1]
+    width = first_image.size[0]
+    height = first_image.size[1]
     rows = g.rows
     cols = g.cols
     plate_image = Image.new('I;16', (cols * width, rows * height), 0)
@@ -113,8 +165,8 @@ def __rescale_image(image_path, rescale_factor):
         if rescale_factor <=0 or rescale_factor > 1:
             raise ValueError("Rescale factor cannot be less than or equal to 0 or greater than 1.")
         # if rescale factor is 1, do not do anything
-        elif rescale_factor == 1:
-            return img
+        # elif rescale_factor == 1:
+        #     return img
         # rescale the image
         else:
             size = ((np.array(img.size) * rescale_factor).astype(int))
@@ -122,28 +174,55 @@ def __rescale_image(image_path, rescale_factor):
 
     return rescaled_image
 
-# converts a list of TIFs to an AVI video and saves it in the 'output/dx' folder
-def __tif_to_avi(g, image_paths, wavelength_num, fps=30):
-    """
-    Convert a list of TIF images to an AVI video.
+# converts a list of image paths to an AVI video and saves it in the 'output/dx' folder
+def create_video(image_paths, output_video_path, duration=15):
+    # Check if duration is specified in seconds
+    if not isinstance(duration, (int, float)) or duration <= 0:
+        raise ValueError("Duration must be a positive number in seconds.")
 
-    fps (int, optional): Frames per second for the output video. Default is 30.
-    """
+    # Read the first image to get dimensions
+    first_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED)
+    height, width = first_image.shape[:2]
 
-    outpath = Path.home().joinpath(g.output, g.plate + f'_w{wavelength_num}_dx.TIF')
+    # Define the codec and create a VideoWriter object
+    fourcc = 0
+    fps = len(image_paths) / duration
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
-    # get the first image to extract dimensions
-    first_image = cv2.imread(image_paths[0])
-    height, width, _ = first_image.shape
-
-    # define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    video = cv2.VideoWriter(outpath, fourcc, fps, (width, height))
-
-    # iterate through each image and add it to the video
+    # Iterate over image paths, convert to 8-bit, and add them to the video
     for image_path in image_paths:
-        image = cv2.imread(image_path)
-        video.write(image)
+        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        # Normalize pixel values to fit into 8-bit range
+        img_normalized = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        # Convert to 3-channel (grayscale to BGR)
+        img_bgr = cv2.cvtColor(img_normalized, cv2.COLOR_GRAY2BGR)
+        video_writer.write(img_bgr)
 
-    # release the video writer
-    video.release()
+    # Release the VideoWriter and close all windows
+    video_writer.release()
+    cv2.destroyAllWindows()
+
+def __create_video(image_paths, output_video_path, duration=15):
+    # Check if duration is specified in seconds
+    if not isinstance(duration, (int, float)) or duration <= 0:
+        raise ValueError("Duration must be a positive number in seconds.")
+
+    # Read the first image to get dimensions
+    first_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED)
+    height, width = first_image.shape[:2]
+
+    # Define the codec and create a VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    fps = len(image_paths) / duration
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height), isColor=False)
+
+    # Iterate over image paths, convert to 8-bit, and add them to the video
+    for image_path in image_paths:
+        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        # Normalize pixel values to fit into 8-bit range
+        img_normalized = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        video_writer.write(img_normalized)
+
+    # Release the VideoWriter and close all windows
+    video_writer.release()
+    cv2.destroyAllWindows()
