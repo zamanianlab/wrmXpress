@@ -123,7 +123,7 @@ def stitch(g, dx=None):
                 os.makedirs(out_dir, exist_ok=True)
 
                 # save image in 'work/dx'
-                outpath = os.path.join(out_dir, g.plate + f'_{file_info[0]}_w{file_info[1]}.TIF')
+                outpath = os.path.join(out_dir, g.plate_short + f'_{file_info[0]}_w{file_info[1]}.TIF')
                 stitched_image.save(outpath)
             # else apply mask and save in input folder
             else:

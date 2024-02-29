@@ -102,14 +102,14 @@ def __save_frames(g, base_dir, rescale_factor, dx):
             dx_image = __stitch_plate(g, current_frame, rescale_factor)
             # if static_dx save frame in 'output/dx' and skip over to next wavelength
             if dx == 'static':
-                outpath = os.path.join(g.output, 'dx', g.plate + f'_w{wavelength + 1}_dx.TIF')
+                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_w{wavelength + 1}_dx.TIF')
                 dx_image.save(outpath)
                 continue
             # create 'video_dx' directory in work if it doesn't already exist
             out_dir = os.path.join(g.work, 'video_dx', f'TimePoint_{timepoint + 1}')
             os.makedirs(out_dir, exist_ok=True)
             # save current frame in 'work/video_dx' and append its outpath to frames
-            outpath = os.path.join(out_dir, g.plate + f'_w{wavelength + 1}_dx.TIF')
+            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.TIF')
             dx_image.save(outpath)
             # create key-value pair if it doesn't exist
             if wavelength not in frames:
