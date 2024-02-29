@@ -34,16 +34,18 @@ def video_dx(g, rescale_factor):
     else:
         base_dir = g.plate_dir
 
+    # ensure that current directory is valid
+    if not os.path.isdir(base_dir):
+        print(base_dir)
+        raise ValueError("Path is not a directory.")
+    
+    # create 'output/dx' directory if it doesn't already exist
+    os.makedirs(os.path.join(g.output, 'dx'), exist_ok=True)
+
     # if all wells selected, generate video of whole plate across all timepoints
     if g.wells == ['All']:
-        # ensure that current directory is valid
-        if not os.path.isdir(base_dir):
-            print(base_dir)
-            raise ValueError("Path is not a directory.")
-
-        # create 'output/dx' directory if it doesn't already exist
-        os.makedirs(os.path.join(g.output, 'dx'), exist_ok=True)
-
+        # create frames and store paths to frames in dictionary
+        # e.g. frames[0] = ['{path}/work/video_dx/TimePoint_1/20230511-p09-KTR_2789_w1_dx.TIF', '{path}/work/video_dx/TimePoint_2/20230511-p09-KTR_2789_w1_dx.TIF']
         frames = __save_frames(g, base_dir, rescale_factor, 'video')
         
         # set output directory
