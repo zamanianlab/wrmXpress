@@ -51,8 +51,7 @@ def video_dx(g, rescale_factor):
             raise ValueError("Path is not a directory.")
 
         # create 'output/dx' directory if it doesn't already exist
-        out_dir = os.path.join(g.output, 'dx')
-        os.makedirs(out_dir, exist_ok=True)
+        os.makedirs(os.path.join(g.output, 'dx'), exist_ok=True)
 
         # create a dictionary where the key is wavelength number and the value is the list holding the path of every frame of that wavelength for the entire plate
         frames = {}
@@ -85,11 +84,10 @@ def video_dx(g, rescale_factor):
                     frames[wavelength] = []
                 # add current frame path to list for corresponding wavelength
                 frames[wavelength].append(outpath)
-
-        # create 'output/dx' directory if it doesn't already exist
-        out_dir = os.path.join(g.output, 'dx')
-        os.makedirs(out_dir, exist_ok=True)
         
+        # set output directory
+        out_dir = os.path.join(g.output, 'dx')
+
         # for each wavelength, create and save the video in 'output/dx'
         for wavelength in range(g.n_waves):
             outpath = outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.AVI')
@@ -98,6 +96,39 @@ def video_dx(g, rescale_factor):
     # TODO: if specific wells selected, generate videos of selected wells across all timepoints
     else:
         pass
+
+def __save_frames(g, base_dir, rescale_factor, dx):
+    # create a dictionary where the key is wavelength number and the value is the list holding the path of every frame of that wavelength for the entire plate
+    frames = {}
+    # create frames - save them in 'work/video_dx' and save paths for frames in dictionary
+    # populate dictionary
+    for timepoint in range(g.time_points):
+        current_dir = os.path.join(base_dir, f'TimePoint_{timepoint + 1}')
+        # stitch wells into plates for each wavelength and save them in the work folder
+        for wavelength in range(g.n_waves):
+            # loop through individual wells and stitch them into full plate image
+            current_frame = []
+            for row in range(g.rows):
+                for col in range(g.cols):
+                    # generate well id
+                    well_id = well_idx_to_name(g, row, col)
+                    # get path of current well image
+                    img_path = os.path.join(current_dir, g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                    # add well to current frame
+                    current_frame.append(img_path)
+            # stitch current frame and save it in work/video_dx
+            dx_image = __stitch_plate(g, current_frame, rescale_factor)
+            # create 'video_dx' directory in work if it doesn't already exist
+            out_dir = os.path.join(g.work, 'video_dx', f'TimePoint_{timepoint + 1}')
+            os.makedirs(out_dir, exist_ok=True)
+            # save current frame in 'work/video_dx' and append its outpath to frames
+            outpath = os.path.join(out_dir, g.plate + f'_w{wavelength + 1}_dx.TIF')
+            dx_image.save(outpath)
+            # create key-value pair if it doesn't exist
+            if wavelength not in frames:
+                frames[wavelength] = []
+            # add current frame path to list for corresponding wavelength
+            frames[wavelength].append(outpath)
 
 # given a timepoint directory, group images by wavelength number (e.g. all wells with 'w2' will be placed in the same list together in a dictionary where the key is the wavelength number)
 # only include selected wells as in g.wells

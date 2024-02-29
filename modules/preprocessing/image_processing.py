@@ -191,6 +191,7 @@ def extract_well_name(well_string):
         # return None if the pattern doesn't match
         return None, None, None, None
 
+# converts a row number and column number to well name - e.g. row 1, column 2 (where row and column are 0-indexed) will return 'B03'
 def well_idx_to_name(g, row, col):
     # generate letter
     letter = chr(row + 65)
