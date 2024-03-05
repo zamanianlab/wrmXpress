@@ -95,7 +95,7 @@ if __name__ == "__main__":
             wells = [well.replace('TIF', 'tif') for well in wells]
             g = g._replace(wells=wells)
             
-            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
+            cellpose_command = 'python -u -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
             os.mkdir("{}/cellpose_masks".format(g.output))
@@ -108,7 +108,7 @@ if __name__ == "__main__":
         print('Generating file list for CellProfiler.')
         subprocess.run(fl_command_split)
 
-        cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file={}/image_paths_{}.csv'.format(
+        cellprofiler_command = 'cellprofiler -L INFO -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file={}/image_paths_{}.csv'.format(
             pipeline, g.input, pipeline)
         cellprofiler_command_split = shlex.split(cellprofiler_command)
         print('Starting CellProfiler.')
