@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         if 'cellpose' in pipeline:
             # rename TIF to tif to work with cellpose
-            for filepath in Path('input/{}/TimePoint_1'.format(g.plate)).glob('**/*'):
+            for filepath in Path('{}/{}/TimePoint_1'.format(g.input, g.plate)).glob('**/*'):
                 os.rename(filepath, str(filepath).replace('TIF', 'tif'))
             wells = [well.replace('TIF', 'tif') for well in wells]
             g = g._replace(wells=wells)

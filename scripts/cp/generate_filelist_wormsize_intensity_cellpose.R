@@ -14,9 +14,6 @@ image_dir <- stringr::str_c(input, plate, sep = "/")
 input_raw <- list.files(path = image_dir, pattern = ".*tif$", recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 input_mask <- list.files(path = image_dir, pattern = ".*png$", recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- "well_mask.png"
-print(input_mask)
-
-wd <- getwd() %>% str_remove(., "^/")
 
 load_csv <- dplyr::tibble(
   Group_Number = 1,
