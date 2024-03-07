@@ -184,7 +184,8 @@ if __name__ == "__main__":
         outpath = g.output.joinpath('data', g.plate + '_data' + ".csv")
         df.to_csv(path_or_buf=outpath, index_label='well')
 
-        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(g.plate, g.rows, g.columns)
+        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {} {}'.format(g.input, g.plate, g.rows, g.columns)
+        print("Joining metadata and tidying output.")
         md_command_split = shlex.split(md_command)
         subprocess.run(md_command_split)
 
