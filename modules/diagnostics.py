@@ -53,12 +53,20 @@ def video_dx(g, rescale_factor):
 
         # for each wavelength, create and save the video in 'output/dx'
         for wavelength in range(g.n_waves):
-            outpath = outpath = os.path.join(out_dir, g.plate + f'_w{wavelength + 1}_dx.AVI')
+            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.AVI')
             __create_video(frames[wavelength], outpath)
         
-    # TODO: if specific wells selected, generate videos of selected wells across all timepoints
+    # if specific wells selected, generate videos of selected wells across all timepoints
     else:
-        pass
+        # for each selected well, store all frames in list and create video
+        for well in g.wells:
+            frames = []
+            for wavelength in range(g.n_waves):
+                for timepoint in range(g.time_points):
+                    img_path = os.path.join(base_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well}_w{wavelength + 1}.TIF')
+                    frames.append(img_path)
+                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_{well}_w{wavelength + 1}_dx.AVI')
+                __create_video(frames, outpath)
 
 # combine wells into full plate images (referred to as a frame)
 # if static_dx, save first frame in 'output/dx' and return empty dictionary
