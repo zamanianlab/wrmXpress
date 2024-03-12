@@ -56,6 +56,9 @@ def grid_crop(g):
         for current in original_images:
             # get path of current image
             current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
+            # skip over if file does not exist
+            if not os.path.exists(current_path):
+                continue
 
             # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
             # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
@@ -75,8 +78,6 @@ def grid_crop(g):
                         outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
                     else:
                         outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_w{wavelength}.TIF')
-                    # original:
-                    # cv2.imwrite(str(outpath), individual_wells[i * cols_per_image + j])
                     if g.circle_diameter != 'NA':
                         __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
                     elif g.square_side != 'NA':
@@ -157,6 +158,9 @@ def apply_masks(g):
                     well_id = well_idx_to_name(g, row, col)
                     # get path of current image
                     img_path = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                    # skip over path if it does not exist
+                    if not os.path.exists(img_path):
+                        continue
                     # open current image, apply mask, and save
                     with Image.open(img_path) as img:
                         if g.circle_diameter != 'NA':

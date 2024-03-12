@@ -102,8 +102,10 @@ def __save_frames(g, base_dir, rescale_factor, dx):
                     if wells and well_id not in wells:
                         continue
                     # get path of current well image
-                    # TODO: check whether g.plate or g.plate_short
                     img_path = os.path.join(current_dir, g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                    # if file doesn't exist, skip over it
+                    if not os.path.exists(img_path):
+                        continue
                     # add well to current frame
                     current_frame.append(img_path)
             # stitch current_frame into full plate image
