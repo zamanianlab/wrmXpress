@@ -19,9 +19,10 @@ from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
 from modules.parse_htd import parse_htd
-from modules.crop_wells import auto_crop, grid_crop
+from modules.crop_wells import auto_crop, grid_crop, reconfigure_avi
 from modules.parse_yaml import parse_yaml
 from modules.fecundity import fecundity
+from modules.tracking import tracking
 
 
 if __name__ == "__main__":
@@ -43,10 +44,13 @@ if __name__ == "__main__":
     if g.file_structure == 'imagexpress':
         g = parse_htd(g, g_class)
     else:
-         # crops_wells will write images in IX format to input/ and create an HTD
-        if g.well_detection == 'auto':
+         # reconfigure AVI to IX format in input/ and create an HTD
+        if g.mode == 'single-well':
+            g = g._replace(image_n_row=1, image_n_col=1)
+            reconfigure_avi(g)
+        elif g.mode == 'multi-well' and g.well_detection == 'auto':
             auto_crop(g)
-        elif g.well_detection == 'grid':
+        elif g.mode == 'multi-well' and g.well_detection == 'grid':
             grid_crop(g)
         else:
             raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode.')
@@ -169,6 +173,14 @@ if __name__ == "__main__":
                     cols.append('progeny_area')
                 out_dict[well].append(progeny_area)
                 print('{}: module \'fecundity\' finished'.format(well))
+
+            if 'tracking' in modules.keys():
+                video = convert_video(g, well, well_paths, False, 1)
+                tracks = tracking(g, well, video)
+                if 'tracks' not in cols:
+                    cols.append('tracks')
+                out_dict[well].append(tracks)
+                print('{}: module \'tracking\' finished'.format(well))
 
         ##################################
         ######### 6. WRITE DATA  #########
