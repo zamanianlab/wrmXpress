@@ -1,5 +1,6 @@
 from pathlib import Path
 from string import ascii_uppercase
+import os
 import cv2
 import numpy as np
 import pandas as pd
@@ -210,23 +211,56 @@ def grid_crop(g):
 
     create_htd(g, vid_array, well_names)
 
+def reconfigure_avi(g):
 
-def create_htd(g, array, df):
+    # get all the well AVIs in input
+    avi_files = [f for f in os.listdir(Path.home().joinpath(g.plate_dir)) if f.endswith('.avi')]
+    for vid in avi_files:
+        vid_path = Path.home().joinpath(g.plate_dir, vid)
 
-    # make HTD for non-IX data
+        print(f"Reconfiguring {vid_path}")
+        vid = cv2.VideoCapture(str(vid_path))
+        ret = True
+        frames = []
+        while ret:
+            ret, img = vid.read()
+            if ret:
+                frames.append(img)
+    
+        well = str(vid_path.stem).replace(g.plate_short + "_", "")
+
+        for timepoint in range(1, len(frames) + 1, 1):
+            g.plate_dir.joinpath(
+                'TimePoint_' + str(timepoint)).mkdir(parents=True, exist_ok=True)
+            outpath = g.plate_dir.joinpath(
+                'TimePoint_' + str(timepoint), g.plate + '_' + well + '.TIF')
+            cv2.imwrite(str(outpath), frames[timepoint - 1])
+    
+    create_htd(g, frames)
+
+
+def create_htd(g, array, df=None):
+
     lines = []
     lines.append('"Description", ' + "AVI" + "\n")
-    lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
-    lines.append('"XWells", ' + str(len(pd.unique(df['col']))) + "\n")
-    lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")
     lines.append('"XSites", ' + "1" + "\n")
     lines.append('"YSites", ' + "1" + "\n")
     lines.append('"NWavelengths", ' + "1" + "\n")
     lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
 
+    if g.mode == 'multi-well':
+        lines.append('"XWells", ' + str(len(pd.unique(df['col']))) + "\n")
+        lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")
+        lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
+    elif g.mode == 'single-well':
+        lines.append('"XWells", ' + "12" + "\n")
+        lines.append('"YWells", ' + "8" + "\n")
+        lines.append('"TimePoints", ' + str(len(array)) + "\n")
+    
     htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
+    
 
 
 def generate_well_names(coords, nrow, ncol):
