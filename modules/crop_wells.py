@@ -253,8 +253,8 @@ def create_htd(g, array, df=None):
         lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")
         lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
     elif g.mode == 'single-well':
-        lines.append('"XWells", ' + "1" + "\n")
-        lines.append('"YWells", ' + "1" + "\n")
+        lines.append('"XWells", ' + "12" + "\n")
+        lines.append('"YWells", ' + "8" + "\n")
         lines.append('"TimePoints", ' + str(len(array)) + "\n")
     
     htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')

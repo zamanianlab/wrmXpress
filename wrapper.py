@@ -179,14 +179,19 @@ if __name__ == "__main__":
                 tracks = tracking(g, well, video)
                 if 'tracks' not in cols:
                     cols.append('tracks')
-                out_dict[well].append(tracks)
+                out_dict[well] = (tracks)
                 print('{}: module \'tracking\' finished'.format(well))
 
         ##################################
         ######### 6. WRITE DATA  #########
         ##################################
-
-        df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
+        
+        if 'tracks' in cols:
+            dfs = [df.assign(well=key) for key, df in out_dict.items()]
+            df = pd.concat(dfs)
+            df.set_index('well', inplace=True)
+        else:
+            df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
         g.output.joinpath('data').mkdir(parents=True, exist_ok=True)
         outpath = g.output.joinpath('data', g.plate + '_data' + ".csv")
         df.to_csv(path_or_buf=outpath, index_label='well')
@@ -224,6 +229,8 @@ if __name__ == "__main__":
             dx_types.append('filtered')
         elif 'fecundity' in modules and g.species == 'Bma':
             dx_types.append('binary')
+        if 'tracking' in modules:
+            dx_types.append('tracks')
         for type in dx_types:
             print("Generating {} thumbnails".format(type))
             generate_thumbnails(g, type)
