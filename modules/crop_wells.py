@@ -236,10 +236,10 @@ def reconfigure_avi(g):
                 'TimePoint_' + str(timepoint), g.plate + '_' + well + '.TIF')
             cv2.imwrite(str(outpath), frames[timepoint - 1])
     
-    create_htd(g, frames)
+    create_htd(g, len(frames))
 
 
-def create_htd(g, array, df=None):
+def create_htd(g, len_frames, df=None):
 
     lines = []
     lines.append('"Description", ' + "AVI" + "\n")
@@ -251,11 +251,11 @@ def create_htd(g, array, df=None):
     if g.mode == 'multi-well':
         lines.append('"XWells", ' + str(len(pd.unique(df['col']))) + "\n")
         lines.append('"YWells", ' + str(len(pd.unique(df['row']))) + "\n")
-        lines.append('"TimePoints", ' + str(array.shape[0]) + "\n")
+        lines.append('"TimePoints", ' + str(len_frames) + "\n")
     elif g.mode == 'single-well':
         lines.append('"XWells", ' + "12" + "\n")
         lines.append('"YWells", ' + "8" + "\n")
-        lines.append('"TimePoints", ' + str(len(array)) + "\n")
+        lines.append('"TimePoints", ' + str(len_frames) + "\n")
     
     htd_path = g.plate_dir.joinpath(g.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:

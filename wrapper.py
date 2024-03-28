@@ -19,7 +19,7 @@ from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
 from modules.parse_htd import parse_htd
-from modules.crop_wells import auto_crop, grid_crop, reconfigure_avi
+from modules.crop_wells import auto_crop, grid_crop, reconfigure_avi, create_htd
 from modules.parse_yaml import parse_yaml
 from modules.fecundity import fecundity
 from modules.tracking import tracking
@@ -45,9 +45,12 @@ if __name__ == "__main__":
         g = parse_htd(g, g_class)
     else:
          # reconfigure AVI to IX format in input/ and create an HTD
-        if g.mode == 'single-well':
+        if g.mode == 'single-well' and 'motility' in modules.keys():
             g = g._replace(image_n_row=1, image_n_col=1)
             reconfigure_avi(g)
+        elif g.mode == 'single-well' and 'tracking' in modules.keys():
+            g = g._replace(image_n_row=1, image_n_col=1)
+            create_htd(g, 0)
         elif g.mode == 'multi-well' and g.well_detection == 'auto':
             auto_crop(g)
         elif g.mode == 'multi-well' and g.well_detection == 'grid':
