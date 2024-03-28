@@ -21,6 +21,13 @@ def tracking(g, well, video):
     print(f'Tracking well {well}.')
 
     length, width, height = video.shape
+    first_frame = video[0]
+    g.work.joinpath(g.plate, well, 'img').mkdir(
+        parents=True, exist_ok=True)
+    workpath = g.work.joinpath(g.plate, well, 'img')
+    png_work = g.work.joinpath(workpath,
+                           g.plate + "_" + well + '.png')
+    cv2.imwrite(str(png_work), first_frame)
 
     print('Generating background.')
     background = np.median(video, axis=0)
@@ -34,6 +41,8 @@ def tracking(g, well, video):
     g.output.joinpath('tracks').mkdir(
         parents=True, exist_ok=True)
     outpath = g.output.joinpath('tracks')
+    g.work.joinpath(g.plate, well, 'img').mkdir(
+        parents=True, exist_ok=True)
     workpath = g.work.joinpath(g.plate, well, 'img')
     track_png_out = g.output.joinpath(outpath,
                                   g.plate + "_" + well + "_tracks.png")
