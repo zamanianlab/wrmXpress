@@ -2,7 +2,7 @@ from PIL import Image
 import cv2
 import os
 import re
-from modules.preprocessing.image_processing import stitch, extract_well_name, well_idx_to_name
+from preprocessing.image_processing import stitch, extract_well_name, well_idx_to_name
 import numpy as np
 
 # stitches all selected wells from timepoint 1 into diagnostic image of plate and saves it in 'output/dx' for each wavelength

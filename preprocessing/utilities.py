@@ -1,8 +1,9 @@
 import yaml
 import os
 import re
-
 from pathlib import Path
+
+from preprocessing.image_processing import well_idx_to_name
 
 # parses yaml
 def parse_yaml(arg_parser, g_class):
@@ -180,3 +181,16 @@ def rename_files(g):
                 continue
             outpath = current_path[:-4] + '_w1.TIF'
             os.rename(current_path, outpath)
+
+# create list of selected wells (specifically for 'All' wells selected)
+def get_wells(g):
+    wells = []
+    if g.wells == ['All']:
+        for row in range(g.rows):
+            for col in range(g.cols):
+                well_id = well_idx_to_name(g, row, col)
+                wells.append(well_id)
+    else:
+        wells = g.wells
+
+    return wells

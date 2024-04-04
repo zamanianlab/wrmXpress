@@ -10,10 +10,11 @@ from collections import defaultdict
 from collections import namedtuple
 import time
 
-from modules.preprocessing.utilities import parse_yaml, parse_htd, rename_files
-from modules.preprocessing.image_processing import avi_to_ix, grid_crop, stitch, apply_masks
-from modules.diagnostics import static_dx, video_dx
-from modules.get_wells import get_wells
+from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
+from preprocessing.image_processing import avi_to_ix, grid_crop, stitch, apply_masks
+from pipelines.diagnostics import static_dx, video_dx
+from pipelines.optical_flow import optical_flow
+# from modules.get_wells import get_wells
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
 from modules.dense_flow import dense_flow
@@ -80,6 +81,18 @@ if __name__ == "__main__":
     # generate video_dx
     if 'video_dx' in modules:
         video_dx(g, modules['video_dx']['rescale_multiplier'])
+
+    #################################
+    ######### 4. PIPELINES  #########
+    #################################
+
+    # get wells/sites to be used    
+    wells = get_wells(g)
+
+    # run pipelines
+    if 'optical_flow' in modules:
+        total_mag = optical_flow(g, wells, modules['optical_flow'])
+        print("Total magnitude:", total_mag)
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)
