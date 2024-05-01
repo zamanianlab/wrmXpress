@@ -188,9 +188,22 @@ def get_wells(g):
     if g.wells == ['All']:
         for row in range(g.rows):
             for col in range(g.cols):
-                well_id = well_idx_to_name(g, row, col)
-                wells.append(well_id)
+                # if site-level, include sites (e.g. A01_s1)
+                if g.mode == 'multi-site' and g.stitch == False:
+                    for site in range(g.x_sites * g.y_sites):
+                        well_id = well_idx_to_name(g, row, col) + f'_s{site + 1}'
+                        wells.append(well_id)
+                else:
+                    well_id = well_idx_to_name(g, row, col)
+                    wells.append(well_id)
     else:
-        wells = g.wells
+        if g.mode == 'multi-site' and g.stitch == False:
+            # if site-level, include sites (e.g. A01_s1)
+            for well in g.wells:
+                for site in range(g.x_sites * g.y_sites):
+                    well_id = well + f'_s{site + 1}'
+                    wells.append(well_id)
+        else:
+            wells = g.wells
 
     return wells
