@@ -15,20 +15,24 @@ def optical_flow(g, wells, options, multiplier=2):
             # create empty list to store magnitude arrays
             all_mag = []
 
+            # read first frame
+            frame1 = cv2.imread(os.path.join(g.plate_dir, f'TimePoint_1', f'{g.plate_short}_{well}_w{wavelength + 1}.TIF'), cv2.IMREAD_ANYDEPTH).astype('uint16')
+            
             # loop through all timepoints
             for timepoint in range(g.time_points - 1):
                 # get path of frame 1 and frame 2
-                frame1 = cv2.imread(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', f'{g.plate_short}_{well}_w{wavelength + 1}.TIF'))
-                frame2 = cv2.imread(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 2}', f'{g.plate_short}_{well}_w{wavelength + 1}.TIF'))
+                # frame1 = cv2.imread(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', f'{g.plate_short}_{well}_w{wavelength + 1}.TIF'), cv2.IMREAD_ANYDEPTH)
+                frame2 = cv2.imread(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 2}', f'{g.plate_short}_{well}_w{wavelength + 1}.TIF'), cv2.IMREAD_ANYDEPTH).astype('uint16')
 
                 # convert frames to grayscale
-                frame1_gray = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-                frame2_gray = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+                # frame1_gray = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+                # frame2_gray = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
                 # frame1_gray = frame1.astype('uint16')
                 # frame2_gray = frame2.astype('uint16')
 
                 # calculate optical flow
-                flow = cv2.calcOpticalFlowFarneback(frame1_gray, frame2_gray, None, options['levels'], options['winsize'], options['iterations'], options['poly_n'], options['poly_sigma'], options['flow'], options['flags'])
+                # flow = cv2.calcOpticalFlowFarneback(frame1, frame2, options['flow'], options['pyrScale'], options['levels'], options['winsize'], options['iterations'], options['poly_n'], options['poly_sigma'], options['flags'])
+                flow = cv2.calcOpticalFlowFarneback(frame1, frame2, None, 0.9, 10,  2, 7, 1, 0.7, 0)
 
                 # calculate magnitude of optical flow vectors
                 magnitude = np.sqrt(flow[..., 0]**2 + flow[..., 1]**2)
@@ -38,6 +42,8 @@ def optical_flow(g, wells, options, multiplier=2):
 
                 # store magnitude array in all_mag
                 all_mag.append(magnitude)
+
+                frame1 = frame2
         
             # calculate total flow across the entire array
             sum_img = np.sum(all_mag, axis=0)
@@ -57,6 +63,7 @@ def optical_flow(g, wells, options, multiplier=2):
                 print("Something went wrong.")
 
             sum_blur = ndimage.filters.gaussian_filter(sum_img, 1.5)
+            # sum_blur = ndimage.filters.gaussian_filter(sum_img, 30)
             # sum_blur = cv2.GaussianBlur(sum_img.astype('uint8'), (0, 0), 1.5)
 
             # HSV colourmap

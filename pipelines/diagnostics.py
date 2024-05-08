@@ -53,7 +53,7 @@ def video_dx(g, rescale_factor):
 
         # for each wavelength, create and save the video in 'output/dx'
         for wavelength in range(g.n_waves):
-            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.AVI')
+            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}.AVI')
             __create_video(frames[wavelength], outpath)
         
     # if specific wells selected, generate videos of selected wells across all timepoints
@@ -65,7 +65,7 @@ def video_dx(g, rescale_factor):
                 for timepoint in range(g.time_points):
                     img_path = os.path.join(base_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well}_w{wavelength + 1}.TIF')
                     frames.append(img_path)
-                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_{well}_w{wavelength + 1}_dx.AVI')
+                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_{well}_w{wavelength + 1}.AVI')
                 __create_video(frames, outpath)
 
 # combine wells into full plate images (referred to as a frame)
@@ -112,14 +112,14 @@ def __save_frames(g, base_dir, rescale_factor, dx):
             dx_image = __stitch_plate(g, current_frame, rescale_factor)
             # if static_dx save frame in 'output/dx' and skip over to next wavelength
             if dx == 'static':
-                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_w{wavelength + 1}_dx.TIF')
+                outpath = os.path.join(g.output, 'dx', g.plate_short + f'_w{wavelength + 1}.TIF')
                 dx_image.save(outpath)
                 continue
             # create 'video_dx' directory in work if it doesn't already exist
             out_dir = os.path.join(g.work, 'video_dx', f'TimePoint_{timepoint + 1}')
             os.makedirs(out_dir, exist_ok=True)
             # save current frame in 'work/video_dx' and append its outpath to frames
-            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}_dx.TIF')
+            outpath = os.path.join(out_dir, g.plate_short + f'_w{wavelength + 1}.TIF')
             dx_image.save(outpath)
             # create key-value pair if it doesn't exist
             if wavelength not in frames:
