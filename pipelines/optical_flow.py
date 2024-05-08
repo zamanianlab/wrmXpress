@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import os
 from scipy import ndimage
+from matplotlib import cm
+from PIL import Image
 
 def optical_flow(g, wells, options, multiplier=2):
     total_mag = 0
@@ -54,12 +56,31 @@ def optical_flow(g, wells, options, multiplier=2):
             else:
                 print("Something went wrong.")
 
-            # sum_blur = ndimage.filters.gaussian_filter(sum_img, 1.5)
-            sum_blur = cv2.GaussianBlur(sum_img.astype('uint8'), (0, 0), 1.5)
+            sum_blur = ndimage.filters.gaussian_filter(sum_img, 1.5)
+            # sum_blur = cv2.GaussianBlur(sum_img.astype('uint8'), (0, 0), 1.5)
+
+            # HSV colourmap
+            # flow_colour = flow_to_colour(flow, sum_blur)
+
+            # PIL colourmap
+            new_im = np.asarray(sum_blur) / 255
+            sum_blur_colour = Image.fromarray(np.uint8(cm.inferno(new_im) * 255))
+
+            # cv2 colourmap
+            # im_color = cv2.applyColorMap(sum_blur, cv2.COLORMAP_INFERNO)
+            
             out_dir = os.path.join(g.work, 'optical_flow')
             os.makedirs(out_dir, exist_ok=True)
             outpath = os.path.join(out_dir, f'{g.plate_short}_{well}_w{wavelength + 1}.png')
-            cv2.imwrite(outpath, sum_blur.astype('uint8'))
+
+            # PIL
+            sum_blur_colour.save(outpath)
+
+            # cv2
+            # cv2.imwrite(outpath, im_color.astype('uint8'))
+
+            # HSV
+            # cv2.imwrite(outpath, flow_colour)
 
             # # apply Gaussian blur
             # sum_blur = cv2.GaussianBlur(sum_img.astype('uint8'), (0, 0), 1.5)
@@ -87,3 +108,28 @@ def contrast_stretching(image):
     stretched_image = stretched_image.astype(np.uint8)
 
     return stretched_image
+
+def flow_to_colour(flow, sum_blur):
+    # Calculate magnitude and angle of optical flow vectors
+    magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+
+    # Set hue based on angle (direction) of flow vectors
+    hue = angle * (180 / np.pi / 2)
+
+    # Normalize magnitude to [0, 1]
+    magnitude = cv2.normalize(magnitude, None, 0, 1, cv2.NORM_MINMAX)
+
+    # Normalize blurred sum image to [0, 1]
+    sum_blur = cv2.normalize(sum_blur, None, 0, 1, cv2.NORM_MINMAX)
+
+    # Adjust brightness of color map based on blurred sum image
+    value = magnitude * sum_blur * 255
+
+    # Convert HSV to BGR color space
+    hsv = np.zeros((flow.shape[0], flow.shape[1], 3), dtype=np.uint8)
+    hsv[..., 0] = hue
+    hsv[..., 1] = 255
+    hsv[..., 2] = value.astype(np.uint8)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+    return bgr
