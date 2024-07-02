@@ -1,6 +1,5 @@
 import argparse
 import os
-import re
 import pandas as pd
 import subprocess
 import shlex
@@ -9,50 +8,114 @@ import glob
 from pathlib import Path
 from collections import defaultdict
 from collections import namedtuple
+import time
 
-from modules.parse_yaml import parse_yaml
-from modules.parse_htd import parse_htd
-from modules.get_wells import get_wells
+from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
+from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_timepoints, apply_masks
+from pipelines.diagnostics import static_dx, video_dx
+from pipelines.optical_flow import optical_flow
+
+# OLD IMPORTS, IGNORE FOR NOW
 from modules.get_image_paths import get_image_paths
 from modules.convert_video import convert_video
 from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
-from modules.parse_htd import parse_htd
-from modules.crop_wells import auto_crop, grid_crop
-from modules.parse_yaml import parse_yaml
 from modules.fecundity import fecundity
 
 
 if __name__ == "__main__":
 
+    start = time.time()
+
     # create the class that will instantiate the namedtuple
-    g_class = namedtuple(
-        'g_class', 'mode file_structure well_detection image_n_row image_n_col species stages input work output plate_dir plate plate_short desc time_points columns rows x_sites y_sites n_waves wave_names wells plate_paths')
+    g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols',
+                                     'crop', 'x_sites', 'y_sites', 'stitch', 'input', 'work', 'output',
+                                     'plate_dir', 'plate', 'plate_short', 'wells',
+                                     'circle_diameter', 'square_side',
+                                     'desc', 'time_points', 'n_waves', 'wave_names', 'plate_paths'])
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
     ############################################
+    
     arg_parser = argparse.ArgumentParser()
     g, modules = parse_yaml(arg_parser, g_class)
+    
+    # get wells/sites to be used    
+    wells, well_sites = get_wells(g)
 
+    # print("PLATE PATHS:", g.plate_dir, g.work, g.plate_short, g.plate_short)
+    # raise Exception()
 
     #########################################################
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
     #########################################################
+    
+    # standardise file structure to imageXpress and parse HTD
     if g.file_structure == 'imagexpress':
         g = parse_htd(g, g_class)
-    else:
-         # crops_wells will write images in IX format to input/ and create an HTD
-        if g.well_detection == 'auto':
-            auto_crop(g)
-        elif g.well_detection == 'grid':
-            grid_crop(g)
-        else:
-            raise ValueError('Incompatible well detection mode selected (or none selected with multi-well mode.')
+        # if single wavelength, '_w1' filename will not have '_w1' so it must be added
+        if g.n_waves == 1:
+            rename_files(g)
+    elif g.file_structure == 'avi':
+        # convert avi to tifs and create HTD (done in avi_to_ix)
+        avi_to_ix(g)
         g = parse_htd(g, g_class)
+    else:
+        raise ValueError("Unsupported file structure.")
 
+    # crop/stitch wells if specified and apply mask if required
+    if g.crop == 'grid':
+        grid_crop(g)
+    elif g.crop == 'auto':
+        # auto_crop(g)
+        pass
+    elif g.stitch:
+        # stitch(g)
+        stitch_all_timepoints(g, wells, g.plate_dir, g.plate_dir)
 
+    # # run mask when no cropping or stitching
+    # else:
+    #     apply_masks(g)
+
+    # apply masks if required
+    apply_masks(g)
+
+    ###################################
+    ######### 3. DIAGNOSTICS  #########
+    ###################################
+
+    # generate static_dx
+    if 'static_dx' in modules:
+        static_dx(g, wells,
+                      os.path.join(g.plate_dir, 'TimePoint_1'),
+                      os.path.join(g.output, 'dx'),
+                      os.path.join(g.work, 'dx', 'TimePoint_1'),
+                      modules['static_dx']['rescale_multiplier'])
+    # generate video_dx
+    if 'video_dx' in modules:
+        # video_dx(g, modules['video_dx']['rescale_multiplier'])
+        video_dx(g, wells,
+                     os.path.join(g.plate_dir),
+                     os.path.join(g.output, 'dx'),
+                     os.path.join(g.work, 'dx'),
+                     os.path.join(g.work, 'video_dx'),
+                     modules['video_dx']['rescale_multiplier'])
+
+    #################################
+    ######### 4. PIPELINES  #########
+    #################################
+
+    # run pipelines
+    if 'optical_flow' in modules:
+        total_mag = optical_flow(g, wells, well_sites, modules['optical_flow'])
+        print("Total magnitude:", total_mag)
+
+    end = time.time()
+    print("Time elapsed (seconds):", end-start)
+    raise Exception("CODE STOPS HERE")
+    
     #########################################
     ######### 3. GET WELLS & PATHS  #########
     #########################################
@@ -80,6 +143,17 @@ if __name__ == "__main__":
 
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
+
+    #########################################
+    ############## 4. MASKING  ##############
+    #########################################
+
+    if g.circle_mask:
+        # apply circle mask
+        pass
+    if g.square_mask:
+        # apply square mask
+        pass
 
     ########################################
     ######### 4. RUN CELLPROFILER  #########
