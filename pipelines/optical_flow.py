@@ -4,11 +4,14 @@ import os
 from scipy import ndimage
 from matplotlib import cm
 from PIL import Image
+import csv
+from pathlib import Path
 
 from pipelines.diagnostics import static_dx
 
 def optical_flow(g, wells, well_sites, options, multiplier=2):
     total_mag = 0
+    csv_data = []
 
     # loop through all (well/site, wavelength) pairings
     # well or site is simply referred to as well_site for convenience
@@ -69,10 +72,24 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             outpath = os.path.join(out_dir, f'{g.plate_short}_{well_site}_w{wavelength + 1}.png')
             sum_blur_colour.save(outpath)
 
+            # Collect data for CSV
+            csv_data.append([well_site, total_mag])
+
+    # Create CSV file inside the 'csv' subfolder of 'optical_flow'
+    csv_out_dir = os.path.join(g.output, 'optical_flow', 'csv')
+    os.makedirs(csv_out_dir, exist_ok=True)
+    csv_outpath = os.path.join(csv_out_dir, f'{g.plate}_optical_flow.csv')
+    
+    # Write CSV data
+    with open(csv_outpath, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Well_Site', 'Optical_Flow'])
+        writer.writerows(csv_data)
+
     # run static_dx to make diagnostic image of flow images
     static_dx(g, wells,
                   os.path.join(g.work, 'optical_flow'),
-                  os.path.join(g.output, 'optical_flow'),
+                  os.path.join(g.output, 'optical_flow', 'img'),
                   None,
                   rescale_factor=1,
                   format='PNG')

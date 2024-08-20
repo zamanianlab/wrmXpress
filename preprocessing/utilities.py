@@ -64,13 +64,13 @@ def parse_yaml(arg_parser, g_class):
     print(f"\t\tx-sites: {x_sites}")
     print(f"\t\ty-sites: {y_sites}")
 
-    # read the modules, remove any where run is False
-    modules = conf.get('modules')
-    print('modules:')
-    for key, value in modules.copy().items():
+    # read the pipelines, remove any where run is False
+    pipelines = conf.get('pipelines')
+    print('pipelines:')
+    for key, value in pipelines.copy().items():
         if value['run'] is False:
             print("\t\t{}: {}".format(key, value['run']))
-            del modules[key]
+            del pipelines[key]
         else:
             print("\t\t{}: {}".format(key, value['run']))
     # if 'cellprofiler' in modules.keys():
@@ -111,7 +111,7 @@ def parse_yaml(arg_parser, g_class):
                        circle_diameter, square_side,
                        '', '', '', '', '')
 
-    return yaml_out, modules
+    return yaml_out, pipelines
 
 # parses HTD
 def parse_htd(yaml, g_class):

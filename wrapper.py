@@ -40,7 +40,7 @@ if __name__ == "__main__":
     ############################################
     
     arg_parser = argparse.ArgumentParser()
-    g, modules = parse_yaml(arg_parser, g_class)
+    g, pipelines = parse_yaml(arg_parser, g_class)
     
     # get wells/sites to be used    
     wells, well_sites = get_wells(g)
@@ -75,47 +75,151 @@ if __name__ == "__main__":
         # stitch(g)
         stitch_all_timepoints(g, wells, g.plate_dir, g.plate_dir)
 
-    # # run mask when no cropping or stitching
-    # else:
-    #     apply_masks(g)
-
     # apply masks if required
     apply_masks(g)
 
     ###################################
-    ######### 3. DIAGNOSTICS  #########
+    ######### 3. CREATE FOLDERS  #########
     ###################################
+    # Create folder for each pipelines and the subfolders
+    for pipeline in pipelines.keys():
+        pipeline_output_dir = os.path.join(g.output, pipeline)
+        
+        # Create main pipeline directory
+        os.makedirs(pipeline_output_dir, exist_ok=True)
+        
+        # Create 'img' and 'csv' subdirectories
+        img_dir = os.path.join(pipeline_output_dir, 'img')
+        csv_dir = os.path.join(pipeline_output_dir, 'csv')
+        
+        os.makedirs(img_dir, exist_ok=True)
+        os.makedirs(csv_dir, exist_ok=True)
 
+    ##############################################
+    ######### 4. DIAGNOSTICS & PIPELINES #########
+    ##############################################
     # generate static_dx
-    if 'static_dx' in modules:
+    if 'static_dx' in pipelines:
         static_dx(g, wells,
                       os.path.join(g.plate_dir, 'TimePoint_1'),
-                      os.path.join(g.output, 'dx'),
-                      os.path.join(g.work, 'dx', 'TimePoint_1'),
-                      modules['static_dx']['rescale_multiplier'])
+                      os.path.join(g.output, 'static_dx', 'img'),
+                      os.path.join(g.work, 'static_dx', 'TimePoint_1'),
+                      pipelines['static_dx']['rescale_multiplier'])
     # generate video_dx
-    if 'video_dx' in modules:
-        # video_dx(g, modules['video_dx']['rescale_multiplier'])
+    if 'video_dx' in pipelines:
         video_dx(g, wells,
                      os.path.join(g.plate_dir),
-                     os.path.join(g.output, 'dx'),
-                     os.path.join(g.work, 'dx'),
+                     os.path.join(g.output, 'video_dx', 'img'),
+                     os.path.join(g.work, 'static_dx'),
                      os.path.join(g.work, 'video_dx'),
-                     modules['video_dx']['rescale_multiplier'])
-
-    #################################
-    ######### 4. PIPELINES  #########
-    #################################
-
-    # run pipelines
-    if 'optical_flow' in modules:
-        total_mag = optical_flow(g, wells, well_sites, modules['optical_flow'])
+                     pipelines['video_dx']['rescale_multiplier'])
+    # run other pipelines
+    if 'optical_flow' in pipelines:
+        total_mag = optical_flow(g, wells, well_sites, pipelines['optical_flow'])
         print("Total magnitude:", total_mag)
+
+    ###############################
+    ######### 5. RENAMING #########
+    ###############################
+    for pipeline_name in os.listdir(g.output):
+        img_folder = os.path.join(g.output, pipeline_name, 'img')
+        
+        if os.path.isdir(img_folder):
+            for file_name in os.listdir(img_folder):
+                # Determine old file path
+                old_file_path = os.path.join(img_folder, file_name)
+                
+                if os.path.isfile(old_file_path):
+                    # Determine the file extension
+                    file_extension = file_name.split('.')[-1]
+                    
+                    # Construct the new file name
+                    new_file_name = f"{g.plate}_{pipeline_name}.{file_extension}"
+                    
+                    # Construct the new file path
+                    new_file_path = os.path.join(img_folder, new_file_name)
+                    
+                    # Rename the file
+                    os.rename(old_file_path, new_file_path)
+    
+    ####################################
+    ######### 6. CREATING CSVS #########
+    ####################################
+    # Define the base path for the output directory
+    output_dir = Path(g.output)
+    # Path to the 'csv' subfolder of the optical_flow pipeline
+    optical_flow_csv_folder = output_dir / 'optical_flow' / 'csv'
+    optical_flow_csv_path = optical_flow_csv_folder / f'{g.plate}_optical_flow.csv'
+
+    # Read the optical flow CSV
+    optical_flow_df = pd.read_csv(optical_flow_csv_path)
+
+    # Initialize a DataFrame for the combined output CSVs
+    combined_output_df = optical_flow_df.copy()
+
+    # Loop through each pipeline and process CSV files in their 'csv' subfolder
+    for pipeline_name in os.listdir(output_dir):
+        pipeline_folder = output_dir / pipeline_name / 'csv'
+        if pipeline_folder.is_dir() and pipeline_name != 'optical_flow':
+            # List all CSV files in the current pipeline's CSV subfolder
+            csv_files = list(pipeline_folder.glob('*.csv'))
+            
+            for csv_file in csv_files:
+                # Read the CSV file
+                output_df = pd.read_csv(csv_file)
+                
+                # Fill empty cells with 'NA'
+                output_df.fillna(value='NA', inplace=True)
+                
+                # Check if the DataFrame has more than one column
+                if output_df.shape[1] > 1:
+                    # If it has more than one column, stack it
+                    single_column_df = output_df.stack().reset_index(drop=True)
+                else:
+                    # If it has only one column, just reset the index
+                    single_column_df = output_df.reset_index(drop=True)
+
+                # Add the single column data to the combined DataFrame
+                combined_output_df[csv_file.stem] = single_column_df
+
+    # Define the path for the output CSV of the plate
+    combined_output_csv_path = output_dir / f'{g.plate}_data.csv'
+    # Save the combined output DataFrame to a CSV file
+    combined_output_df.to_csv(combined_output_csv_path, index=False)
+
+    # 2. Combine the master output CSV with the metadata CSVs into one final master CSV
+
+    # Define paths
+    metadata_folder = Path.home() / 'metadata'
+    plate_id_folder = metadata_folder / g.plate
+
+    # Read the combined output CSV
+    final_master_df = pd.read_csv(combined_output_csv_path)
+
+    # List all CSV files in the metadata folder
+    metadata_csv_files = list(plate_id_folder.glob('*.csv'))
+
+    for metadata_csv_file in metadata_csv_files:
+        # Read the CSV file without header and fill in empty cells with NA
+        metadata_df = pd.read_csv(metadata_csv_file, header=None)
+        metadata_df.fillna(value='NA', inplace=True)
+        
+        # Reshape the DataFrame into a single column and reset index
+        single_column_df = metadata_df.stack().reset_index(drop=True)
+        
+        # Add or update the column in master_output_df
+        final_master_df[metadata_csv_file.stem] = single_column_df
+
+    # Define the path for the final master CSV
+    final_master_csv_path = output_dir / f'{g.plate}_tidy.csv'
+
+    # Save the final master DataFrame to a CSV file
+    final_master_df.to_csv(final_master_csv_path, index=False)
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)
     raise Exception("CODE STOPS HERE")
-    
+
     #########################################
     ######### 3. GET WELLS & PATHS  #########
     #########################################
@@ -293,3 +397,4 @@ if __name__ == "__main__":
         for type in dx_types:
             print("Generating {} thumbnails".format(type))
             generate_thumbnails(g, type)
+    

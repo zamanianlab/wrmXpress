@@ -157,4 +157,3 @@ def __create_video(image_paths, output_video_path, duration=15):
 
     # release the VideoWriter and close all windows
     video_writer.release()
-    cv2.destroyAllWindows()
