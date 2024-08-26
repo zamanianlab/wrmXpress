@@ -75,21 +75,21 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             # Collect data for CSV
             csv_data.append([well_site, total_mag])
 
-    # Create CSV file inside the 'csv' subfolder of 'optical_flow'
-    csv_out_dir = os.path.join(g.output, 'optical_flow', 'csv')
-    os.makedirs(csv_out_dir, exist_ok=True)
-    csv_outpath = os.path.join(csv_out_dir, f'{g.plate}_optical_flow.csv')
-    
-    # Write CSV data
-    with open(csv_outpath, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Well_Site', 'Optical_Flow'])
-        writer.writerows(csv_data)
+            # Create CSV file for the current wavelength inside the 'optical_flow' folder
+            csv_out_dir = os.path.join(g.output, 'optical_flow')
+            os.makedirs(csv_out_dir, exist_ok=True)
+            csv_outpath = os.path.join(csv_out_dir, f'{g.plate}_w{wavelength + 1}.csv')
+            
+            # Write CSV data for the current wavelength
+            with open(csv_outpath, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(['Well/Site', 'Optical Flow'])
+                writer.writerows(csv_data)
 
     # run static_dx to make diagnostic image of flow images
     static_dx(g, wells,
                   os.path.join(g.work, 'optical_flow'),
-                  os.path.join(g.output, 'optical_flow', 'img'),
+                  os.path.join(g.output, 'optical_flow'),
                   None,
                   rescale_factor=1,
                   format='PNG')
