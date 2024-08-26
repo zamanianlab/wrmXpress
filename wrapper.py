@@ -14,7 +14,6 @@ from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wel
 from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_timepoints, apply_masks
 from pipelines.diagnostics import static_dx, video_dx
 from pipelines.optical_flow import optical_flow
-from pipelines.generate_tidy_csv import generate_tidy_csv
 
 # OLD IMPORTS, IGNORE FOR NOW
 from modules.get_image_paths import get_image_paths
@@ -81,8 +80,6 @@ if __name__ == "__main__":
     ###################################
     # Create folder for each pipelines and the subfolders
     for pipeline in pipelines.keys():
-        if pipeline == 'generate_tidy_csv':
-            continue
         pipeline_output_dir = os.path.join(g.output, pipeline)
         # Create main pipeline directory
         os.makedirs(pipeline_output_dir, exist_ok=True)
@@ -116,9 +113,12 @@ if __name__ == "__main__":
     #if 'segmentation' in pipelines:
     #    segmentation(g, wells, well_sites, pipelines['segmentation'])
 
-    # generate tidy csvs
-    [generate_tidy_csv(pipeline, str(g.plate), Path.home() / 'metadata') for pipeline in Path(g.output).iterdir() 
-    if pipeline.is_dir() and any(pipeline.glob('*.csv'))]
+    # generate tidy csvs using the R script
+    r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
+    pipeline_dirs = [d for d in Path(g.output).iterdir() if d.is_dir()]
+    pipeline_list = [d.name for d in pipeline_dirs if any(glob.glob(os.path.join(d, '*.csv')))]
+    if pipeline_list:
+        subprocess.run(["Rscript", r_script_path, g.plate, str(g.rows), str(g.cols), ",".join(pipeline_list)])
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)

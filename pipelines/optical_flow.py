@@ -83,7 +83,7 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             # Write CSV data for the current wavelength
             with open(csv_outpath, mode='w', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(['Well/Site', 'Optical Flow'])
+                writer.writerow(['well_site', 'optical_flow'])
                 writer.writerows(csv_data)
 
     # run static_dx to make diagnostic image of flow images
