@@ -14,6 +14,7 @@ from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wel
 from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_timepoints, apply_masks
 from pipelines.diagnostics import static_dx, video_dx
 from pipelines.optical_flow import optical_flow
+from pipelines.segmentation import segmentation
 
 # OLD IMPORTS, IGNORE FOR NOW
 from modules.get_image_paths import get_image_paths
@@ -110,15 +111,26 @@ if __name__ == "__main__":
         total_mag = optical_flow(g, wells, well_sites, pipelines['optical_flow'])
         print("Total magnitude:", total_mag)
 
-    #if 'segmentation' in pipelines:
-    #    segmentation(g, wells, well_sites, pipelines['segmentation'])
+    if 'segmentation' in pipelines:
+        segmentation(g, wells, well_sites, pipelines['segmentation'])
 
     # generate tidy csvs using the R script
+    print("Running R script to join metadata and tidy.")
     r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
+    # Get the list of pipeline directories
     pipeline_dirs = [d for d in Path(g.output).iterdir() if d.is_dir()]
-    pipeline_list = [d.name for d in pipeline_dirs if any(glob.glob(os.path.join(d, '*.csv')))]
-    if pipeline_list:
-        subprocess.run(["Rscript", r_script_path, g.plate, str(g.rows), str(g.cols), ",".join(pipeline_list)])
+
+    # Filter and get CSVs for the specific plate in the pipeline directories
+    pipeline_csv_list = [d.name for d in pipeline_dirs if any(glob.glob(str(d / f"{g.plate}_*.csv")))]
+
+    # Print the pipeline CSV list for debugging
+    print("Pipeline CSV List:", pipeline_csv_list)
+
+    # Check if there are any CSVs to process
+    if pipeline_csv_list:
+        subprocess.run(["Rscript", r_script_path, g.plate, str(g.rows), str(g.cols), ",".join(pipeline_csv_list)])
+    else:
+        print("No CSV files found for the specified plate.")
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)
