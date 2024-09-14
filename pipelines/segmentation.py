@@ -17,7 +17,7 @@ def rename_file_to_temp_tif(src_file, temp_dir):
     shutil.copy(src_file, temp_file)
     return temp_file
 
-def run_cellpose_on_single_file(model_type, model_path, temp_dir):
+def run_cellpose(model_type, model_path, temp_dir):
     """Run Cellpose on a single .tif file."""
     cellpose_command = (
         f'python -m {model_type} '
@@ -31,6 +31,12 @@ def run_cellpose_on_single_file(model_type, model_path, temp_dir):
     subprocess.run(cellpose_command_split)
 
 def segmentation(g, wells, well_sites, options):
+    # Create output and CSV directories at the very start of the function
+    work_dir = Path(g.work) / 'segmentation'
+    csv_out_dir = Path(g.output) / 'segmentation'
+    work_dir.mkdir(parents=True, exist_ok=True)
+    csv_out_dir.mkdir(parents=True, exist_ok=True)
+
     model_path = f"wrmXpress/models/cellpose/{options['model']}"
     model_type = options['model_type']
     wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
@@ -42,12 +48,6 @@ def segmentation(g, wells, well_sites, options):
         wavelengths = range(g.n_waves)  # Use all available wavelengths
     else:
         wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
-
-    # Directory where stitched image and CSV files will be saved
-    work_dir = Path(g.work) / 'segmentation'
-    csv_out_dir = Path(g.output) / 'segmentation'
-    work_dir.mkdir(parents=True, exist_ok=True)
-    csv_out_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize a dictionary to store results for each wavelength
     wavelength_data = {wavelength: [] for wavelength in wavelengths}
@@ -74,7 +74,7 @@ def segmentation(g, wells, well_sites, options):
                         # Rename the TIFF file to .tif and copy it to the temporary directory
                         temp_tif_file = rename_file_to_temp_tif(tiff_file, temp_dir)
 
-                        run_cellpose_on_single_file(model_type, model_path, temp_dir)
+                        run_cellpose(model_type, model_path, temp_dir)
 
                         # Rename and move the resulting PNG mask to the 'work/segmentation' directory
                         for file in glob.glob(f"{temp_dir}/*.png"):
@@ -111,7 +111,7 @@ def segmentation(g, wells, well_sites, options):
                         'average_compactness': average_compactness
                     })
 
-    # Save CSV files for each wavelength
+    # Create pandas DataFrame and write to CSV
     for wavelength, results in wavelength_data.items():
         df_wavelength = pd.DataFrame(results)
         csv_outpath = csv_out_dir / f'{g.plate}_w{wavelength + 1}.csv'

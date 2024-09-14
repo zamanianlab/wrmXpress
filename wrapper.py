@@ -1,13 +1,11 @@
 import argparse
-import os
 import pandas as pd
 import subprocess
 import shlex
 import shutil
 import glob
 from pathlib import Path
-from collections import defaultdict
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 import time
 
 from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
@@ -23,7 +21,6 @@ from modules.dense_flow import dense_flow
 from modules.segment_worms import segment_worms
 from modules.generate_thumbnails import generate_thumbnails
 from modules.fecundity import fecundity
-
 
 if __name__ == "__main__":
 
@@ -71,7 +68,7 @@ if __name__ == "__main__":
         pass
     elif g.stitch:
         # stitch(g)
-        stitch_all_timepoints(g, wells, g.plate_dir, g.plate_dir)
+        stitch_all_timepoints(g, wells, Path(g.plate_dir), Path(g.plate_dir))
 
     # apply masks if required
     apply_masks(g)
@@ -79,14 +76,14 @@ if __name__ == "__main__":
     ###################################
     ######### 3. CREATE FOLDERS  #########
     ###################################
-    # Create folder for each pipelines and the subfolders
+    # Create folder for each pipeline and the subfolders
     for pipeline in pipelines.keys():
-        pipeline_output_dir = os.path.join(g.output, pipeline)
+        pipeline_output_dir = Path(g.output) / pipeline
         # Create main pipeline directory
-        os.makedirs(pipeline_output_dir, exist_ok=True)
+        pipeline_output_dir.mkdir(parents=True, exist_ok=True)
         # Create 'img' folder
-        img_dir = os.path.join(pipeline_output_dir, 'img')
-        os.makedirs(img_dir, exist_ok=True)
+        img_dir = pipeline_output_dir / 'img'
+        img_dir.mkdir(parents=True, exist_ok=True)
 
     ##############################################
     ######### 4. DIAGNOSTICS & PIPELINES #########
@@ -94,18 +91,20 @@ if __name__ == "__main__":
     # generate static_dx
     if 'static_dx' in pipelines:
         static_dx(g, wells,
-                      os.path.join(g.plate_dir, 'TimePoint_1'),
-                      os.path.join(g.output, 'static_dx'),
-                      os.path.join(g.work, 'static_dx', 'TimePoint_1'),
-                      pipelines['static_dx']['rescale_multiplier'])
+                  Path(g.plate_dir) / 'TimePoint_1',
+                  Path(g.output) / 'static_dx',
+                  Path(g.work) / 'static_dx' / 'TimePoint_1',
+                  pipelines['static_dx']['rescale_multiplier'])
+
     # generate video_dx
     if 'video_dx' in pipelines:
         video_dx(g, wells,
-                     os.path.join(g.plate_dir),
-                     os.path.join(g.output, 'video_dx'),
-                     os.path.join(g.work, 'static_dx'),
-                     os.path.join(g.work, 'video_dx'),
-                     pipelines['video_dx']['rescale_multiplier'])
+                 Path(g.plate_dir),
+                 Path(g.output) / 'video_dx',
+                 Path(g.work) / 'static_dx',
+                 Path(g.work) / 'video_dx',
+                 pipelines['video_dx']['rescale_multiplier'])
+                 
     # run other pipelines
     if 'optical_flow' in pipelines:
         total_mag = optical_flow(g, wells, well_sites, pipelines['optical_flow'])
@@ -117,6 +116,7 @@ if __name__ == "__main__":
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
     r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
+    
     # Get the list of pipeline directories
     pipeline_dirs = [d for d in Path(g.output).iterdir() if d.is_dir()]
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     end = time.time()
     print("Time elapsed (seconds):", end-start)
     raise Exception("CODE STOPS HERE")
-    
+
 
     #########################################
     ######### 3. GET WELLS & PATHS  #########
