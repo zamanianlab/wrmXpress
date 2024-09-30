@@ -49,11 +49,10 @@ def segmentation(g, wells, well_sites, options):
     else:
         wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
 
-    # Initialize a dictionary to store results for each wavelength
-    wavelength_data = {wavelength: [] for wavelength in wavelengths}
+    for wavelength in wavelengths:  # Iterate directly over wavelengths
+        all_results = []  # List to store results for the current wavelength
 
-    for well_site in well_sites:
-        for wavelength in wavelengths:  # Iterate directly over wavelengths
+        for well_site in well_sites:
             for timepoint in timepoints:
                 # Create a temporary directory
                 with tempfile.TemporaryDirectory() as temp_dir:
@@ -102,22 +101,25 @@ def segmentation(g, wells, well_sites, options):
                     ]
                     average_compactness = np.mean(compactness_list) if compactness_list else 0
 
-                    # Append results for the current well_site and wavelength
-                    wavelength_data[wavelength].append({
+                    # Prepare results for the current well_site and wavelength
+                    result = {
                         'well_site': well_site,
                         'total_segmented_pixels': total_segmented_pixels,
                         'num_objects': num_objects,
                         'average_size': average_size,
                         'average_compactness': average_compactness
-                    })
+                    }
 
-    # Create pandas DataFrame and write to CSV
-    for wavelength, results in wavelength_data.items():
-        df_wavelength = pd.DataFrame(results)
+                    all_results.append(result)  # Append the result dictionary to the list
+
+        # Create a DataFrame for the results of the current wavelength
+        df = pd.DataFrame(all_results)
+
+        # Write the DataFrame to CSV for the current wavelength
         csv_outpath = csv_out_dir / f'{g.plate}_w{wavelength + 1}.csv'
-        df_wavelength.to_csv(csv_outpath, index=False)
+        df.to_csv(csv_outpath, index=False)
 
-    # Run static_dx to make diagnostic image of segmented images
+    # Run static_dx to make a diagnostic image of segmented images
     static_dx(g, wells,
               work_dir,
               csv_out_dir,

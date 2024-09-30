@@ -10,18 +10,20 @@ from pathlib import Path
 from pipelines.diagnostics import static_dx
 
 def optical_flow(g, wells, well_sites, options, multiplier=2):
-    # Define paths for output directories
+    # Create output and CSV directories at the start of the function
     work_dir = Path(g.work) / 'optical_flow'
     csv_out_dir = Path(g.output) / 'optical_flow'
     work_dir.mkdir(parents=True, exist_ok=True)
     csv_out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Loop through all (well/site, wavelength) pairings
-    for well_site in well_sites:
-        for wavelength in range(g.n_waves):
+    # Loop through all wavelengths
+    for wavelength in range(g.n_waves):
+        all_results = []  # List to store results for the current wavelength
+
+        for well_site in well_sites:
             # Create empty list to store magnitude arrays
             all_mag = []
-            total_mag = 0  # Initialize total_mag for each wavelength
+            total_mag = 0  # Initialize total_mag for each well_site
 
             # Read first frame
             frame1_path = Path(g.plate_dir) / f'TimePoint_1' / f'{g.plate_short}_{well_site}_w{wavelength + 1}.TIF'
@@ -53,6 +55,7 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             # Rescaling if required
             sum_img = sum_img * multiplier
             pixel_max = np.amax(sum_img)
+
             # If there is not a single saturated pixel (low flow), set one to 255 in order to prevent rescaling
             if pixel_max < 255:
                 print(f"Max flow is {pixel_max}. Rescaling")
@@ -74,13 +77,19 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
             sum_blur_colour.save(outpath)
 
-            # Create pandas DataFrame and write to CSV
-            df = pd.DataFrame({
-                'well_site': [well_site],
-                'optical_flow': [total_mag]
-            })
-            csv_outpath = csv_out_dir / f'{g.plate}_w{wavelength + 1}.csv'
-            df.to_csv(csv_outpath, index=False)
+            # Prepare results for the current well_site and wavelength
+            result = {
+                'well_site': well_site,
+                'optical_flow': total_mag
+            }
+            all_results.append(result)  # Append the result dictionary to the list
+
+        # Create a DataFrame for the results of the current wavelength
+        df = pd.DataFrame(all_results)
+
+        # Write the DataFrame to CSV for the current wavelength
+        csv_outpath = csv_out_dir / f'{g.plate}_w{wavelength + 1}.csv'
+        df.to_csv(csv_outpath, index=False)
 
     # Run static_dx to make diagnostic image of flow images
     static_dx(g, wells,
