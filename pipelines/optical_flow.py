@@ -16,8 +16,16 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
     work_dir.mkdir(parents=True, exist_ok=True)
     csv_out_dir.mkdir(parents=True, exist_ok=True)
 
+    wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
+    # Determine which wavelengths to use
+    wavelengths_option = ','.join(wavelengths_option)
+    if wavelengths_option == 'All':
+        wavelengths = [i for i in range(g.n_waves)]  # Use all available wavelengths
+    else:
+        wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
+
     # Loop through all wavelengths
-    for wavelength in range(g.n_waves):
+    for wavelength in wavelengths:
         all_results = []  # List to store results for the current wavelength
 
         for well_site in well_sites:
@@ -67,6 +75,7 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
             else:
                 print("Something went wrong.")
 
+            # Apply Gaussian filter
             sum_blur = ndimage.filters.gaussian_filter(sum_img, 1.5)
 
             # Apply PIL colourmap
@@ -95,7 +104,7 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
     static_dx(g, wells,
               work_dir,
               csv_out_dir,
-              None,
+              wavelengths,
               rescale_factor=1,
               format='PNG')
 

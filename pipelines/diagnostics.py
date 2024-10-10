@@ -7,7 +7,9 @@ import numpy as np
 # stitches all selected wells from a directory into diagnostic image of plate and saves it in output directory for each wavelength
 # if sites need to be stitched first, save them in the specified work directory
 # return list of outpaths of static_dx images generated
-def static_dx(g, wells, input_dir, output_dir, work_dir, rescale_factor, format='TIF'):
+def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_factor, format='TIF'):
+    if wavelengths is None:
+        wavelengths = [i for i in range(g.n_waves)]
     # get current directory
     # if images are at the site level, they must be stitched first and placed in generated an intermediate folder
     if g.mode == 'multi-site' and g.stitch == False:
@@ -29,7 +31,7 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, rescale_factor, format=
     outpaths = []
 
     # for each wavelength, generate image paths of wells to be stitched
-    for wavelength in range(g.n_waves):
+    for wavelength in wavelengths:
         image_paths = generate_selected_image_paths(g, wells, wavelength+1, base_dir, format)
         # stitch plate and save in output directory
         outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength+1}.{format}')

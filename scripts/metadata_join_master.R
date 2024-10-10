@@ -47,23 +47,44 @@ metadata <- metadata_files %>%
 for (pipeline in pipeline_list) {
   output_dir <- file.path('output', pipeline)
   
-  output_files <- dplyr::tibble(base = output_dir,
-                         plate = plate,
-                         data_file = list.files(path = output_dir,
-                                                pattern = ".*.csv$",
-                                                recursive = TRUE)) %>%
-    dplyr::mutate(path = file.path(base, data_file))
+  # List only CSV files that contain the plate name
+  all_files <- list.files(
+    path = output_dir,
+    pattern = paste0(plate, ".*\\.csv$"),
+    recursive = TRUE
+  )
   
-  output_data <- readr::read_csv(output_files$path) %>%
+  # Filter out any files that contain '_tidy.csv'
+  filtered_files <- all_files[!grepl("_tidy\\.csv$", all_files)]
+  
+  output_files <- dplyr::tibble(
+    base = output_dir,
+    plate = plate,
+    data_file = filtered_files
+  ) %>% dplyr::mutate(path = file.path(base, data_file))
+  
+  # Print the CSV files being considered
+  print(paste("Processing files for pipeline:", pipeline))
+  print(output_files$data_file)
+  
+  # Proceed if there are any files left after filtering
+  if (nrow(output_files) > 0) {
+  output_data <- readr::read_csv(output_files$path) %>% 
     tidyr::separate(well_site, c("well", "site"), sep = "_", remove = TRUE)
-  
+
   # Join output data and metadata
-  final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>%
+  final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>% 
     dplyr::select(plate, well, site, row, col, everything())
   
   final_csv_path <- file.path(output_dir, paste0(plate, '_tidy.csv'))
   readr::write_csv(final_df, final_csv_path)
+    } else {
+  # Handle the case where no files were found
+  message(paste("No output files found for pipeline:", pipeline))
+  }
 }
+
+
 
 # The commented-out section is for handling multiple CSVs and additional parsing
 # Uncomment and modify as needed

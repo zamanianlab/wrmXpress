@@ -94,6 +94,7 @@ if __name__ == "__main__":
                   Path(g.plate_dir) / 'TimePoint_1',
                   Path(g.output) / 'static_dx',
                   Path(g.work) / 'static_dx' / 'TimePoint_1',
+                  None,
                   pipelines['static_dx']['rescale_multiplier'])
 
     # generate video_dx
@@ -122,9 +123,6 @@ if __name__ == "__main__":
 
     # Filter and get CSVs for the specific plate in the pipeline directories
     pipeline_csv_list = [d.name for d in pipeline_dirs if any(glob.glob(str(d / f"{g.plate}_*.csv")))]
-
-    # Print the pipeline CSV list for debugging
-    print("Pipeline CSV List:", pipeline_csv_list)
 
     # Check if there are any CSVs to process
     if pipeline_csv_list:

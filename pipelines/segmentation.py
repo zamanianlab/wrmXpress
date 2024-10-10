@@ -45,7 +45,7 @@ def segmentation(g, wells, well_sites, options):
     # Determine which wavelengths to use
     wavelengths_option = ','.join(wavelengths_option)
     if wavelengths_option == 'All':
-        wavelengths = range(g.n_waves)  # Use all available wavelengths
+        wavelengths = [i for i in range(g.n_waves)]  # Use all available wavelengths
     else:
         wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
 
@@ -119,10 +119,11 @@ def segmentation(g, wells, well_sites, options):
         csv_outpath = csv_out_dir / f'{g.plate}_w{wavelength + 1}.csv'
         df.to_csv(csv_outpath, index=False)
 
-    # Run static_dx to make a diagnostic image of segmented images
+    # Run static_dx to make diagnostic image of segmented images
     static_dx(g, wells,
-              work_dir,
-              csv_out_dir,
-              None,
-              rescale_factor=1,
-              format='PNG')
+                  work_dir,
+                  csv_out_dir,
+                  None,
+                  wavelengths,
+                  rescale_factor=1,
+                  format='PNG')
