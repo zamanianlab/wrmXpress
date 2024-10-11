@@ -104,6 +104,7 @@ def optical_flow(g, wells, well_sites, options, multiplier=2):
     static_dx(g, wells,
               work_dir,
               csv_out_dir,
+              None,
               wavelengths,
               rescale_factor=1,
               format='PNG')
