@@ -238,10 +238,12 @@ def get_wells(g):
     missing_well_sites = [well_site for well_site in well_sites if well_site not in available_well_sites]
 
     # Log missing wells
-    if missing_wells:
-        print(f"Missing wells: {', '.join(missing_wells)}")
-    if missing_well_sites:
-        print(f"Missing well sites: {', '.join(missing_well_sites)}")
+    if g.mode == 'multi-site':
+        if missing_well_sites:
+            print(f"Missing well sites: {', '.join(missing_well_sites)}")
+    else:
+        if missing_wells:
+            print(f"Missing wells: {', '.join(missing_wells)}")
 
     # Update wells and well_sites to only include available ones
     wells = list(available_wells)
