@@ -54,7 +54,7 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
             static_output_dir = os.path.join(video_work_dir, f'TimePoint_{timepoint+1}')
             static_work_timepoint = os.path.join(static_work_dir, f'TimePoint_{timepoint+1}')
             # generate static_dx image for current timepoint and save in static_output_dir
-            current_frame_paths = static_dx(g, wells, current_timepoint, static_output_dir, static_work_timepoint, rescale_factor)
+            current_frame_paths = static_dx(g, wells, current_timepoint, static_output_dir, static_work_timepoint, None, rescale_factor)
             # for each wavelength populate the frame paths dictionary
             for wavelength in range(g.n_waves):
                 if wavelength in frame_paths:
