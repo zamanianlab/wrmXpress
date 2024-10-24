@@ -188,10 +188,11 @@ def rename_files(g):
 def get_wells(g):
     wells = []
     well_sites = []
+    
     if g.wells == ['All']:
         for row in range(g.rows):
             for col in range(g.cols):
-                # if site-level, include sites (e.g. A01_s1)
+                # If site-level, include sites (e.g. A01_s1)
                 if g.mode == 'multi-site' and g.stitch == False:
                     for site in range(g.x_sites * g.y_sites):
                         well_id = well_idx_to_name(g, row, col)
@@ -204,14 +205,47 @@ def get_wells(g):
                     well_sites.append(well_id)
     else:
         if g.mode == 'multi-site' and g.stitch == False:
-            # if site-level, include sites (e.g. A01_s1)
+            # If site-level, include sites (e.g. A01_s1)
             for well in g.wells:
                 for site in range(g.x_sites * g.y_sites):
                     well_site_id = well + f'_s{site + 1}'
-                    well_sites.append(well_id)
+                    well_sites.append(well_site_id)
         else:
             well_sites = g.wells
         
         wells = g.wells
 
+    # Check available wells in TimePoint_1 folder
+    available_wells = set()
+    available_well_sites = set()
+    timepoint_dir = os.path.join(g.input, g.plate, "TimePoint_1")
+    
+    if os.path.exists(timepoint_dir):
+        available_images = os.listdir(timepoint_dir)
+
+        # Compare well_sites against available images
+        for well_site in well_sites:
+            # Match well_site with optional '_w' suffix
+            pattern = f"{g.plate_short}_{well_site}(_w\\d)?\\.TIF"
+            for image in available_images:
+                if re.match(pattern, image):
+                    available_wells.add(well_site.split('_s')[0])  # Add base well id
+                    available_well_sites.add(well_site)  # Add the full well site
+                    break 
+
+    # Identify missing wells and well_sites
+    missing_wells = [well for well in wells if well not in available_wells]
+    missing_well_sites = [well_site for well_site in well_sites if well_site not in available_well_sites]
+
+    # Log missing wells
+    if missing_wells:
+        print(f"Missing wells: {', '.join(missing_wells)}")
+    if missing_well_sites:
+        print(f"Missing well sites: {', '.join(missing_well_sites)}")
+
+    # Update wells and well_sites to only include available ones
+    wells = list(available_wells)
+    well_sites = list(available_well_sites)
+
+    # Return updated wells and well_sites
     return wells, well_sites
