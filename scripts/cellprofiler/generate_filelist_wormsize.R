@@ -5,7 +5,10 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+wells <- args[2:(length(args) - 3)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+well_site <- args[length(args) - 2]
+wavelength <- as.numeric(args[length(args) - 1]) 
+output_dir <- args[length(args)]  
 
 #image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
 image_dir <- getwd()
@@ -39,4 +42,13 @@ load_csv <- dplyr::tibble(
   Metadata_Well = stringr::str_extract(FileName_RawImage, '[A-H][0,1]{1}[0-9]{1}')
 )
 
-readr::write_csv(load_csv, file = stringr::str_c('/', wd, '/input', '/image_paths_wormsize.csv', sep = ''))
+#readr::write_csv(load_csv, file = stringr::str_c('/', wd, '/input', '/image_paths_wormsize.csv', sep = ''))
+
+# Generate a unique output CSV for each well_site
+output_csv <- file.path(output_dir, paste0("image_paths_", plate, "_", well_site, "_w", wavelength + 1, ".csv"))
+
+# Debug check for output path
+print(paste("Writing CSV to:", output_csv))
+
+# Write the CSV to the defined path
+readr::write_csv(load_csv, file = output_csv)
