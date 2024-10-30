@@ -7,7 +7,8 @@ args = commandArgs(trailingOnly = TRUE)
 plate <- args[1]
 wells <- args[2:length(args)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
 
-image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
+#image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
+image_dir <- getwd()
 
 input_files <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- 'well_mask.png'

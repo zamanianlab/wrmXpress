@@ -226,7 +226,7 @@ def get_wells(g):
         # Compare well_sites against available images
         for well_site in well_sites:
             # Match well_site with optional '_w' suffix
-            pattern = f"{g.plate_short}_{well_site}(_w\\d)?\\.TIF"
+            pattern = f"{g.plate_short}_{well_site}.*\\.TIF"
             for image in available_images:
                 if re.match(pattern, image):
                     available_wells.add(well_site.split('_s')[0])  # Add base well id

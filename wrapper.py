@@ -13,6 +13,7 @@ from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_time
 from pipelines.diagnostics import static_dx, video_dx
 from pipelines.optical_flow import optical_flow
 from pipelines.segmentation import segmentation
+from pipelines.cellprofiler import cellprofiler
 
 # OLD IMPORTS, IGNORE FOR NOW
 from modules.get_image_paths import get_image_paths
@@ -114,6 +115,9 @@ if __name__ == "__main__":
     if 'segmentation' in pipelines:
         segmentation(g, wells, well_sites, pipelines['segmentation'])
 
+    if 'cellprofiler' in pipelines:
+        cellprofiler(g, wells, well_sites, pipelines['cellprofiler'])
+
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
     r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
@@ -129,6 +133,10 @@ if __name__ == "__main__":
         subprocess.run(["Rscript", r_script_path, g.plate, str(g.rows), str(g.cols), ",".join(pipeline_csv_list)])
     else:
         print("No CSV files found for the specified plate.")
+    
+    # Remove all CSVs except the tidy one in output/cellprofiler as they are duplicates. Originals can be found in work/cellprofiler
+    tidy_csv_path = Path(g.output) / 'cellprofiler' / f"{g.plate}_tidy.csv"
+    [csv_file.unlink() for csv_file in (Path(g.output) / 'cellprofiler').glob("*.csv") if csv_file.name != tidy_csv_path.name]
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)
