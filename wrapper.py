@@ -134,9 +134,9 @@ if __name__ == "__main__":
     else:
         print("No CSV files found for the specified plate.")
     
-    # # Remove all CSVs except the tidy one in output/cellprofiler as they are duplicates. Originals can be found in work/cellprofiler
-    # tidy_csv_path = Path(g.output) / 'cellprofiler' / f"{g.plate}_tidy.csv"
-    # [csv_file.unlink() for csv_file in (Path(g.output) / 'cellprofiler').glob("*.csv") if csv_file.name != tidy_csv_path.name]
+    # Remove all CSVs except the tidy one in output/cellprofiler as they are duplicates. Originals can be found in work/cellprofiler
+    tidy_csv_path = Path(g.output) / 'cellprofiler' / f"{g.plate}_tidy.csv"
+    [csv_file.unlink() for csv_file in (Path(g.output) / 'cellprofiler').glob("*.csv") if csv_file.name != tidy_csv_path.name]
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)

@@ -19,6 +19,7 @@ mask <- 'well_mask.png'
 wd <- getwd() %>% str_remove(., '^/')
 
 load_csv <- dplyr::tibble(
+  well_site = well_site,
   Group_Number = 1,
   Group_Index = seq(1, length(input_files)),
   URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_files, sep = '/'),

@@ -15,7 +15,7 @@ def run_rscript_to_generate_csv(cellprofiler_pipeline, temp_dir, plate, wells, w
 
 def run_cellprofiler_with_csv(cellprofiler_pipeline, csv_file, img_out_dir):
     """Run CellProfiler using the generated CSV file and save output images to output/cellprofiler/img."""
-    cellprofiler_command = f'cellprofiler -c -r -p wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}'
+    cellprofiler_command = f'cellprofiler -c -r -p {Path.home()}/wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}'
     cellprofiler_command_split = shlex.split(cellprofiler_command)
     print('Starting CellProfiler.')
     subprocess.run(cellprofiler_command_split)
@@ -80,6 +80,6 @@ def cellprofiler(g, wells, well_sites, options):
                     csv_file = csv_out_dir / f'image_paths_{g.plate}_{well_site}_w{wavelength + 1}.csv'
                     run_cellprofiler_with_csv(cellprofiler_pipeline, csv_file, img_out_dir)
 
-                    # # Copy the generated CSV files to the output/cellprofiler directory so as to run metadata script
-                    # for csv_file in work_dir.glob("*.csv"):
-                    #     shutil.copy(csv_file, Path(g.output) / 'cellprofiler' / csv_file.name)
+                    # Copy the generated CSV files to the output/cellprofiler directory so as to run metadata script
+                    for csv_file in work_dir.glob("*.csv"):
+                        shutil.copy(csv_file, Path(g.output) / 'cellprofiler' / csv_file.name)
