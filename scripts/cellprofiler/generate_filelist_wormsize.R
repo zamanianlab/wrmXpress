@@ -23,7 +23,7 @@ load_csv <- dplyr::tibble(
   Group_Number = 1,
   Group_Index = seq(1, length(input_files)),
   URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_files, sep = '/'),
-  URL_WellMask = stringr::str_c('file:', wd, 'wrmXpress', 'cp_pipelines', 'masks', mask, sep = '/'),
+  URL_WellMask = stringr::str_c('file:', wd, 'wrmXpress', 'pipelines', 'cellprofiler', 'masks', mask, sep = '/'),
   PathName_RawImage = stringr::str_remove(URL_RawImage, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
   PathName_WellMask = stringr::str_remove(URL_WellMask, mask) %>% str_remove(., 'file:') %>%  str_remove(., '/$'),
   FileName_RawImage = input_files,

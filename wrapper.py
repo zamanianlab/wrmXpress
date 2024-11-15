@@ -7,6 +7,7 @@ import glob
 from pathlib import Path
 from collections import defaultdict, namedtuple
 import time
+import os
 
 from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
 from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_timepoints, apply_masks
@@ -15,13 +16,13 @@ from pipelines.optical_flow import optical_flow
 from pipelines.segmentation import segmentation
 from pipelines.cellprofiler import cellprofiler
 
-# OLD IMPORTS, IGNORE FOR NOW
-from modules.get_image_paths import get_image_paths
-from modules.convert_video import convert_video
-from modules.dense_flow import dense_flow
-from modules.segment_worms import segment_worms
-from modules.generate_thumbnails import generate_thumbnails
-from modules.fecundity import fecundity
+# # OLD IMPORTS, IGNORE FOR NOW
+# from modules.get_image_paths import get_image_paths
+# from modules.convert_video import convert_video
+# from modules.dense_flow import dense_flow
+# from modules.segment_worms import segment_worms
+# from modules.generate_thumbnails import generate_thumbnails
+# from modules.fecundity import fecundity
 
 if __name__ == "__main__":
 
@@ -106,17 +107,30 @@ if __name__ == "__main__":
                  Path(g.work) / 'static_dx',
                  Path(g.work) / 'video_dx',
                  pipelines['video_dx']['rescale_multiplier'])
-                 
-    # run other pipelines
-    if 'optical_flow' in pipelines:
-        total_mag = optical_flow(g, wells, well_sites, pipelines['optical_flow'])
-        print("Total magnitude:", total_mag)
+        
+    wavelengths_dict = {}  # Dictionary to store wavelengths for each pipeline
+    total_mag = 0  # Initialize total_mag outside the loop
 
-    if 'segmentation' in pipelines:
-        segmentation(g, wells, well_sites, pipelines['segmentation'])
+    for well_site in well_sites:
+        if 'optical_flow' in pipelines:
+            total_mag_for_site, wavelengths = optical_flow(g, pipelines['optical_flow'], well_site, multiplier=2)
+            total_mag += total_mag_for_site
+            wavelengths_dict['optical_flow'] = wavelengths
 
-    if 'cellprofiler' in pipelines:
-        cellprofiler(g, wells, well_sites, pipelines['cellprofiler'])
+        if 'segmentation' in pipelines:
+            wavelengths = segmentation(g, pipelines['segmentation'], well_site)
+            wavelengths_dict['segmentation'] = wavelengths
+
+        if 'cellprofiler' in pipelines:
+            wavelengths = cellprofiler(g, wells, pipelines['cellprofiler'], well_site)
+
+    print("Total magnitude:", total_mag)
+
+    # After running the pipelines, call static_dx with the correct wavelengths
+    for pipeline in pipelines:
+        if any(file.endswith('.png') for file in os.listdir(f'work/{pipeline}')):
+            pipeline_wavelengths = wavelengths_dict.get(pipeline, None)
+            static_dx(g, wells, f'work/{pipeline}', f'output/{pipeline}', None, pipeline_wavelengths, rescale_factor=1, format='PNG')
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
@@ -134,9 +148,10 @@ if __name__ == "__main__":
     else:
         print("No CSV files found for the specified plate.")
     
-    # Remove all CSVs except the tidy one in output/cellprofiler as they are duplicates. Originals can be found in work/cellprofiler
-    tidy_csv_path = Path(g.output) / 'cellprofiler' / f"{g.plate}_tidy.csv"
-    [csv_file.unlink() for csv_file in (Path(g.output) / 'cellprofiler').glob("*.csv") if csv_file.name != tidy_csv_path.name]
+    for pipeline in pipelines:
+        output_dir = Path(g.output) / pipeline
+        [csv.unlink() for csv in output_dir.glob("*.csv") if not csv.name.endswith("_tidy.csv")]
+
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)
