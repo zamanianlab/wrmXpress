@@ -46,10 +46,11 @@ metadata <- metadata_files %>%
 # Read in output files and join with metadata
 for (pipeline in pipeline_list) {
   output_dir <- file.path('output', pipeline)
+  input_dir <- file.path('work', pipeline)
   
   # List only CSV files that contain the plate name
   all_files <- list.files(
-    path = output_dir,
+    path = input_dir,
     pattern = paste0(plate, ".*\\.csv$"),
     recursive = TRUE
   )
@@ -58,7 +59,7 @@ for (pipeline in pipeline_list) {
   filtered_files <- all_files[!grepl("_tidy\\.csv$", all_files)]
   
   output_files <- dplyr::tibble(
-    base = output_dir,
+    base = input_dir,
     plate = plate,
     data_file = filtered_files
   ) %>% dplyr::mutate(path = file.path(base, data_file))

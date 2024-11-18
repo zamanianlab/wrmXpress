@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import os
 from scipy import ndimage
 from matplotlib import cm
 from PIL import Image
@@ -10,9 +9,9 @@ from pathlib import Path
 def optical_flow(g, options, well_site, multiplier=2):
     # Create output and CSV directories at the start of the function
     work_dir = Path(g.work) / 'optical_flow'
-    csv_out_dir = Path(g.output) / 'optical_flow'
+    output_dir = Path(g.output) / 'optical_flow'
     work_dir.mkdir(parents=True, exist_ok=True)
-    csv_out_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
     # Determine which wavelengths to use
@@ -95,8 +94,7 @@ def optical_flow(g, options, well_site, multiplier=2):
         df = pd.DataFrame(all_results)
 
         # Write the DataFrame to CSV for the current wavelength
-        csv_outpath = csv_out_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
+        csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
         df.to_csv(csv_outpath, index=False)
 
-    # Return the total magnitude for the well_site
-    return total_mag, wavelengths
+    return wavelengths

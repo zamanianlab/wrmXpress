@@ -109,12 +109,12 @@ if __name__ == "__main__":
                  pipelines['video_dx']['rescale_multiplier'])
         
     wavelengths_dict = {}  # Dictionary to store wavelengths for each pipeline
-    total_mag = 0  # Initialize total_mag outside the loop
+    well_site_num = 1 #counter for well_sites
 
     for well_site in well_sites:
+        print(well_site, f"{well_site_num}/{len(well_sites)}")
         if 'optical_flow' in pipelines:
-            total_mag_for_site, wavelengths = optical_flow(g, pipelines['optical_flow'], well_site, multiplier=2)
-            total_mag += total_mag_for_site
+            wavelengths = optical_flow(g, pipelines['optical_flow'], well_site, multiplier=2)
             wavelengths_dict['optical_flow'] = wavelengths
 
         if 'segmentation' in pipelines:
@@ -124,13 +124,14 @@ if __name__ == "__main__":
         if 'cellprofiler' in pipelines:
             wavelengths = cellprofiler(g, wells, pipelines['cellprofiler'], well_site)
 
-    print("Total magnitude:", total_mag)
+        well_site_num += 1
 
     # After running the pipelines, call static_dx with the correct wavelengths
     for pipeline in pipelines:
         if any(file.endswith('.png') for file in os.listdir(f'work/{pipeline}')):
             pipeline_wavelengths = wavelengths_dict.get(pipeline, None)
-            static_dx(g, wells, f'work/{pipeline}', f'output/{pipeline}', None, pipeline_wavelengths, rescale_factor=1, format='PNG')
+            for wavelength in pipeline_wavelengths:
+                static_dx(g, wells, f'work/{pipeline}', f'output/{pipeline}', None, [wavelength], rescale_factor=1, format='PNG')
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
@@ -148,10 +149,6 @@ if __name__ == "__main__":
     else:
         print("No CSV files found for the specified plate.")
     
-    for pipeline in pipelines:
-        output_dir = Path(g.output) / pipeline
-        [csv.unlink() for csv in output_dir.glob("*.csv") if not csv.name.endswith("_tidy.csv")]
-
 
     end = time.time()
     print("Time elapsed (seconds):", end-start)

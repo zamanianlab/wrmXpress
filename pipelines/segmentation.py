@@ -31,9 +31,9 @@ def run_cellpose(model_type, model_path, temp_dir):
 def segmentation(g, options, well_site):
     # Create output and CSV directories at the very start of the function
     work_dir = Path(g.work) / 'segmentation'
-    csv_out_dir = Path(g.output) / 'segmentation'
+    output_dir = Path(g.output) / 'segmentation'
     work_dir.mkdir(parents=True, exist_ok=True)
-    csv_out_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     model_path = f"wrmXpress/pipelines/models/cellpose/{options['model']}"
     model_type = options['model_type']
@@ -83,34 +83,26 @@ def segmentation(g, options, well_site):
             if os.path.exists(image_path):
                 image = io.imread(image_path)
 
-                # Calculate metrics for the current wavelength
-                total_segmented_pixels = np.sum(image > 0)
-                num_objects = len(np.unique(image)) - 1  # exclude background
-                average_size = total_segmented_pixels / num_objects if num_objects > 0 else 0
+                # Process each object in the image
+                for object_id, region in enumerate(measure.regionprops(image), start=1):
+                    size = region.area
+                    compactness = (region.perimeter ** 2) / (4 * np.pi * region.area) if region.area > 0 else 0
 
-                # Calculate compactness for each object
-                compactness_list = [
-                    (region.perimeter ** 2) / (4 * np.pi * region.area)
-                    for region in measure.regionprops(image)
-                ]
-                average_compactness = np.mean(compactness_list) if compactness_list else 0
+                    # Prepare results for the current object
+                    result = {
+                        'well_site': well_site,
+                        'object_number': object_id,
+                        'size': size,
+                        'compactness': compactness
+                    }
 
-                # Prepare results for the current wavelength
-                result = {
-                    'well_site': well_site,
-                    'total_segmented_pixels': total_segmented_pixels,
-                    'num_objects': num_objects,
-                    'average_size': average_size,
-                    'average_compactness': average_compactness
-                }
-
-                all_results.append(result)  # Append the result dictionary to the list
+                    all_results.append(result)
 
         # Create a DataFrame for the results of the current wavelength
         df = pd.DataFrame(all_results)
 
         # Write the DataFrame to CSV for the current wavelength
-        csv_outpath = csv_out_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
+        csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
         df.to_csv(csv_outpath, index=False)
 
     return wavelengths

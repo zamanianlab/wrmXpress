@@ -10,8 +10,8 @@ well_site <- args[length(args) - 2]
 wavelength <- as.numeric(args[length(args) - 1]) 
 output_dir <- args[length(args)]  
 
-#image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
-image_dir <- getwd()
+image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
+#image_dir <- getwd()
 
 input_files <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 mask <- 'well_mask.png'
