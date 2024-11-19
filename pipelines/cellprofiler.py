@@ -23,9 +23,9 @@ def run_cellpose(model_path, temp_dir):
     cellpose_command_split = shlex.split(cellpose_command)
     subprocess.run(cellpose_command_split)
 
-def run_rscript_to_generate_csv(cellprofiler_pipeline, plate, well_site, wavelength, csv_out_dir):
+def run_rscript_to_generate_csv(cellprofiler_pipeline, plate, well_site, wavelength, csv_out_dir, plate_short):
     """Run the R script to generate the CSV file listing the image paths and save csvs to work/cellprofiler."""
-    r_command = f'Rscript {Path.home()}/wrmXpress/scripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {well_site} {wavelength} {csv_out_dir}'
+    r_command = f'Rscript {Path.home()}/wrmXpress/scripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {well_site} {wavelength} {csv_out_dir} {plate_short}'
     subprocess.run(shlex.split(r_command))
     print(f'Generated file list for {cellprofiler_pipeline}.')
 
@@ -52,13 +52,18 @@ def cellprofiler(g, options, well_site):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Construct the source TIFF file path
             tiff_file_base = os.path.join(g.input, g.plate, f"TimePoint_{timepoint}", f"{g.plate_short}_{well_site}")
-            wavelength_tiff_file = f"{tiff_file_base}_{wavelength + 1}.TIF"
+
+             # Check if the wavelength is specified in the filename
+            tiff_file = None
             base_tiff_file = f"{tiff_file_base}.TIF"
+            wavelength_tiff_file = f"{tiff_file_base}_w{wavelength + 1}.TIF"
 
-            # Check if the correct TIFF file exists (either wavelength-specific or base file)
-            tiff_file = wavelength_tiff_file if os.path.exists(wavelength_tiff_file) else base_tiff_file
+            if os.path.exists(wavelength_tiff_file):
+                tiff_file = wavelength_tiff_file
+            elif os.path.exists(base_tiff_file):
+                tiff_file = base_tiff_file
 
-            if os.path.exists(tiff_file):
+            if tiff_file:
                 # Rename the TIF file to .tif and copy it to the temporary directory
                 rename_file_to_temp_tif(tiff_file, temp_dir)
 
@@ -72,9 +77,11 @@ def cellprofiler(g, options, well_site):
                         shutil.copy(file, work_dir / new_filename)
 
         #Generate the CSV file using the R script
-        run_rscript_to_generate_csv(options['pipeline'], g.plate, well_site, wavelength, work_dir)
+        run_rscript_to_generate_csv(options['pipeline'], g.plate, well_site, wavelength, work_dir, g.plate_short)
 
         # Run CellProfiler and save the output images to the output/cellprofiler/img directory
-        csv_file = work_dir / f'image_paths_{g.plate}_{well_site}_{wavelength + 1}.csv'
+        csv_file = work_dir / f'image_paths_{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
         run_cellprofiler(options['pipeline'], csv_file, img_out_dir)
+
+    return [wavelength]
 

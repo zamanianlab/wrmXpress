@@ -81,8 +81,10 @@ if __name__ == "__main__":
     # Create folder for each pipeline and the subfolders
     for pipeline in pipelines.keys():
         pipeline_output_dir = Path(g.output) / pipeline
+        pipeline_work_dir = Path(g.work) / pipeline
         # Create main pipeline directory
         pipeline_output_dir.mkdir(parents=True, exist_ok=True)
+        pipeline_work_dir.mkdir(parents=True, exist_ok=True)
         # Create 'img' folder
         img_dir = pipeline_output_dir / 'img'
         img_dir.mkdir(parents=True, exist_ok=True)
@@ -122,12 +124,14 @@ if __name__ == "__main__":
             wavelengths_dict['segmentation'] = wavelengths
 
         if 'cellprofiler' in pipelines:
-            wavelengths = cellprofiler(g, wells, pipelines['cellprofiler'], well_site)
+            wavelengths = cellprofiler(g, pipelines['cellprofiler'], well_site)
+            wavelengths_dict['cellprofiler'] = wavelengths
 
         well_site_num += 1
 
     # After running the pipelines, call static_dx with the correct wavelengths
     for pipeline in pipelines:
+        print(f"Running static_dx for {pipeline}.")
         if any(file.endswith('.png') for file in os.listdir(f'work/{pipeline}')):
             pipeline_wavelengths = wavelengths_dict.get(pipeline, None)
             for wavelength in pipeline_wavelengths:
@@ -138,14 +142,15 @@ if __name__ == "__main__":
     r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
     
     # Get the list of pipeline directories
-    pipeline_dirs = [d for d in Path(g.output).iterdir() if d.is_dir()]
+    pipeline_dirs = [d for d in Path(g.work).iterdir() if d.is_dir()]
 
     # Filter and get CSVs for the specific plate in the pipeline directories
-    pipeline_csv_list = [d.name for d in pipeline_dirs if any(glob.glob(str(d / f"*{g.plate}*")))]
+    pipeline_csv_list = [d.name for d in pipeline_dirs if any(glob.glob(str(d / f"*{g.plate_short}*.csv")))]
+    print("Pipeline CSVs list:", pipeline_csv_list)
 
     # Check if there are any CSVs to process
     if pipeline_csv_list:
-        subprocess.run(["Rscript", r_script_path, g.plate, str(g.rows), str(g.cols), ",".join(pipeline_csv_list)])
+        subprocess.run(["Rscript", r_script_path, g.plate, g.plate_short, str(g.rows), str(g.cols), ",".join(pipeline_csv_list)])
     else:
         print("No CSV files found for the specified plate.")
     

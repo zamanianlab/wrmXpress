@@ -5,9 +5,10 @@ options(readr.show_col_types = FALSE, dplyr.summarise.inform = FALSE)
 args <- commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-filled_rows <- as.numeric(args[2])
-cols <- as.numeric(args[3])
-pipeline_list <- str_split(args[4], ",")[[1]]
+plate_short <- args[2]
+filled_rows <- as.numeric(args[3])
+cols <- as.numeric(args[4])
+pipeline_list <- str_split(args[5], ",")[[1]]
 
 # Get the paths to all the metadata files
 metadata_dir <- file.path('metadata', plate)
@@ -51,17 +52,15 @@ for (pipeline in pipeline_list) {
   # List only CSV files that contain the plate name
   all_files <- list.files(
     path = input_dir,
-    pattern = paste0(plate, ".*\\.csv$"),
+    pattern = paste0(".*", plate_short, ".*\\.csv$"),
     recursive = TRUE
   )
   
-  # Filter out any files that contain '_tidy.csv'
-  filtered_files <- all_files[!grepl("_tidy\\.csv$", all_files)]
   
   output_files <- dplyr::tibble(
     base = input_dir,
     plate = plate,
-    data_file = filtered_files
+    data_file = all_files
   ) %>% dplyr::mutate(path = file.path(base, data_file))
   
   # Print the CSV files being considered

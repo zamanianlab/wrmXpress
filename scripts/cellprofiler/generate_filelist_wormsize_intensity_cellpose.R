@@ -6,9 +6,10 @@ args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
 wells <- args[2:(length(args) - 3)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
-well_site <- args[length(args) - 2]
-wavelength <- as.numeric(args[length(args) - 1]) 
-output_dir <- args[length(args)] 
+well_site <- args[length(args) - 3]
+wavelength <- as.numeric(args[length(args) - 2]) 
+output_dir <- args[length(args) - 1] 
+plate_short <- args[length(args)]
 
 # plate <- '20220422-p06-EJG_1437'
 # wells <- 'A01'
@@ -17,12 +18,14 @@ image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
 mask_dir <- stringr::str_c(getwd(), 'work', 'cellprofiler', sep = '/')
 
 input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
-input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate, vars = .))
+input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate_short, vars = .))
 mask <- 'well_mask.png'
 
 wd <- getwd() %>% str_remove(., '^/')
 
 load_csv <- dplyr::tibble(
+  # requires well_site column for metadata_join_master.R
+  well_site = well_site,
   Group_Number = 1,
   Group_Index = seq(1, length(input_raw)),
   URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_raw, sep = '/'),
@@ -48,7 +51,7 @@ load_csv <- dplyr::tibble(
 
 #readr::write_csv(load_csv, file = stringr::str_c('/', wd, '/input', '/image_paths_wormsize_intensity_cellpose.csv', sep = ''))
 # Generate a unique output CSV for each well_site
-output_csv <- file.path(output_dir, paste0("image_paths_", plate, "_", well_site, "_w", wavelength + 1, ".csv"))
+output_csv <- file.path(output_dir, paste0("image_paths_", plate_short, "_", well_site, "_w", wavelength + 1, ".csv"))
 
 # Debug check for output path
 print(paste("Writing CSV to:", output_csv))
