@@ -33,7 +33,7 @@ def run_cellprofiler(cellprofiler_pipeline, csv_file, img_out_dir):
     """Run CellProfiler using the generated CSV file and save output images to output/cellprofiler/img."""
     cp_command = f'cellprofiler -c -r -p {Path.home()}/wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}'
     subprocess.run(shlex.split(cp_command))
-    print(f'Started CellProfiler using {csv_file.name}.')
+    print(f'Ran CellProfiler using {csv_file.name}.')
 
 def cellprofiler(g, options, well_site):
     # Create output and CSV directories at the very start of the function

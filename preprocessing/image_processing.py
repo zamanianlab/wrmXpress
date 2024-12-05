@@ -142,7 +142,18 @@ def stitch_directory(g, wells, input_dir, output_dir, format='TIF'):
 def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF'):
     image_paths = []
     for well in wells:
-        image_paths.append(os.path.join(directory, g.plate_short + f'_{well}_w{wavelength}.{format}'))
+        tiff_file_base = f"{g.plate_short}_{well}"
+        wavelength_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}.{format}")
+        base_tiff_file = os.path.join(directory, f"{tiff_file_base}.{format}")
+        
+        # Check if the wavelength-specific or base file exists
+        if os.path.exists(wavelength_tiff_file):
+            image_paths.append(wavelength_tiff_file)
+        elif os.path.exists(base_tiff_file):
+            image_paths.append(base_tiff_file)
+        else:
+            print(f"No file found for well {well} in directory {directory}")
+            
     return image_paths
 
 # loop through all files and apply masks
@@ -177,7 +188,7 @@ def apply_masks(g):
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+)){0,1}_w(\d+)\.(tif|TIF|png|PNG)$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?(?:_w(\d+))?\.(tif|TIF|png|PNG)$'
     match = re.search(pattern, well_string)
 
     # check number of groups to determine site number if applicable and well number
