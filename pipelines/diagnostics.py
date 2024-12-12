@@ -3,6 +3,7 @@ import cv2
 import os
 from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 import numpy as np
+import re
 
 # stitches all selected wells from a directory into diagnostic image of plate and saves it in output directory for each wavelength
 # if sites need to be stitched first, save them in the specified work directory
@@ -46,8 +47,12 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
     if g.wells == ['All']:
         # create dictionary to hold image paths of each wavelength
         frame_paths = {}
+        time_points = len([
+            name for name in os.listdir(input_dir) 
+            if os.path.isdir(os.path.join(input_dir, name)) and re.match(r"TimePoint_\d+", name)
+        ])
         # populate dictionary with each wavelengths' frame paths
-        for timepoint in range(g.time_points):
+        for timepoint in range(time_points):
             # create path for current timepoint directory
             current_timepoint = os.path.join(input_dir, f'TimePoint_{timepoint+1}')
             # create outpath for generated static_dx image
@@ -83,6 +88,8 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
                     frame_paths.append(frame_path)
                 outpath = os.path.join(output_dir, g.plate_short + f'_{well}_w{wavelength + 1}.AVI')
                 __create_video(frame_paths, outpath)
+                
+    print("Finished creating video")
 
 # takes a list of image paths and stitches all the selected wells together
 # saves stitched image to specified outpath
