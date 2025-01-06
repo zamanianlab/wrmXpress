@@ -213,7 +213,7 @@ ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_numbe
     Calculate the per-image mean values for object measurements?:No
     Calculate the per-image median values for object measurements?:No
     Calculate the per-image standard deviation values for object measurements?:No
-    Output file location:Elsewhere...|/home/output/data/
+    Output file location:Elsewhere...|/home/work/cellprofiler/
     Create a GenePattern GCT file?:No
     Select source of sample row name:Metadata
     Select the image to use as the identifier:None
@@ -234,7 +234,7 @@ SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show
     Select the image to save:StraightenedImage
     Select method for constructing file names:Single name
     Select image name for file prefix:None
-    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>_w\g<Wavelength>
     Number of digits:4
     Append a suffix to the image file name?:No
     Text to append to the image name:

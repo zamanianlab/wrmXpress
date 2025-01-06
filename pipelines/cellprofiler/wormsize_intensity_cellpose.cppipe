@@ -133,7 +133,7 @@ SaveImages:[module_num:9|svn_version:'Unknown'|variable_revision_number:16|show_
     Select the image to save:StraightenedRescaled
     Select method for constructing file names:Single name
     Select image name for file prefix:None
-    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_\g<Wavelength>
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>
     Number of digits:4
     Append a suffix to the image file name?:No
     Text to append to the image name:
