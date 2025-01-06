@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
-    r_script_path = "/wrmXpress/scripts/metadata_join_master.R"
+    r_script_path = "/root/wrmXpress/scripts/metadata_join_master.R"
 
     # Get the list of pipeline directories
     pipeline_dirs = [d for d in Path(g.work).iterdir() if d.is_dir()]
