@@ -10,7 +10,12 @@ import time
 import os
 
 from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
-from preprocessing.image_processing import avi_to_ix, grid_crop, stitch_all_timepoints, apply_masks
+from preprocessing.image_processing import (
+    avi_to_ix,
+    grid_crop,
+    stitch_all_timepoints,
+    apply_masks,
+)
 from pipelines.diagnostics import static_dx, video_dx
 from pipelines.optical_flow import optical_flow
 from pipelines.segmentation import segmentation
@@ -29,33 +34,57 @@ if __name__ == "__main__":
     start = time.time()
 
     # create the class that will instantiate the namedtuple
-    g_class = namedtuple('g_class', ['file_structure', 'mode', 'rows', 'cols', 'rec_rows', 'rec_cols',
-                                     'crop', 'x_sites', 'y_sites', 'stitch', 'input', 'work', 'output',
-                                     'plate_dir', 'plate', 'plate_short', 'wells',
-                                     'circle_diameter', 'square_side',
-                                     'desc', 'time_points', 'n_waves', 'wave_names', 'plate_paths'])
+    g_class = namedtuple(
+        "g_class",
+        [
+            "file_structure",
+            "mode",
+            "rows",
+            "cols",
+            "rec_rows",
+            "rec_cols",
+            "crop",
+            "x_sites",
+            "y_sites",
+            "stitch",
+            "input",
+            "work",
+            "output",
+            "plate_dir",
+            "plate",
+            "plate_short",
+            "wells",
+            "circle_diameter",
+            "square_side",
+            "desc",
+            "time_points",
+            "n_waves",
+            "wave_names",
+            "plate_paths",
+        ],
+    )
 
     ############################################
     ######### 1. GET THE YAML CONFIGS  #########
     ############################################
-    
+
     arg_parser = argparse.ArgumentParser()
     g, pipelines = parse_yaml(arg_parser, g_class)
-    
-    # get wells/sites to be used    
+
+    # get wells/sites to be used
     wells, well_sites = get_wells(g)
 
     #########################################################
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
     #########################################################
-    
+
     # standardise file structure to imageXpress and parse HTD
-    if g.file_structure == 'imagexpress':
+    if g.file_structure == "imagexpress":
         g = parse_htd(g, g_class)
         # if single wavelength, '_w1' filename will not have '_w1' so it must be added
         if g.n_waves == 1:
             rename_files(g)
-    elif g.file_structure == 'avi':
+    elif g.file_structure == "avi":
         # convert avi to tifs and create HTD (done in avi_to_ix)
         avi_to_ix(g)
         g = parse_htd(g, g_class)
@@ -63,9 +92,9 @@ if __name__ == "__main__":
         raise ValueError("Unsupported file structure.")
 
     # crop/stitch wells if specified and apply mask if required
-    if g.crop == 'grid':
+    if g.crop == "grid":
         grid_crop(g)
-    elif g.crop == 'auto':
+    elif g.crop == "auto":
         # auto_crop(g)
         pass
     elif g.stitch:
@@ -86,92 +115,122 @@ if __name__ == "__main__":
         pipeline_output_dir.mkdir(parents=True, exist_ok=True)
         pipeline_work_dir.mkdir(parents=True, exist_ok=True)
         # Create 'img' folder
-        img_dir = pipeline_output_dir / 'img'
+        img_dir = pipeline_output_dir / "img"
         img_dir.mkdir(parents=True, exist_ok=True)
 
     ##############################################
     ######### 4. DIAGNOSTICS & PIPELINES #########
     ##############################################
     # generate static_dx
-    if 'static_dx' in pipelines:
-        static_dx(g, wells,
-                  Path(g.plate_dir) / 'TimePoint_1',
-                  Path(g.output) / 'static_dx',
-                  Path(g.work) / 'static_dx' / 'TimePoint_1',
-                  None,
-                  pipelines['static_dx']['rescale_multiplier'])
+    if "static_dx" in pipelines:
+        static_dx(
+            g,
+            wells,
+            Path(g.plate_dir) / "TimePoint_1",
+            Path(g.output) / "static_dx",
+            Path(g.work) / "static_dx" / "TimePoint_1",
+            None,
+            pipelines["static_dx"]["rescale_multiplier"],
+        )
 
     # generate video_dx
-    if 'video_dx' in pipelines:
-        video_dx(g, wells,
-                 Path(g.plate_dir),
-                 Path(g.output) / 'video_dx',
-                 Path(g.work) / 'static_dx',
-                 Path(g.work) / 'video_dx',
-                 pipelines['video_dx']['rescale_multiplier'])
-        
+    if "video_dx" in pipelines:
+        video_dx(
+            g,
+            wells,
+            Path(g.plate_dir),
+            Path(g.output) / "video_dx",
+            Path(g.work) / "static_dx",
+            Path(g.work) / "video_dx",
+            pipelines["video_dx"]["rescale_multiplier"],
+        )
+
     wavelengths_dict = {}  # Dictionary to store wavelengths for each pipeline
-    well_site_num = 1 #counter for well_sites
+    well_site_num = 1  # counter for well_sites
 
     for well_site in well_sites:
         print(well_site, f"{well_site_num}/{len(well_sites)}")
-        if 'optical_flow' in pipelines:
-            wavelengths = optical_flow(g, pipelines['optical_flow'], well_site, multiplier=2)
-            wavelengths_dict['optical_flow'] = wavelengths
+        if "optical_flow" in pipelines:
+            wavelengths = optical_flow(
+                g, pipelines["optical_flow"], well_site, multiplier=2
+            )
+            wavelengths_dict["optical_flow"] = wavelengths
 
-        if 'segmentation' in pipelines:
-            wavelengths = segmentation(g, pipelines['segmentation'], well_site)
-            wavelengths_dict['segmentation'] = wavelengths
+        if "segmentation" in pipelines:
+            wavelengths = segmentation(g, pipelines["segmentation"], well_site)
+            wavelengths_dict["segmentation"] = wavelengths
 
-        if 'cellprofiler' in pipelines:
-            wavelengths = cellprofiler(g, pipelines['cellprofiler'], well_site)
-            wavelengths_dict['cellprofiler'] = wavelengths
+        if "cellprofiler" in pipelines:
+            wavelengths = cellprofiler(g, pipelines["cellprofiler"], well_site)
+            wavelengths_dict["cellprofiler"] = wavelengths
 
         well_site_num += 1
 
     # After running the pipelines, call static_dx with the correct wavelengths
     for pipeline in pipelines:
         print(f"Running static_dx for {pipeline}.")
-        if any(file.endswith('.png') for file in os.listdir(f'work/{pipeline}')):
+        if any(file.endswith(".png") for file in os.listdir(Path(g.work, pipeline))):
             pipeline_wavelengths = wavelengths_dict.get(pipeline, None)
             for wavelength in pipeline_wavelengths:
-                static_dx(g, wells, f'work/{pipeline}', f'output/{pipeline}', None, [wavelength], rescale_factor=1, format='PNG')
+                static_dx(
+                    g,
+                    wells,
+                    Path(g.work, pipeline),
+                    Path(g.output, pipeline),
+                    None,
+                    [wavelength],
+                    rescale_factor=1,
+                    format="PNG",
+                )
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
-    r_script_path = f"{Path.home()}/wrmXpress/scripts/metadata_join_master.R"
-    
+    r_script_path = "/wrmXpress/scripts/metadata_join_master.R"
+
     # Get the list of pipeline directories
     pipeline_dirs = [d for d in Path(g.work).iterdir() if d.is_dir()]
 
     # Filter and get CSVs for the specific plate in the pipeline directories
-    pipeline_csv_list = [d.name for d in pipeline_dirs if any(glob.glob(str(d / f"*{g.plate_short}*.csv")))]
+    pipeline_csv_list = [
+        d.name
+        for d in pipeline_dirs
+        if any(glob.glob(str(d / f"*{g.plate_short}*.csv")))
+    ]
     print("Pipeline CSVs list:", pipeline_csv_list)
 
     # Check if there are any CSVs to process
     if pipeline_csv_list:
-        subprocess.run(["Rscript", r_script_path, g.plate, g.plate_short, str(g.rows), str(g.cols), ",".join(pipeline_csv_list)])
+        subprocess.run(
+            [
+                "Rscript",
+                r_script_path,
+                g.input,
+                g.plate,
+                g.plate_short,
+                str(g.rows),
+                str(g.cols),
+                ",".join(pipeline_csv_list),
+            ]
+        )
     else:
         print("No CSV files found for the specified plate.")
-    
 
     end = time.time()
-    print("Time elapsed (seconds):", end-start)
+    print("Time elapsed (seconds):", end - start)
     raise Exception("CODE STOPS HERE")
-
 
     #########################################
     ######### 3. GET WELLS & PATHS  #########
     #########################################
     try:
-        if 'All' in g.wells:
+        if "All" in g.wells:
             wells = get_wells(g)
             plate_paths = get_image_paths(g, wells)
         else:
             wells = g.wells
             plate_paths = get_image_paths(g, g.wells)
             # remove files that aren't going to be processed
-            print('Removing unselected wells.')
+            print("Removing unselected wells.")
             all_wells = get_wells(g)
             all_paths = get_image_paths(g, all_wells)
             all_paths = [item for sublist in all_paths for item in sublist]
@@ -180,10 +239,11 @@ if __name__ == "__main__":
             plate_paths = [i.as_posix() for i in plate_paths]
             rm_paths = set(all_paths).difference(plate_paths)
             for rm in rm_paths:
-                os.remove(rm)   
+                os.remove(rm)
     except TypeError:
-        print("ERROR: YAML parameter \"wells\" improperly formated (or none provided) or failure to retrieve image paths.")
-
+        print(
+            'ERROR: YAML parameter "wells" improperly formated (or none provided) or failure to retrieve image paths.'
+        )
 
     # update g with wells & plate_paths and print contents (except for plate_paths)
     g = g._replace(wells=wells, plate_paths=plate_paths)
@@ -203,39 +263,44 @@ if __name__ == "__main__":
     ######### 4. RUN CELLPROFILER  #########
     ########################################
 
-    if 'cellprofiler' in modules.keys():
-        pipeline = modules['cellprofiler']['pipeline'][0]
+    if "cellprofiler" in modules.keys():
+        pipeline = modules["cellprofiler"]["pipeline"][0]
 
-        if 'cellpose' in pipeline:
+        if "cellpose" in pipeline:
             # rename TIF to tif to work with cellpose
-            for filepath in Path('input/{}/TimePoint_1'.format(g.plate)).glob('**/*'):
-                os.rename(filepath, str(filepath).replace('TIF', 'tif'))
-            wells = [well.replace('TIF', 'tif') for well in wells]
+            for filepath in Path("input/{}/TimePoint_1".format(g.plate)).glob("**/*"):
+                os.rename(filepath, str(filepath).replace("TIF", "tif"))
+            wells = [well.replace("TIF", "tif") for well in wells]
             g = g._replace(wells=wells)
-            
-            cellpose_command = 'python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose'.format(g.input, g.plate)
+
+            cellpose_command = "python -m cellpose --dir {}/{}/TimePoint_1 --pretrained_model wrmXpress/cp_pipelines/cellpose_models/20220830_all --diameter 0 --save_png --no_npy --verbose".format(
+                g.input, g.plate
+            )
             cellpose_command_split = shlex.split(cellpose_command)
             subprocess.run(cellpose_command_split)
             os.mkdir("{}/cellpose_masks".format(g.output))
             for file in glob.glob("{}/{}/TimePoint_1/*.png".format(g.input, g.plate)):
                 shutil.copy(file, "{}/cellpose_masks".format(g.output))
 
-        fl_command = 'Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}'.format(
-            pipeline, g.plate, g.wells)
+        fl_command = "Rscript wrmXpress/scripts/cp/generate_filelist_{}.R {} {}".format(
+            pipeline, g.plate, g.wells
+        )
         fl_command_split = shlex.split(fl_command)
-        print('Generating file list for CellProfiler.')
+        print("Generating file list for CellProfiler.")
         subprocess.run(fl_command_split)
 
-        cellprofiler_command = 'cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv'.format(
-            pipeline, pipeline)
+        cellprofiler_command = "cellprofiler -c -r -p wrmXpress/cp_pipelines/pipelines/{}.cppipe --data-file=input/image_paths_{}.csv".format(
+            pipeline, pipeline
+        )
         cellprofiler_command_split = shlex.split(cellprofiler_command)
-        print('Starting CellProfiler.')
+        print("Starting CellProfiler.")
         subprocess.run(cellprofiler_command_split)
 
-        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(
-            g.plate, g.rows, g.columns)
+        md_command = "Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}".format(
+            g.plate, g.rows, g.columns
+        )
         md_command_split = shlex.split(md_command)
-        print('Joining experiment metadata and tidying.')
+        print("Joining experiment metadata and tidying.")
         subprocess.run(md_command_split)
 
     ######################################
@@ -249,7 +314,7 @@ if __name__ == "__main__":
     # DataFrame. When the modules are run below, they need to append the column
     # name to cols and the phenotypic value to out_dict['well'].
 
-    if 'cellprofiler' not in modules.keys():
+    if "cellprofiler" not in modules.keys():
         out_dict = defaultdict(list)
         cols = []
 
@@ -257,84 +322,85 @@ if __name__ == "__main__":
         for well, well_paths in zip(wells, plate_paths):
             print("Running well {}".format(well))
 
-            if 'convert' in modules.keys():
+            if "convert" in modules.keys():
                 # get the value of reorganize and pass it to the module
-                reorganize = modules.get('convert').get('save_video')
-                multiplier = float(modules.get(
-                    'convert').get('rescale_multiplier'))
+                reorganize = modules.get("convert").get("save_video")
+                multiplier = float(modules.get("convert").get("rescale_multiplier"))
                 video = convert_video(g, well, well_paths, reorganize, multiplier)
-                print('{}: module \'convert\' finished'.format(well))
+                print("{}: module 'convert' finished".format(well))
 
-            if 'segment' in modules.keys():
+            if "segment" in modules.keys():
                 if g.n_waves != 1:
-                    wave_length = modules.get('segment').get('wavelength')
+                    wave_length = modules.get("segment").get("wavelength")
                     # filter for the paths to the wavelengths to be segmented
                     well_paths = [
-                        path for path in well_paths if wave_length in str(path)]
+                        path for path in well_paths if wave_length in str(path)
+                    ]
                 worm_area = segment_worms(g, well, well_paths)
-                if 'worm_area' not in cols:
-                    cols.append('worm_area')
+                if "worm_area" not in cols:
+                    cols.append("worm_area")
                 out_dict[well].append(worm_area)
-                print('{}: module \'segment\' finished'.format(well))
+                print("{}: module 'segment' finished".format(well))
 
-            if 'motility' in modules.keys():
+            if "motility" in modules.keys():
                 # don't use a rescaled video for flow
                 video = convert_video(g, well, well_paths, False, 1)
                 flow = dense_flow(g, well, video)
-                if 'optical_flow' not in cols:
-                    cols.append('optical_flow')
+                if "optical_flow" not in cols:
+                    cols.append("optical_flow")
                 out_dict[well].append(flow)
-                print('{}: module \'motility\' finished'.format(well))
+                print("{}: module 'motility' finished".format(well))
 
-            if 'fecundity' in modules.keys():
+            if "fecundity" in modules.keys():
                 progeny_area = fecundity(g, well, well_paths)
-                if 'progeny_area' not in cols:
-                    cols.append('progeny_area')
+                if "progeny_area" not in cols:
+                    cols.append("progeny_area")
                 out_dict[well].append(progeny_area)
-                print('{}: module \'fecundity\' finished'.format(well))
+                print("{}: module 'fecundity' finished".format(well))
 
         ##################################
         ######### 6. WRITE DATA  #########
         ##################################
 
-        df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
-        g.output.joinpath('data').mkdir(parents=True, exist_ok=True)
-        outpath = g.output.joinpath('data', g.plate + '_data' + ".csv")
-        df.to_csv(path_or_buf=outpath, index_label='well')
+        df = pd.DataFrame.from_dict(out_dict, orient="index", columns=cols)
+        g.output.joinpath("data").mkdir(parents=True, exist_ok=True)
+        outpath = g.output.joinpath("data", g.plate + "_data" + ".csv")
+        df.to_csv(path_or_buf=outpath, index_label="well")
 
-        md_command = 'Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}'.format(g.plate, g.rows, g.columns)
+        md_command = "Rscript wrmXpress/scripts/metadata_join_master.R {} {} {}".format(
+            g.plate, g.rows, g.columns
+        )
         md_command_split = shlex.split(md_command)
         subprocess.run(md_command_split)
 
     ###########################################
     ######### 7. GENERATE THUMBNAILS  #########
     ###########################################
-    if 'dx' in modules.keys():
+    if "dx" in modules.keys():
         # one for each wavelength (TimePoint_1)
         # this if/else is required because of an IX nomenclature quirk:
         #   if there is only one wavelength, there is no _w1 in the file name
         #   if there is > 1, each image has _w1, _w2, etc...
         if g.n_waves == 1:
-            type = ''
+            type = ""
             print("Generating w1 thumbnails")
             generate_thumbnails(g, type)
         else:
             for i in range(1, g.n_waves + 1):
-                type = 'w' + str(i)
+                type = "w" + str(i)
                 print("Generating {} thumbnails".format(type))
                 generate_thumbnails(g, type)
 
         # one for each specific module
         dx_types = []
-        if 'segment' in modules:
-            dx_types.append('binary')
-        if 'motility' in modules:
-            dx_types.append('motility')
-        if 'fecundity' in modules and g.species == 'Sma':
-            dx_types.append('filtered')
-        elif 'fecundity' in modules and g.species == 'Bma':
-            dx_types.append('binary')
+        if "segment" in modules:
+            dx_types.append("binary")
+        if "motility" in modules:
+            dx_types.append("motility")
+        if "fecundity" in modules and g.species == "Sma":
+            dx_types.append("filtered")
+        elif "fecundity" in modules and g.species == "Bma":
+            dx_types.append("binary")
         for type in dx_types:
             print("Generating {} thumbnails".format(type))
             generate_thumbnails(g, type)
-    

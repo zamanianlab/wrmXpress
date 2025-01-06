@@ -1,17 +1,21 @@
-suppressWarnings(suppressMessages(library(tidyverse)))
-suppressWarnings(suppressMessages(library(tidymodels)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(magrittr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(readr)))
 options(readr.show_col_types = FALSE, dplyr.summarise.inform = FALSE)
 
 args <- commandArgs(trailingOnly = TRUE)
 
-plate <- args[1]
-plate_short <- args[2]
-filled_rows <- as.numeric(args[3])
-cols <- as.numeric(args[4])
-pipeline_list <- str_split(args[5], ",")[[1]]
+input <- args[1]
+plate <- args[2]
+plate_short <- args[3]
+filled_rows <- as.numeric(args[4])
+cols <- as.numeric(args[5])
+pipeline_list <- str_split(args[6], ",")[[1]]
 
 # Get the paths to all the metadata files
-metadata_dir <- file.path('metadata', plate)
+metadata_dir <- stringr::str_c(str_remove(input, "/input"), "metadata", plate, sep = "/")
+
 metadata_files <- dplyr::tibble(base = metadata_dir,
                          plate = plate,
                          category = list.files(path = metadata_dir,
@@ -44,10 +48,11 @@ metadata <- metadata_files %>%
   dplyr::group_by(plate, well, row, col) %>%
   dplyr::summarise(dplyr::across(everything(), collapse_rows))
 
+
 # Read in output files and join with metadata
 for (pipeline in pipeline_list) {
-  output_dir <- file.path('output', pipeline)
-  input_dir <- file.path('work', pipeline)
+  output_dir <- stringr::str_c(str_remove(input, "/input"), "output", pipeline, sep = "/")
+  input_dir <- stringr::str_c(str_remove(input, "/input"), "work", pipeline, sep = "/")
   
   # List only CSV files that contain the plate name
   all_files <- list.files(

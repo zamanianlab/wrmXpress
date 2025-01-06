@@ -63,7 +63,7 @@ UntangleWorms:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|sho
     Overlap style:Without overlap
     Name the output overlapping worm objects:OverlappingWorms
     Name the output non-overlapping worm objects:NonOverlappingWorms
-    Training set file location:Default Input Folder sub-folder|wrmXpress/pipelines/models/cellprofiler
+    Training set file location:Default Input Folder sub-folder|/wrmXpress/pipelines/models/cellprofiler
     Training set file name:Cellpose_TrainingSet.xml
     Use training set weights?:Yes
     Overlap weight:10
@@ -94,7 +94,7 @@ StraightenWorms:[module_num:5|svn_version:'Unknown'|variable_revision_number:3|s
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/wrmXpress/cp_pipelines/worm_models
     Training set file name:Cellpose_TrainingSet.xml
     Image count:1
     Measure intensity distribution?:No

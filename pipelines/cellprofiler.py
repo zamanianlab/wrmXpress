@@ -6,54 +6,74 @@ import shlex
 import tempfile
 from pathlib import Path
 
+
 def rename_file_to_temp_tif(src_file, temp_dir):
     """Rename a single TIF file to tif in a temporary directory."""
-    temp_file = Path(temp_dir) / (Path(src_file).stem + '.tif')
+    temp_file = Path(temp_dir) / (Path(src_file).stem + ".tif")
     shutil.copy(src_file, temp_file)
     return temp_file
+
 
 def run_cellpose(model_path, temp_dir):
     """Run CellPose on a single .tif file."""
     cellpose_command = (
-        f'python -m cellpose '
-        f'--dir {temp_dir} '
-        f'--pretrained_model {model_path} '
-        f'--diameter 0 --save_png --no_npy --verbose'
+        f"python -m cellpose "
+        f"--dir {temp_dir} "
+        f"--pretrained_model {model_path} "
+        f"--diameter 0 --save_png --no_npy --verbose"
     )
     cellpose_command_split = shlex.split(cellpose_command)
     subprocess.run(cellpose_command_split)
 
-def run_rscript_to_generate_csv(cellprofiler_pipeline, plate, well_site, wavelength, csv_out_dir, plate_short):
+
+def run_rscript_to_generate_csv(
+    cellprofiler_pipeline,
+    plate,
+    input,
+    work,
+    well_site,
+    wavelength,
+    csv_out_dir,
+    plate_short,
+):
     """Run the R script to generate the CSV file listing the image paths and save csvs to work/cellprofiler."""
-    r_command = f'Rscript {Path.home()}/wrmXpress/scripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {well_site} {wavelength} {csv_out_dir} {plate_short}'
+    r_command = f"Rscript /wrmXpress/scripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
+    print(r_command)
     subprocess.run(shlex.split(r_command))
-    print(f'Generated file list for {cellprofiler_pipeline}.')
+    print(f"Generated file list for {cellprofiler_pipeline}.")
+
 
 def run_cellprofiler(cellprofiler_pipeline, csv_file, img_out_dir):
     """Run CellProfiler using the generated CSV file and save output images to output/cellprofiler/img."""
-    cp_command = f'cellprofiler -c -r -p {Path.home()}/wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}'
+    cp_command = f"cellprofiler -c -r -p /wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}"
     subprocess.run(shlex.split(cp_command))
-    print(f'Ran CellProfiler using {csv_file.name}.')
+    print(f"Ran CellProfiler using {csv_file.name}.")
+
 
 def cellprofiler(g, options, well_site):
     # Create output and CSV directories at the very start of the function
-    work_dir = Path(g.work) / 'cellprofiler'
-    img_out_dir = Path(g.output) / 'cellprofiler' / 'img'
+    work_dir = Path(g.work) / "cellprofiler"
+    img_out_dir = Path(g.output) / "cellprofiler" / "img"
     work_dir.mkdir(parents=True, exist_ok=True)
     img_out_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = f"wrmXpress/pipelines/models/cellpose/{options['cellpose_model']}"
-    wavelength_option = options['cellpose_wavelength']  # A single wavelength like 'w1'
-    wavelength = int(wavelength_option[1:]) - 1 # Convert 'w1' to 0-based index
+    model_path = f"/wrmXpress/pipelines/models/cellpose/{options['cellpose_model']}"
+    wavelength_option = options["cellpose_wavelength"]  # A single wavelength like 'w1'
+    wavelength = int(wavelength_option[1:]) - 1  # Convert 'w1' to 0-based index
     timepoints = range(1, 2)  # Process only TimePoint_1 for now
 
     # Iterate over the timepoints for CellPose processing
     for timepoint in timepoints:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Construct the source TIFF file path
-            tiff_file_base = os.path.join(g.input, g.plate, f"TimePoint_{timepoint}", f"{g.plate_short}_{well_site}")
+            tiff_file_base = os.path.join(
+                g.input,
+                g.plate,
+                f"TimePoint_{timepoint}",
+                f"{g.plate_short}_{well_site}",
+            )
 
-             # Check if the wavelength is specified in the filename
+            # Check if the wavelength is specified in the filename
             tiff_file = None
             base_tiff_file = f"{tiff_file_base}.TIF"
             wavelength_tiff_file = f"{tiff_file_base}_w{wavelength + 1}.TIF"
@@ -72,16 +92,28 @@ def cellprofiler(g, options, well_site):
 
                 # Rename and move the resulting PNG mask to the 'work/cellprofiler' directory
                 for file in glob.glob(f"{temp_dir}/*.png"):
-                    if 'cp_masks' in file:
-                        new_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                    if "cp_masks" in file:
+                        new_filename = (
+                            f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                        )
                         shutil.copy(file, work_dir / new_filename)
 
-        #Generate the CSV file using the R script
-        run_rscript_to_generate_csv(options['pipeline'], g.plate, well_site, wavelength, work_dir, g.plate_short)
+        # Generate the CSV file using the R script
+        run_rscript_to_generate_csv(
+            options["pipeline"],
+            g.plate,
+            g.input,
+            g.work,
+            well_site,
+            wavelength,
+            work_dir,
+            g.plate_short,
+        )
 
         # Run CellProfiler and save the output images to the output/cellprofiler/img directory
-        csv_file = work_dir / f'image_paths_{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
-        run_cellprofiler(options['pipeline'], csv_file, img_out_dir)
+        csv_file = (
+            work_dir / f"image_paths_{g.plate_short}_{well_site}_w{wavelength + 1}.csv"
+        )
+        run_cellprofiler(options["pipeline"], csv_file, img_out_dir)
 
     return [wavelength]
-

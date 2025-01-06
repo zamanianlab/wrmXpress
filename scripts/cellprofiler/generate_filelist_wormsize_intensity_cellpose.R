@@ -1,11 +1,15 @@
-suppressWarnings(suppressMessages(library(tidyverse)))
-
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(magrittr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(readr)))
 # setwd('~/Desktop/temp_root/')
 
 args = commandArgs(trailingOnly = TRUE)
 
 plate <- args[1]
-wells <- args[2:(length(args) - 3)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
+input <- args[2]
+work <- args[3]
+wells <- args[4:(length(args) - 3)] %>% stringr::str_remove_all(., '[,|\\[|\\]]')
 well_site <- args[length(args) - 3]
 wavelength <- as.numeric(args[length(args) - 2]) 
 output_dir <- args[length(args) - 1] 
@@ -14,8 +18,8 @@ plate_short <- args[length(args)]
 # plate <- '20220422-p06-EJG_1437'
 # wells <- 'A01'
 
-image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
-mask_dir <- stringr::str_c(getwd(), 'work', 'cellprofiler', sep = '/')
+image_dir <- stringr::str_c(input, plate, sep = '/')
+mask_dir <- stringr::str_c(work, 'cellprofiler', sep = '/')
 
 input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate_short, vars = .))
@@ -28,8 +32,8 @@ load_csv <- dplyr::tibble(
   well_site = well_site,
   Group_Number = 1,
   Group_Index = seq(1, length(input_raw)),
-  URL_RawImage = stringr::str_c('file:', wd, 'input', plate, input_raw, sep = '/'),
-  URL_WormMasks = stringr::str_c('file:', wd, 'work', 'cellprofiler', input_mask, sep = '/'),
+  URL_RawImage = stringr::str_c('file:', input, plate, input_raw, sep = '/'),
+  URL_WormMasks = stringr::str_c('file:', work, 'cellprofiler', input_mask, sep = '/'),
   PathName_RawImage = stringr::str_remove(URL_RawImage, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
   PathName_WormMasks = stringr::str_remove(URL_WormMasks, pattern = "/[^/]*$") %>% str_remove(., 'file:'),
   FileName_RawImage = input_raw,
