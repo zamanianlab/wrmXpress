@@ -72,7 +72,7 @@ directories:
 # Apply circular mask (radius: fraction of image height)
 # If circle_diameter is NA, do not apply mask
 # False/NA (default), True/0.4 (B. malayi WormViz adults), True/0.476 (S. mansoni adults), True/0.45 (fecundity)
-circle_diameter: 0.85
+circle_diameter: NA
 
 # Apply square mask (square side: fraction of image height)
 # If square_side is NA, do not apply mask
@@ -130,7 +130,7 @@ pipelines:
   segmentation:
     run: True
     # model name and type
-    model: '20220830_all'
+    model: 'celegans_20220830'
     model_type: 'cellpose'
     # specify the wavelength to run the segmentation on
     wavelengths:
@@ -140,7 +140,7 @@ pipelines:
   cellprofiler:
     run: True
     # cellpose model
-    cellpose_model: '20220830_all'
+    cellpose_model: 'celegans_20220830'
     # cellpose wavelength
     cellpose_wavelength: 'w1'
     # CellProfiler pipeline
@@ -153,8 +153,3 @@ pipelines:
 #### Tracking ####
   tracking: 
     run: False
-    
-
-# each pipeline is a single python script
-# each pipeline is self-contained (different folders in work and output)
-# each pipeline can be invoked in parallel within the wrapper

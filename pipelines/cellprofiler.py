@@ -37,7 +37,7 @@ def run_rscript_to_generate_csv(
     plate_short,
 ):
     """Run the R script to generate the CSV file listing the image paths and save csvs to work/cellprofiler."""
-    r_command = f"Rscript /root/wrmXpress/scripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
+    r_command = f"Rscript /root/wrmXpress/Rscripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
     print(r_command)
     subprocess.run(shlex.split(r_command))
     print(f"Generated file list for {cellprofiler_pipeline}.")
