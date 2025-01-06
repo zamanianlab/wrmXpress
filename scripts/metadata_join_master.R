@@ -7,11 +7,13 @@ options(readr.show_col_types = FALSE, dplyr.summarise.inform = FALSE)
 args <- commandArgs(trailingOnly = TRUE)
 
 input <- args[1]
-plate <- args[2]
-plate_short <- args[3]
-filled_rows <- as.numeric(args[4])
-cols <- as.numeric(args[5])
-pipeline_list <- str_split(args[6], ",")[[1]]
+work <- args[2]
+output <- args[3]
+plate <- args[4]
+plate_short <- args[5]
+filled_rows <- as.numeric(args[6])
+cols <- as.numeric(args[7])
+pipeline_list <- str_split(args[8], ",")[[1]]
 
 # Get the paths to all the metadata files
 metadata_dir <- stringr::str_c(str_remove(input, "/input"), "metadata", plate, sep = "/")
@@ -51,19 +53,19 @@ metadata <- metadata_files %>%
 
 # Read in output files and join with metadata
 for (pipeline in pipeline_list) {
-  output_dir <- stringr::str_c(str_remove(input, "/input"), "output", pipeline, sep = "/")
-  input_dir <- stringr::str_c(str_remove(input, "/input"), "work", pipeline, sep = "/")
+  output_dir <- stringr::str_c(output, pipeline, sep = "/")
+  work_dir <- stringr::str_c(work, pipeline, sep = "/")
   
   # List only CSV files that contain the plate name
   all_files <- list.files(
-    path = input_dir,
+    path = work_dir,
     pattern = paste0(plate_short, ".*\\.csv$"),
     recursive = TRUE
   )
   
   
   output_files <- dplyr::tibble(
-    base = input_dir,
+    base = work_dir,
     plate = plate,
     data_file = all_files
   ) %>% 

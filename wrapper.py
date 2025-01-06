@@ -205,6 +205,8 @@ if __name__ == "__main__":
                 "Rscript",
                 r_script_path,
                 g.input,
+                g.work,
+                g.output,
                 g.plate,
                 g.plate_short,
                 str(g.rows),
