@@ -109,7 +109,7 @@ UntangleWorms:[module_num:9|svn_version:'Unknown'|variable_revision_number:2|sho
     Overlap style:Both
     Name the output overlapping worm objects:OverlappingWorms
     Name the output non-overlapping worm objects:NonOverlappingWorms
-    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/cp_pipelines/worm_models
     Training set file name:WheelerAdultTrainingSet.xml
     Use training set weights?:Yes
     Overlap weight:5.0
@@ -169,7 +169,7 @@ StraightenWorms:[module_num:11|svn_version:'Unknown'|variable_revision_number:3|
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/cp_pipelines/worm_models
     Training set file name:WheelerAdultTrainingSet.xml
     Image count:1
     Measure intensity distribution?:Yes
@@ -213,7 +213,7 @@ ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_numbe
     Calculate the per-image mean values for object measurements?:No
     Calculate the per-image median values for object measurements?:No
     Calculate the per-image standard deviation values for object measurements?:No
-    Output file location:Elsewhere...|output/data/
+    Output file location:Elsewhere...|/home/output/data/
     Create a GenePattern GCT file?:No
     Select source of sample row name:Metadata
     Select the image to use as the identifier:None
@@ -226,11 +226,7 @@ ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_numbe
     Overwrite existing files without warning?:Yes
     Data to export:StraightenedWorms
     Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_straightenedworms_data.csv
-    Use the object name for the file name?:No
-    Data to export:NonOverlappingWorms
-    Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_nonoverlappingworms_data.csv
+    File name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>.csv
     Use the object name for the file name?:No
 
 SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -243,7 +239,7 @@ SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show
     Append a suffix to the image file name?:No
     Text to append to the image name:
     Saved file format:tiff
-    Output file location:Elsewhere...|output/straightened_worms/
+    Output file location:Elsewhere...|/home/output/cellprofiler/img/
     Image bit depth:32-bit floating point
     Overwrite existing files without warning?:Yes
     When to save:Every cycle

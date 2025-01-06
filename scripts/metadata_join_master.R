@@ -57,7 +57,7 @@ for (pipeline in pipeline_list) {
   # List only CSV files that contain the plate name
   all_files <- list.files(
     path = input_dir,
-    pattern = paste0(".*", plate_short, ".*\\.csv$"),
+    pattern = paste0(plate_short, ".*\\.csv$"),
     recursive = TRUE
   )
   
@@ -66,7 +66,9 @@ for (pipeline in pipeline_list) {
     base = input_dir,
     plate = plate,
     data_file = all_files
-  ) %>% dplyr::mutate(path = file.path(base, data_file))
+  ) %>% 
+  dplyr::mutate(path = file.path(base, data_file)) %>%
+  dplyr::filter(!str_detect(data_file, "image_paths"))
   
   # Print the CSV files being considered
   print(paste("Processing files for pipeline:", pipeline))
@@ -75,6 +77,11 @@ for (pipeline in pipeline_list) {
   # Proceed if there are any files left after filtering
   if (nrow(output_files) > 0) {
   output_data <- readr::read_csv(output_files$path) %>% 
+    # handle alternate column names for CellProfiler data
+    dplyr::rename_with( ~ case_when(
+      . == 'Metadata_Well' ~ 'well_site',
+      TRUE ~ .
+    )) %>%
     tidyr::separate(well_site, c("well", "site"), sep = "_", remove = TRUE)
 
   # Join output data and metadata

@@ -108,7 +108,7 @@ ExportToSpreadsheet:[module_num:8|svn_version:'Unknown'|variable_revision_number
     Calculate the per-image mean values for object measurements?:No
     Calculate the per-image median values for object measurements?:No
     Calculate the per-image standard deviation values for object measurements?:No
-    Output file location:Elsewhere...|output/data/
+    Output file location:Elsewhere...|/home/work/cellprofiler/
     Create a GenePattern GCT file?:No
     Select source of sample row name:Metadata
     Select the image to use as the identifier:None
@@ -121,5 +121,5 @@ ExportToSpreadsheet:[module_num:8|svn_version:'Unknown'|variable_revision_number
     Overwrite existing files without warning?:Yes
     Data to export:Image
     Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_data.csv
+    File name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>.csv
     Use the object name for the file name?:No
