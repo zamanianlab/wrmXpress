@@ -11,13 +11,6 @@ imaging_mode:
   - single-well # one image/frame for each well
   # - multi-well # one image/frame contains multiple wells
   # - multi-site # > 1 image site for each well 
-# stitching: connected rectangle and convention for s# labeling
-# - otherwise don’t stitch the sites and process them independently
-
-
-# Note, force _w1 if none
-# select pipelines to run on individual wavelengths?
-# w1 = bf -> w2 = gfp -> w3 = red ...
 
 
 ########################################
@@ -37,7 +30,6 @@ multi-well-detection: grid # grid just divides evenly across whole image
 x-sites: NA # sites on the x axis
 y-sites: NA # sites on the y axis
 stitch: False
-
 
 # Required for imaging_mode: multi-well
   # Case 1: whole-plate image (e.g., avi) cut into a defined grid (e.g., 6*4 = 24 wells)
