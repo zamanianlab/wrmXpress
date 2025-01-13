@@ -35,7 +35,7 @@ def segmentation(g, options, well_site):
     work_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = f"wrmXpress/pipelines/models/cellpose/{options['model']}"
+    model_path = f"/root/wrmXpress/pipelines/models/cellpose/{options['model']}"
     model_type = options['model_type']
     wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
     timepoints = range(1, 2)  # Process only TimePoint_1 for now
