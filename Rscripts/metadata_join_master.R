@@ -30,13 +30,30 @@ metadata_files <- dplyr::tibble(base = metadata_dir,
 
 # Function to read and tidy the metadata files
 get_metadata <- function(...) {
-  df <- tibble(...)
-  data <- readr::read_csv(df$path,
-                   col_names = sprintf("%02d", seq(1:cols)),
-                   col_types = str_flatten(rep('c', cols))) %>%
-    dplyr::mutate(row = LETTERS[1:n()], .before = `01`) %>%
-    tidyr::pivot_longer(-row, names_to = 'col', values_to = df$category) %>%
-    dplyr::mutate(well = stringr::str_c(row, col), plate = df$plate)
+  tryCatch({
+    df <- tibble(...)
+    if (nrow(df) == 0) {
+      warning("Empty input data frame")
+      return(tibble())
+    }
+    
+    data <- readr::read_csv(df$path,
+                     col_names = sprintf("%02d", seq(1:cols)),
+                     col_types = str_flatten(rep('c', cols)))
+    
+    if (nrow(data) == 0) {
+      warning("Empty CSV file: ", df$path)
+      return(tibble())
+    }
+    
+    data %>%
+      dplyr::mutate(row = LETTERS[1:n()], .before = `01`) %>%
+      tidyr::pivot_longer(-row, names_to = 'col', values_to = df$category) %>%
+      dplyr::mutate(well = stringr::str_c(row, col), plate = df$plate)
+  }, error = function(e) {
+    warning("Error processing file: ", e$message)
+    return(tibble())
+  })
 }
 
 collapse_rows <- function(x) {
@@ -44,11 +61,19 @@ collapse_rows <- function(x) {
   if (length(x) > 0) first(x) else NA
 }
 
-metadata <- metadata_files %>%
-  purrr::pmap_dfr(get_metadata) %>%
-  dplyr::select(plate, well, row, col, everything()) %>%
-  dplyr::group_by(plate, well, row, col) %>%
-  dplyr::summarise(dplyr::across(everything(), collapse_rows))
+metadata <- tryCatch({
+  metadata_files %>%
+    purrr::pmap_dfr(get_metadata) %>%
+    {if (nrow(.) > 0) 
+      dplyr::select(., plate, well, row, col, everything()) %>%
+      dplyr::group_by(plate, well, row, col) %>%
+      dplyr::summarise(dplyr::across(everything(), collapse_rows))
+     else 
+      tibble()}
+}, error = function(e) {
+  warning("Error in metadata processing: ", e$message)
+  return(tibble())
+})
 
 
 # Read in output files and join with metadata
@@ -79,16 +104,20 @@ for (pipeline in pipeline_list) {
   # Proceed if there are any files left after filtering
   if (nrow(output_files) > 0) {
   output_data <- readr::read_csv(output_files$path) %>% 
-    # handle alternate column names for CellProfiler data
     dplyr::rename_with( ~ case_when(
       . == 'Metadata_Well' ~ 'well_site',
       TRUE ~ .
     )) %>%
     tidyr::separate(well_site, c("well", "site"), sep = "_", remove = TRUE)
 
-  # Join output data and metadata
-  final_df <- suppressMessages(dplyr::left_join(metadata, output_data)) %>% 
-    dplyr::select(plate, well, site, row, col, everything())
+  # Try join, if fails write original output_data
+  final_df <- tryCatch({
+    suppressMessages(dplyr::left_join(metadata, output_data)) %>% 
+      dplyr::select(plate, well, site, row, col, everything())
+  }, error = function(e) {
+    warning("Join failed: ", e$message, "\nWriting output_data without metadata")
+    return(output_data)
+  })
   
   final_csv_path <- file.path(output_dir, paste0(plate, '_tidy.csv'))
   readr::write_csv(final_df, final_csv_path)
