@@ -94,7 +94,7 @@ StraightenWorms:[module_num:5|svn_version:'Unknown'|variable_revision_number:3|s
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/pipelines/models/cellprofiler
     Training set file name:Cellpose_TrainingSet.xml
     Image count:1
     Measure intensity distribution?:No

@@ -80,68 +80,79 @@ square_side: NA
 ########################################
 
 pipelines:
-# modules reflect pipelines with specific input requirements
-# selected well set
+# Modules reflect pipelines with specific input requirements
+# Selected well set
 
 #### Diagnostics ####
-# returns stiched images of first timepoint across all wavelengths
+# Returns stiched images of first timepoint across all wavelengths
   static_dx:
     run: False
     rescale_multiplier: 1
 
-# returns video (all timepoints) across all wavelengths
-# if 'All' you return a stitched video
-# if individual well are selected, you return individual well videos
+# Returns video (all timepoints) across all wavelengths
+# If 'All' you return a stitched video
+# If individual well are selected, you return individual well videos
   video_dx:
     run: False
     format: avi / gif
     rescale_multiplier: 0.5
 
 #### Motilty (optical flow) ####
-# requirements: single wavelength, more than 1 timepoint
+# Requirements: single wavelength, more than 1 timepoint
   optical_flow:
     run: False
-    # specifies the images cale to build pyramids for each image
+    # Specify the wavelength to run the optical flow on. If specifying multiple wavelengths, list wavelengths on a single line separated with commas (i.e. 'w1', 'w2', "w3", etc.)
     wavelengths:
       - 'All'
     flow:
+    # Specifies the images scale to build pyramids for each image
     pyrScale: 0.5
-    # number of extra layers
+    # Number of extra layers
     levels: 5
-    # average window size
+    # Average window size
     winsize: 20
-    # number of iterations to be performed at each pyramid level
+    # Number of iterations to be performed at each pyramid level
     iterations: 7
-    # size of pixel neighbourhood which is used to find polynomial expansion between the pixels
+    # Size of pixel neighbourhood which is used to find polynomial expansion between the pixels
     poly_n: 5
-    # standard deviation of the gaussian that is for derivatives to be smooth as the basis of polynomial expansion
+    # Standard deviation of the gaussian that is for derivatives to be smooth as the basis of polynomial expansion
     poly_sigma: 1.1
     flags: 0
 
 #### Segmentation ####
   segmentation:
     run: True
-    # model name and type
+    # Model name. If model type is 'python', leave the model blank 
     model: 'celegans_20220830'
+    # Model type: 'python' or 'cellpose'
     model_type: 'cellpose'
-    # specify the wavelength to run the segmentation on
+    # Specify the wavelength to run the segmentation on. If specifying multiple wavelengths, list wavelengths on a single line separated with commas (i.e. 'w1', 'w2', "w3", etc.)
     wavelengths:
       - 'All'
 
 #### CellProfiler ####
   cellprofiler:
     run: True
-    # cellpose model
+    # Cellpose model. If running a cellprofiler pipeline that does not require cellpose, leave the cellpose model blank
     cellpose_model: 'celegans_20220830'
-    # cellpose wavelength
+    # Cellpose wavelength. Cellpose will only run on 1 selected wavelength 
     cellpose_wavelength: 'w1'
     # CellProfiler pipeline
     pipeline: 'wormsize_intensity_cellpose'
-      ## single wavelength pipelines ##
+      ## Single wavelength pipelines ##
       # - 'mf_celltox'
-      ## multi-wavelength pipelines ##
+      ## Multi-wavelength pipelines ##
       # - feeding
 
 #### Tracking ####
   tracking: 
     run: False
+
+
+
+
+
+
+
+
+

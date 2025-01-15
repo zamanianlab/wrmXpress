@@ -1,4 +1,7 @@
-suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(magrittr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(readr)))
 
 # setwd('/Users/njwheeler/Desktop/temp_root')
 
