@@ -9,7 +9,7 @@ import re
 # if sites need to be stitched first, save them in the specified work directory
 # return list of outpaths of static_dx images generated
 def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_factor, format='TIF'):
-    print("Stitching images...")
+    print("Stitching images for static dx...")
     if wavelengths is None:
         wavelengths = [i for i in range(g.n_waves)]
     # get current directory
@@ -46,7 +46,7 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_fa
 def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, rescale_factor):
     # if all wells are selected, run static_dx on each timepoint and save plate image in specified output folder
     # add plate image to list of image paths for video conversion
-    print("Creating video...")
+    print("Creating video for video dx...")
     if g.wells == ['All']:
         # create dictionary to hold image paths of each wavelength
         frame_paths = {}
