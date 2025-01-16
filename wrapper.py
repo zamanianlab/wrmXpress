@@ -60,8 +60,6 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     g, pipelines = parse_yaml(arg_parser, g_class)
 
-    # get wells/sites to be used
-    wells, well_sites = get_wells(g)
 
     #########################################################
     ######### 2. GET THE HTD CONFIGS OR CROP WELLS  #########
@@ -86,7 +84,11 @@ if __name__ == "__main__":
     elif g.crop == "auto":
         # auto_crop(g)
         pass
-    elif g.stitch:
+
+    # get wells/sites to be used
+    wells, well_sites = get_wells(g)
+    
+    if g.stitch:
         # stitch(g)
         stitch_all_timepoints(g, wells, Path(g.plate_dir), Path(g.plate_dir))
 
@@ -103,9 +105,6 @@ if __name__ == "__main__":
         # Create main pipeline directory
         pipeline_output_dir.mkdir(parents=True, exist_ok=True)
         pipeline_work_dir.mkdir(parents=True, exist_ok=True)
-        # Create 'img' folder
-        img_dir = pipeline_output_dir / "img"
-        img_dir.mkdir(parents=True, exist_ok=True)
 
     ##############################################
     ######### 4. DIAGNOSTICS & PIPELINES #########
@@ -203,6 +202,11 @@ if __name__ == "__main__":
         )
     else:
         print("No CSV files found for the specified plate.")
+
+    # Remove empty directories in work
+    for pipeline_dir in pipeline_dirs:
+        if not any(pipeline_dir.iterdir()): 
+            pipeline_dir.rmdir()
 
     end = time.time()
     print("Time elapsed (seconds):", end - start)
