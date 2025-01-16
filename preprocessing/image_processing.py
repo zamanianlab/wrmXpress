@@ -166,6 +166,7 @@ def apply_masks(g):
         return
     # loop through timepoints
     for timepoint in range(g.time_points):
+        print(f"Applying masks...")
         # loop through wavelengths
         for wavelength in range(g.n_waves):
             # loop through individual wells
