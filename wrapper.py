@@ -210,4 +210,3 @@ if __name__ == "__main__":
 
     end = time.time()
     print("Time elapsed (seconds):", end - start)
-    raise Exception("CODE STOPS HERE")

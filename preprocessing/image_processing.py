@@ -185,6 +185,7 @@ def apply_masks(g):
                             __apply_mask(img, g.circle_diameter, 'circle').save(img_path)
                         elif g.square_side != 'NA':
                             __apply_mask(img, g.square_side, 'square').save(img_path)
+    print(f"Finished applying masks.")
 
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
