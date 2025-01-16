@@ -165,8 +165,8 @@ def apply_masks(g):
         print("Masks cannot be applied at the site-level.")
         return
     # loop through timepoints
+    print(f"Applying masks...")
     for timepoint in range(g.time_points):
-        print(f"Applying masks...")
         # loop through wavelengths
         for wavelength in range(g.n_waves):
             # loop through individual wells
