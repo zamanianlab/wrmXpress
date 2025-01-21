@@ -117,6 +117,9 @@ def cellprofiler(g, options, well_site):
     csv_file = (
         work_dir / f"image_paths_{g.plate_short}_{well_site}_w{wavelength + 1}.csv"
     )
-    run_cellprofiler(options["pipeline"], csv_file, img_out_dir)
+    if csv_file.exists():
+        run_cellprofiler(options["pipeline"], csv_file, img_out_dir)
+    else:
+        print(f"CSV file not found: {csv_file}")
 
     return [wavelength]

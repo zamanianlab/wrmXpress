@@ -21,7 +21,14 @@ plate_short <- args[length(args)]
 image_dir <- stringr::str_c(input, plate, sep = '/')
 mask_dir <- stringr::str_c(work, 'cellprofiler', sep = '/')
 
-input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+
+# Construct a pattern that combines wells and wavelength label
+wavelength_label <- wavelength + 1
+pattern <- paste0(wells, ".*w", wavelength_label, ".*\\.TIF$")
+
+# Filter input files matching the pattern
+#input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
+input_raw <- list.files(path = image_dir, pattern = pattern, recursive = TRUE)
 input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate_short, vars = .))
 mask <- 'well_mask.png'
 

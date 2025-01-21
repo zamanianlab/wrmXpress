@@ -2,7 +2,7 @@ import argparse
 import subprocess
 import glob
 from pathlib import Path
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 import time
 import os
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
-    r_script_path = "/root/wrmXpress/Rscripts/metadata_join_master.R"
+    r_script_path = "wrmXpress/Rscripts/metadata_join_master.R"
 
     # Get the list of pipeline directories
     pipeline_dirs = [d for d in Path(g.work).iterdir() if d.is_dir()]
@@ -210,4 +210,3 @@ if __name__ == "__main__":
 
     end = time.time()
     print("Time elapsed (seconds):", end - start)
-    raise Exception("CODE STOPS HERE")

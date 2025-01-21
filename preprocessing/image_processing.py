@@ -164,9 +164,9 @@ def apply_masks(g):
     if g.mode == 'multi-site' and g.stitch == False:
         print("Masks cannot be applied at the site-level.")
         return
+    print(f"Applying masks...")
     # loop through timepoints
     for timepoint in range(g.time_points):
-        print(f"Applying masks...")
         # loop through wavelengths
         for wavelength in range(g.n_waves):
             # loop through individual wells
