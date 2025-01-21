@@ -92,7 +92,7 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
                 outpath = os.path.join(output_dir, g.plate_short + f'_{well}_w{wavelength + 1}.AVI')
                 __create_video(frame_paths, outpath)
                 
-    print("Finished creating video")
+    print("Finished creating video.")
 
 # takes a list of image paths and stitches all the selected wells together
 # saves stitched image to specified outpath
