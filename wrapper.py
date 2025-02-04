@@ -168,6 +168,8 @@ if __name__ == "__main__":
                     rescale_factor=1,
                     format="PNG",
                 )
+        else: 
+            print(f"Skipping static_dx for {pipeline}: No PNG files found.")
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")

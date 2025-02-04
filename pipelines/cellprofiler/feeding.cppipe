@@ -109,7 +109,7 @@ UntangleWorms:[module_num:9|svn_version:'Unknown'|variable_revision_number:2|sho
     Overlap style:Both
     Name the output overlapping worm objects:OverlappingWorms
     Name the output non-overlapping worm objects:NonOverlappingWorms
-    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/pipelines/models/cellprofiler
     Training set file name:WheelerAdultTrainingSet.xml
     Use training set weights?:Yes
     Overlap weight:5.0
@@ -169,7 +169,7 @@ StraightenWorms:[module_num:11|svn_version:'Unknown'|variable_revision_number:3|
     Select the input untangled worm objects:NonOverlappingWorms
     Name the output straightened worm objects:StraightenedWorms
     Worm width:20
-    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/cp_pipelines/worm_models
+    Training set file location:Default Input Folder sub-folder|/root/wrmXpress/pipelines/models/cellprofiler
     Training set file name:WheelerAdultTrainingSet.xml
     Image count:1
     Measure intensity distribution?:Yes
@@ -226,7 +226,7 @@ ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_numbe
     Overwrite existing files without warning?:Yes
     Data to export:StraightenedWorms
     Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>.csv
+    File name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>.csv
     Use the object name for the file name?:No
 
 SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -234,7 +234,7 @@ SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show
     Select the image to save:StraightenedImage
     Select method for constructing file names:Single name
     Select image name for file prefix:None
-    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>_w\g<Wavelength>
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>
     Number of digits:4
     Append a suffix to the image file name?:No
     Text to append to the image name:
