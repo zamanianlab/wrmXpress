@@ -17,6 +17,7 @@ from pipelines.diagnostics import static_dx, video_dx
 from pipelines.optical_flow import optical_flow
 from pipelines.segmentation import segmentation
 from pipelines.cellprofiler import cellprofiler
+from pipelines.tracking import tracking
 
 if __name__ == "__main__":
 
@@ -150,10 +151,14 @@ if __name__ == "__main__":
             wavelengths = cellprofiler(g, pipelines["cellprofiler"], well_site)
             wavelengths_dict["cellprofiler"] = wavelengths
 
+        if "tracking" in pipelines:
+            wavelengths = tracking(g, pipelines["tracking"], well_site)
+            wavelengths_dict["tracking"] = wavelengths
+
         well_site_num += 1
 
     # After running the pipelines, call static_dx with the correct wavelengths
-    for pipeline in pipelines:
+    for pipeline in pipelines.keys():
         print(f"Running static_dx for {pipeline}.")
         if any(file.endswith(".png") for file in os.listdir(Path(g.work, pipeline))):
             pipeline_wavelengths = wavelengths_dict.get(pipeline, None)

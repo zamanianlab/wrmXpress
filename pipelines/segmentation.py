@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import shutil
 import glob
@@ -7,13 +8,64 @@ import tempfile
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from skimage import io, measure
+import cv2
+from skimage import io, filters, measure
+from scipy import ndimage
+from datetime import datetime
+
+
+def create_circular_mask(h, w, center=None, radius=None):
+    if center is None:
+        center = (int(w / 2), int(h / 2))
+    if radius is None:
+        radius = min(center[0], center[1], w - center[0], h - center[1])
+
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
+    mask = dist_from_center <= radius
+    return mask
+
+
+def segment_sma(g, well_site, binary):
+    filled = ndimage.binary_fill_holes(binary)
+
+    # Remove small segmented debris
+    nb_components, labelled_image, stats, centroids = cv2.connectedComponentsWithStats(
+        filled.astype('uint8'), connectivity=8)
+    sizes = stats[1:, -1]
+    nb_components -= 1
+
+    # empirically derived minimum size
+    min_size, max_size = 10, 500
+    bad_indices = []
+    filtered = np.zeros(labelled_image.shape, dtype=np.uint8)
+
+    for i in range(nb_components):
+        if min_size <= sizes[i] <= max_size:
+            filtered[labelled_image == i + 1] = 255
+        else:
+            bad_indices.append(i)
+
+    sizes_l = list(sizes)
+    filtered_sizes = [j for i, j in enumerate(sizes_l) if i not in bad_indices]
+
+    # Saving the filled and filtered images with proper scaling
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filled.png"), filled.astype(np.uint8) * 255)
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filtered.png"), filtered.astype(np.uint8) * 255)
+
+    return filtered_sizes
+
+
+def segment_mf(binary):
+    area = np.sum(binary)
+    return area
 
 def rename_file_to_temp_tif(src_file, temp_dir):
-    """Rename a single TIF file to tif in a temporary directory."""
+    """Rename a single TIF file to .tif in a temporary directory."""
     temp_file = Path(temp_dir) / (Path(src_file).stem + '.tif')
     shutil.copy(src_file, temp_file)
     return temp_file
+
 
 def run_cellpose(model_type, model_path, temp_dir):
     """Run Cellpose on a single .tif file."""
@@ -28,8 +80,9 @@ def run_cellpose(model_type, model_path, temp_dir):
     cellpose_command_split = shlex.split(cellpose_command)
     subprocess.run(cellpose_command_split)
 
+
 def segmentation(g, options, well_site):
-    # Create output and CSV directories at the very start of the function
+    """Perform segmentation based on model type."""
     work_dir = Path(g.work) / 'segmentation'
     output_dir = Path(g.output) / 'segmentation'
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -37,72 +90,90 @@ def segmentation(g, options, well_site):
 
     model_path = f"/root/wrmXpress/pipelines/models/cellpose/{options['model']}"
     model_type = options['model_type']
-    wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
-    timepoints = range(1, 2)  # Process only TimePoint_1 for now
+    wavelengths_option = options['wavelengths']
+    timepoints = range(1, 2)  # Process only TimePoint_1
 
     # Determine which wavelengths to use
     wavelengths_option = ','.join(wavelengths_option)
-    if wavelengths_option == 'All':
-        wavelengths = [i for i in range(g.n_waves)]  # Use all available wavelengths
-    else:
-        wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
+    wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')] if wavelengths_option != 'All' else list(range(g.n_waves))
 
-    for wavelength in wavelengths:  # Iterate directly over wavelengths
+    for wavelength in wavelengths:
         all_results = []
 
         for timepoint in timepoints:
-            # Create a temporary directory
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Construct the source TIFF file path
-                tiff_file_base = os.path.join(g.input, g.plate, f"TimePoint_{timepoint}", f"{g.plate_short}_{well_site}")
+            tiff_file_base = os.path.join(g.input, g.plate, f"TimePoint_{timepoint}", f"{g.plate_short}_{well_site}")
+            tiff_file = f"{tiff_file_base}_w{wavelength + 1}.TIF" if os.path.exists(f"{tiff_file_base}_w{wavelength + 1}.TIF") else f"{tiff_file_base}.TIF"
 
-                # Check if the wavelength is specified in the filename
-                tiff_file = None
-                base_tiff_file = f"{tiff_file_base}.TIF"
-                wavelength_tiff_file = f"{tiff_file_base}_w{wavelength + 1}.TIF"
+            if model_type == 'python':
+                if os.path.exists(tiff_file):
+                    out_dict = defaultdict(list)
+                    cols = []
 
-                if os.path.exists(wavelength_tiff_file):
-                    tiff_file = wavelength_tiff_file
-                elif os.path.exists(base_tiff_file):
-                    tiff_file = base_tiff_file
+                    start_time = datetime.now()
+                    image = cv2.imread(str(tiff_file), cv2.IMREAD_ANYDEPTH)
 
-                if tiff_file:
-                    # Rename the TIFF file to .tif and copy it to the temporary directory
-                    rename_file_to_temp_tif(tiff_file, temp_dir)
+                    height, width = image.shape
+                    mask = create_circular_mask(height, width, radius=height / 2.2)
 
-                    run_cellpose(model_type, model_path, temp_dir)
+                    # gaussian blur
+                    blur = ndimage.filters.gaussian_filter(image, 2.5)
 
-                    # Rename and move the resulting PNG mask to the 'work/segmentation' directory
-                    for file in glob.glob(f"{temp_dir}/*.png"):
-                        if 'cp_masks' in file:
-                            new_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
-                            shutil.copy(file, work_dir / new_filename)
+                    # edges
+                    sobel = filters.sobel(blur)
 
-            # Process the resulting image and calculate segmentation metrics
-            image_path = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
-            if os.path.exists(image_path):
-                image = io.imread(image_path)
+                    # set threshold, make binary, fill holes
+                    threshold = filters.threshold_otsu(sobel)
+                    binary = sobel > threshold
+                    binary = binary * mask
 
-                # Process each object in the image
-                for object_id, region in enumerate(measure.regionprops(image), start=1):
-                    size = region.area
-                    compactness = (region.perimeter ** 2) / (4 * np.pi * region.area) if region.area > 0 else 0
+                    progeny_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
 
-                    # Prepare results for the current object
-                    result = {
-                        'well_site': well_site,
-                        'object_number': object_id,
-                        'size': size,
-                        'compactness': compactness
-                    }
+                    blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
+                    cv2.imwrite(str(blur_png), blur)
 
-                    all_results.append(result)
+                    sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
+                    cv2.imwrite(str(sobel_png), sobel * 255)
 
-        # Create a DataFrame for the results of the current wavelength
-        df = pd.DataFrame(all_results)
+                    bin_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_binary.png")
+                    cv2.imwrite(str(bin_png), binary * 255)
+                    
+                    print("Completed in {}".format(datetime.now() - start_time))
 
-        # Write the DataFrame to CSV for the current wavelength
-        csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
-        df.to_csv(csv_outpath, index=False)
+                    # Save segmentation result
+                    if 'progeny_area' not in cols:
+                        cols.append('progeny_area')
+                    out_dict[well_site].append(progeny_area)
+                    df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
+                    outpath = output_dir.joinpath(g.plate_short + well_site + str(wavelength + 1) + ".csv")
+                    df.to_csv(path_or_buf=outpath, index_label='well_site')
+
+            else: # Runs if model_type is Cellpose
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    if os.path.exists(tiff_file):
+                        rename_file_to_temp_tif(tiff_file, temp_dir)
+                        run_cellpose(model_type, model_path, temp_dir)
+
+                        for file in glob.glob(f"{temp_dir}/*.png"):
+                            if 'cp_masks' in file:
+                                new_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                                shutil.copy(file, work_dir / new_filename)
+
+                # Process segmentation metrics
+                image_path = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
+                if os.path.exists(image_path):
+                    image = io.imread(image_path)
+                    for object_id, region in enumerate(measure.regionprops(image), start=1):
+                        result = {
+                            'well_site': well_site,
+                            'object_number': object_id,
+                            'size': region.area,
+                            'compactness': (region.perimeter ** 2) / (4 * np.pi * region.area) if region.area > 0 else 0
+                        }
+                        all_results.append(result)
+
+                # Save results to CSV
+                df = pd.DataFrame(all_results)
+                csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
+                df.to_csv(csv_outpath, index=False)
 
     return wavelengths

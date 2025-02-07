@@ -7,9 +7,10 @@ import time
 import pandas as pd
 from pathlib import Path
 import trackpy as tp
+from pipelines.diagnostics import static_dx 
 
 
-def tracking(g, wells):
+def tracking(g, options, well_site):
     """
     Tracking pipeline function to track objects across multiple frames and save trajectory data and plots.
 
@@ -28,12 +29,21 @@ def tracking(g, wells):
     tracks_output_dir.mkdir(parents=True, exist_ok=True)
     img_output_dir.mkdir(parents=True, exist_ok=True)
 
+    wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
+    # Determine which wavelengths to use
+    wavelengths_option = ','.join(wavelengths_option)
+    if wavelengths_option == 'All':
+        wavelengths = [i for i in range(g.n_waves)]  # Use all available wavelengths
+    else:
+        wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
+
+
     # List to store all paths to individual CSVs for combining later
     all_well_csv_paths = []
 
     # Loop through each well
-    for well in wells:
-        print(f"Processing well {well}.")
+    for wavelength in wavelengths:
+        print(f"Processing well {well_site}.")
 
         all_trajectories = []  # Store tracking data for each timepoint
         img_paths = []  # Store paths for trajectory images
@@ -43,11 +53,11 @@ def tracking(g, wells):
 
         # Loop through each timepoint
         for timepoint in range(g.time_points):
-            print(f"Processing timepoint {timepoint + 1} for well {well}.")
+            print(f"Processing timepoint {timepoint + 1} for well {well_site}.")
 
             # List files in the timepoint folder to find the correct wavelength
             timepoint_folder = Path(g.plate_dir) / f'TimePoint_{timepoint + 1}'
-            files = list(timepoint_folder.glob(f"{g.plate_short}_{well}*.TIF"))
+            files = list(timepoint_folder.glob(f"{g.plate_short}_{well_site}*.TIF"))
 
             # If there are multiple files, identify the one with the wavelength suffix (w1, w2, etc.)
             if files:
@@ -57,12 +67,12 @@ def tracking(g, wells):
                         wavelength_suffix = file_name.split('_w')[1]
                         break
                 else:
-                    raise FileNotFoundError(f"No valid wavelength suffix found for well {well} at timepoint {timepoint + 1}")
+                    raise FileNotFoundError(f"No valid wavelength suffix found for well {well_site} at timepoint {timepoint + 1}")
             else:
-                raise FileNotFoundError(f"No TIF files found for well {well} at timepoint {timepoint + 1}")
+                raise FileNotFoundError(f"No TIF files found for well {well_site} at timepoint {timepoint + 1}")
 
             # Construct the frame path using the dynamic wavelength suffix
-            frame_path = timepoint_folder / f'{g.plate_short}_{well}_w{wavelength_suffix}.TIF'
+            frame_path = timepoint_folder / f'{g.plate_short}_{well_site}_w{wavelength_suffix}.TIF'
             frame = load_frame(frame_path)
 
             # Accumulate frames for background calculation (first 10 frames)
@@ -78,10 +88,13 @@ def tracking(g, wells):
 
                 # Debugging print statement for worm array values
                 print(f"Worm array min: {worm_array.min()}, max: {worm_array.max()}")
+                
+                # features = tp.batch(worm_array, 35, invert=True, minmass=400, processes='auto')
+                # trajectories = tp.link(features, 50, memory=50)
 
                 # Run feature finding and link trajectories
-                features = tp.batch(worm_array, 35, invert=True, minmass=400, processes='auto')
-                trajectories = tp.link(features, 50, memory=50)
+                features = tp.batch(worm_array, 3, invert=True, minmass=0, processes='auto')
+                trajectories = tp.link(features, options['searchrange'], memory=options['memory'])
 
                 all_trajectories.append(trajectories)
 
@@ -90,14 +103,14 @@ def tracking(g, wells):
             all_trajectories_df = pd.concat(all_trajectories, ignore_index=True)
 
             # Save tracking data to CSV in the work directory for the current well
-            well_csv_path = work_dir / f"{g.plate}_{well}_tracking.csv"
+            well_csv_path = work_dir / f"{g.plate}_{well_site}_tracking.csv"
             all_trajectories_df.to_csv(well_csv_path, index=False)
 
             # Add the path of this CSV to the list for later combination
             all_well_csv_paths.append(well_csv_path)
 
             # Plot and save trajectories in the work directory
-            trajectory_plot_path = work_dir / f"{g.plate}_{well}_tracks.png"
+            trajectory_plot_path = work_dir / f"{g.plate}_{well_site}_tracks.png"
             plot_trajectories(all_trajectories_df, frame.shape[1], frame.shape[0], trajectory_plot_path)
 
             img_paths.append(str(trajectory_plot_path))  # Store the path of the plot
@@ -110,15 +123,16 @@ def tracking(g, wells):
     combined_csv.to_csv(combined_csv_path, index=False)
 
     # After all trajectory images are saved, use static_dx to create a plate format diagnostic
-    static_dx(g, wells,
+    static_dx(g, well_site,
               work_dir,
               tracks_output_dir,
               img_paths,
-              None,
+              wavelengths,
               rescale_factor=1,
               format='PNG')
 
     print(f"Tracking pipeline completed in {time.time() - start_time:.2f} seconds.")
+    return wavelengths
 
 def load_frame(frame_path):
     """Loads a single TIFF image into a grayscale numpy array and normalizes if necessary."""
@@ -129,6 +143,11 @@ def load_frame(frame_path):
     # Check for higher bit-depth and normalize if needed
     if frame.dtype != np.uint8:  # If not 8-bit, rescale to 0-255
         frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    # Apply CLAHE for local contrast enhancement
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    frame = clahe.apply(frame)
+
     print(f"Loaded frame {frame_path}: min={frame.min()}, max={frame.max()}")
     return frame
 
