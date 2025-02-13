@@ -1,169 +1,107 @@
-import cv2
-import numpy as np
-import os
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import time
+import numpy as np
 import pandas as pd
-from pathlib import Path
 import trackpy as tp
-from pipelines.diagnostics import static_dx 
+import time
+import cv2
+from pathlib import Path
+import matplotlib.patches as patches
 
+########################################################################
+####                                                                ####
+####                             tracking                           ####
+####                                                                ####
+########################################################################
 
-def tracking(g, options, well_site):
+def tracking(g, options, well_site, video):
     """
-    Tracking pipeline function to track objects across multiple frames and save trajectory data and plots.
+    Tracks worm movement in a given well across multiple wavelengths and timepoints.
 
     Args:
         g: Namedtuple containing general experiment settings and paths.
-        wells: List of wells to process.
+        options: Dictionary containing configuration options.
+        well_site: Well identifier to process.
+        video: NumPy array representing the video frames for the well.
     """
+
     start_time = time.time()
-    print("Starting tracking pipeline.")
+    print(f'Tracking well {well_site}.')
 
-    # Create directories for tracking output and images
-    work_dir = Path(g.work) / 'tracking'
-    tracks_output_dir = Path(g.output) / 'tracking'
-    img_output_dir = Path(g.output) / 'tracking' / 'img'
-    work_dir.mkdir(parents=True, exist_ok=True)
-    tracks_output_dir.mkdir(parents=True, exist_ok=True)
-    img_output_dir.mkdir(parents=True, exist_ok=True)
-
-    wavelengths_option = options['wavelengths']  # This may be 'All' or a string like 'w1,w2'
-    # Determine which wavelengths to use
+    # Extract settings from options
+    wavelengths_option = options['wavelengths']  # May be 'All' or a string like 'w1,w2'
+    
+    # Determine wavelengths to use
     wavelengths_option = ','.join(wavelengths_option)
     if wavelengths_option == 'All':
-        wavelengths = [i for i in range(g.n_waves)]  # Use all available wavelengths
+        wavelengths = list(range(g.n_waves))  # Use all available wavelengths
     else:
         wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
 
+    timepoints = range(1,2)  # timepoint 1 for testing
 
-    # List to store all paths to individual CSVs for combining later
-    all_well_csv_paths = []
+    # Extract dimensions
+    num_frames, height, width = video.shape  # Ensure video is a 3D NumPy array
 
-    # Loop through each well
     for wavelength in wavelengths:
-        print(f"Processing well {well_site}.")
+        for timepoint in timepoints:
+            print(f'Processing timepoint {timepoint} , wavelength{wavelength + 1}')
 
-        all_trajectories = []  # Store tracking data for each timepoint
-        img_paths = []  # Store paths for trajectory images
+            # Define the correct input directory
+            timepoint_folder = Path(g.input) / g.plate / f"TimePoint_{timepoint + 1}"
+            first_frame_path = list(timepoint_folder.glob(f"{g.plate_short}_{well_site}_w{wavelength + 1}*.TIF"))
 
-        # List to store frames for calculating background
-        background_frames = []
+            if not first_frame_path:
+                print(f"Warning: No first frame found for timepoint {timepoint} , wavelength{wavelength + 1} in well {well_site}. Skipping.")
+                continue
 
-        # Loop through each timepoint
-        for timepoint in range(g.time_points):
-            print(f"Processing timepoint {timepoint + 1} for well {well_site}.")
+            first_frame = cv2.imread(str(first_frame_path[0]), cv2.IMREAD_GRAYSCALE)
 
-            # List files in the timepoint folder to find the correct wavelength
-            timepoint_folder = Path(g.plate_dir) / f'TimePoint_{timepoint + 1}'
-            files = list(timepoint_folder.glob(f"{g.plate_short}_{well_site}*.TIF"))
+            # Ensure the output directories exist
+            img_output_dir = g.work.joinpath('tracking')
+            img_output_dir.mkdir(parents=True, exist_ok=True)
 
-            # If there are multiple files, identify the one with the wavelength suffix (w1, w2, etc.)
-            if files:
-                for file in files:
-                    file_name = file.stem
-                    if '_w' in file_name:
-                        wavelength_suffix = file_name.split('_w')[1]
-                        break
-                else:
-                    raise FileNotFoundError(f"No valid wavelength suffix found for well {well_site} at timepoint {timepoint + 1}")
-            else:
-                raise FileNotFoundError(f"No TIF files found for well {well_site} at timepoint {timepoint + 1}")
+            # Save first frame
+            png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.png"
+            cv2.imwrite(str(png_work), first_frame)
 
-            # Construct the frame path using the dynamic wavelength suffix
-            frame_path = timepoint_folder / f'{g.plate_short}_{well_site}_w{wavelength_suffix}.TIF'
-            frame = load_frame(frame_path)
+            background = np.median(video, axis=0)
+            worm_array = video - background
 
-            # Accumulate frames for background calculation (first 10 frames)
-            background_frames.append(frame)
+            # Run feature finding
+            # Test only: f = tp.batch(worm_array, 35, invert=True, minmass=400, processes='auto')
+            # Test only: t = tp.link(f, 50, memory=50)
+            f = tp.batch(worm_array, diameter=options['diameter'], invert=True, minmass=options['minmass'], noise_size=options['noisesize'], processes='auto')
+            t = tp.link(f, search_range=options['searchrange'], memory=options['memory'], adaptive_stop=options['adaptivestop'])
 
-            # Initialize background after the first 10 frames
-            if len(background_frames) >= 10:
-                background = np.median(background_frames[:10], axis=0)
-                print(f"Background min: {background.min()}, max: {background.max()}")
+            print(f'Plotting trajectories...')
+            tracks_output_dir = g.output.joinpath('tracking')
+            tracks_output_dir.mkdir(parents=True, exist_ok=True)
 
-                # Calculate worm array by subtracting the background
-                worm_array = frame - background
+            track_png_out = tracks_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.png"
+            track_png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.png"
 
-                # Debugging print statement for worm array values
-                print(f"Worm array min: {worm_array.min()}, max: {worm_array.max()}")
-                
-                # features = tp.batch(worm_array, 35, invert=True, minmass=400, processes='auto')
-                # trajectories = tp.link(features, 50, memory=50)
+            dpi = 300
+            fig = plt.figure(figsize=(2048/dpi, 2048/dpi), dpi=dpi)
+            ax = plt.gca()
+            ax.set_xlim([0, width])
+            ax.set_ylim([0, height])
+            ax.set_aspect('equal', adjustable='box')
 
-                # Run feature finding and link trajectories
-                features = tp.batch(worm_array, 3, invert=True, minmass=0, processes='auto')
-                trajectories = tp.link(features, options['searchrange'], memory=options['memory'])
+            # Add circular well boundary
+            radius = height / 2
+            circle = patches.Circle((radius, radius), radius, fill=False)
+            ax.add_patch(circle)
+            ax.axis('off')
 
-                all_trajectories.append(trajectories)
+            tp.plot_traj(t, ax=ax)
+            fig.savefig(track_png_out)
+            fig.savefig(track_png_work)
 
-        # Concatenate all timepoint trajectories into a single DataFrame
-        if all_trajectories:
-            all_trajectories_df = pd.concat(all_trajectories, ignore_index=True)
+    print(f'Tracking for well {well_site} completed in {time.time() - start_time:.2f} seconds.')
 
-            # Save tracking data to CSV in the work directory for the current well
-            well_csv_path = work_dir / f"{g.plate}_{well_site}_tracking.csv"
-            all_trajectories_df.to_csv(well_csv_path, index=False)
+    # Save the DataFrame to CSV
+    tracks_csv_path = tracks_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.csv"
+    t.to_csv(str(tracks_csv_path), index=False)
 
-            # Add the path of this CSV to the list for later combination
-            all_well_csv_paths.append(well_csv_path)
 
-            # Plot and save trajectories in the work directory
-            trajectory_plot_path = work_dir / f"{g.plate}_{well_site}_tracks.png"
-            plot_trajectories(all_trajectories_df, frame.shape[1], frame.shape[0], trajectory_plot_path)
-
-            img_paths.append(str(trajectory_plot_path))  # Store the path of the plot
-
-    # After all wells are processed, combine all well CSVs into one large DataFrame
-    combined_csv = pd.concat([pd.read_csv(csv_path) for csv_path in all_well_csv_paths], ignore_index=True)
-
-    # Save the combined CSV to the output directory
-    combined_csv_path = tracks_output_dir / f"{g.plate}_all_tracking_combined.csv"
-    combined_csv.to_csv(combined_csv_path, index=False)
-
-    # After all trajectory images are saved, use static_dx to create a plate format diagnostic
-    static_dx(g, well_site,
-              work_dir,
-              tracks_output_dir,
-              img_paths,
-              wavelengths,
-              rescale_factor=1,
-              format='PNG')
-
-    print(f"Tracking pipeline completed in {time.time() - start_time:.2f} seconds.")
     return wavelengths
-
-def load_frame(frame_path):
-    """Loads a single TIFF image into a grayscale numpy array and normalizes if necessary."""
-    frame = cv2.imread(str(frame_path), cv2.IMREAD_UNCHANGED)  # Load with original bit depth
-    if frame is None:
-        raise FileNotFoundError(f"Could not load frame from {frame_path}")
-
-    # Check for higher bit-depth and normalize if needed
-    if frame.dtype != np.uint8:  # If not 8-bit, rescale to 0-255
-        frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-    # Apply CLAHE for local contrast enhancement
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    frame = clahe.apply(frame)
-
-    print(f"Loaded frame {frame_path}: min={frame.min()}, max={frame.max()}")
-    return frame
-
-def plot_trajectories(trajectories, width, height, trajectory_plot_path):
-    """Generates and saves a plot of the trajectories."""
-    dpi = 300
-    fig = plt.figure(figsize=(2048 / dpi, 2048 / dpi), dpi=dpi)
-    ax = plt.gca()
-    ax.set_xlim([0, width])
-    ax.set_ylim([0, height])
-    ax.set_aspect('equal', adjustable='box')
-    radius = height / 2
-    circle = patches.Circle((radius, radius), radius, fill=False)
-    ax.add_patch(circle)
-    ax.axis('off')
-
-    tp.plot_traj(trajectories, ax=ax)
-    fig.savefig(trajectory_plot_path)
-    plt.close(fig)
