@@ -44,7 +44,7 @@ def tracking(g, options, well_site, video):
 
     for wavelength in wavelengths:
         for timepoint in timepoints:
-            print(f'Processing timepoint {timepoint} , wavelength{wavelength + 1}')
+            print(f'Processing timepoint {timepoint} , wavelength {wavelength + 1}')
 
             # Define the correct input directory
             timepoint_folder = Path(g.input) / g.plate / f"TimePoint_{timepoint + 1}"
@@ -77,7 +77,6 @@ def tracking(g, options, well_site, video):
             tracks_output_dir = g.output.joinpath('tracking')
             tracks_output_dir.mkdir(parents=True, exist_ok=True)
 
-            track_png_out = tracks_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.png"
             track_png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.png"
 
             dpi = 300
@@ -94,13 +93,14 @@ def tracking(g, options, well_site, video):
             ax.axis('off')
 
             tp.plot_traj(t, ax=ax)
-            fig.savefig(track_png_out)
             fig.savefig(track_png_work)
 
     print(f'Tracking for well {well_site} completed in {time.time() - start_time:.2f} seconds.')
 
     # Save the DataFrame to CSV
-    tracks_csv_path = tracks_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.csv"
+    t['well_site'] = well_site # Add well_site column to the DataFrame
+    t = t[['well_site'] + [col for col in t.columns if col != 'well_site']]
+    tracks_csv_path = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.csv"
     t.to_csv(str(tracks_csv_path), index=False)
 
 

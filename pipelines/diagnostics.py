@@ -34,11 +34,26 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_fa
 
     # for each wavelength, generate image paths of wells to be stitched
     for wavelength in wavelengths:
-        image_paths = generate_selected_image_paths(g, wells, wavelength+1, base_dir, format)
+        all_image_paths = generate_selected_image_paths(g, wells, wavelength+1, base_dir, format)
+        normal_image_paths = [
+            p for p in all_image_paths if "_tracks" not in str(p)
+        ]
+        track_image_paths = [
+            p for p in all_image_paths if "_tracks" in str(p)
+        ]
         # stitch plate and save in output directory
-        outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength+1}.{format}')
-        outpaths.append(outpath)
-        __stitch_plate(g, image_paths, outpath, rescale_factor, format)
+        if normal_image_paths:
+            outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength+1}.{format}')
+            outpaths.append(outpath)
+            __stitch_plate(g, normal_image_paths, outpath, rescale_factor, format)
+            print(f"Saving image to: {outpath}")
+            print("Done stitching for normal images.")
+        if track_image_paths:
+            outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength+1}_tracks.{format}')
+            outpaths.append(outpath)
+            __stitch_plate(g, track_image_paths, outpath, rescale_factor, format)
+            print(f"Saving image to: {outpath}")
+            print("Done stitching for track images.")
 
     print("Finished stitching images.")
     return outpaths

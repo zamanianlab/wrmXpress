@@ -143,15 +143,20 @@ def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF')
     image_paths = []
     for well in wells:
         tiff_file_base = f"{g.plate_short}_{well}"
+        
+        # Corrected filename format for track images
         wavelength_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}.{format}")
         base_tiff_file = os.path.join(directory, f"{tiff_file_base}.{format}")
-        
-        # Check if the wavelength-specific or base file exists
+        track_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}_tracks.{format}")
+
+        # Prioritize track images first if they exist
+        if os.path.exists(track_tiff_file):
+            image_paths.append(track_tiff_file)
         if os.path.exists(wavelength_tiff_file):
             image_paths.append(wavelength_tiff_file)
-        elif os.path.exists(base_tiff_file):
+        if os.path.exists(base_tiff_file):
             image_paths.append(base_tiff_file)
-        else:
+        if not any(os.path.exists(f) for f in [track_tiff_file, wavelength_tiff_file, base_tiff_file]):
             print(f"No file found for well {well} in directory {directory}")
             
     return image_paths
@@ -190,7 +195,7 @@ def apply_masks(g):
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?(?:_w(\d+))?\.(tif|TIF|png|PNG)$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?(?:_w(\d+))?(?:_tracks)?\.(tif|TIF|png|PNG)$'
     match = re.search(pattern, well_string)
 
     # check number of groups to determine site number if applicable and well number

@@ -186,7 +186,7 @@ if __name__ == "__main__":
     for pipeline in pipelines.keys():
         print(f"Running static_dx for {pipeline}.")
         if any(file.endswith(".png") for file in os.listdir(Path(g.work, pipeline))):
-            pipeline_wavelengths = wavelengths_dict.get(pipeline, None)
+            pipeline_wavelengths = wavelengths_dict.get(pipeline, [0]) # default wavelength is w1 (set to 0 for zero indexing)
             for wavelength in pipeline_wavelengths:
                 static_dx(
                     g,
@@ -205,13 +205,11 @@ if __name__ == "__main__":
     print("Running R script to join metadata and tidy.")
     r_script_path = "/root/wrmXpress/Rscripts/metadata_join_master.R"
 
-    # Get the list of pipeline directories
-    pipeline_dirs = [d for d in Path(g.work).iterdir() if d.is_dir()]
 
     # Filter and get CSVs for the specific plate in the pipeline directories
     pipeline_csv_list = [
         d.name
-        for d in pipeline_dirs
+        for d in g.work.iterdir()
         if any(glob.glob(str(d / f"*{g.plate_short}*.csv")))
     ]
     print("Pipeline CSVs list:", pipeline_csv_list)
@@ -236,9 +234,9 @@ if __name__ == "__main__":
         print("No CSV files found for the specified plate.")
 
     # Remove empty directories in work
-    for pipeline_dir in pipeline_dirs:
-        if not any(pipeline_dir.iterdir()): 
-            pipeline_dir.rmdir()
+    for pipeline in g.work.iterdir():
+        if not any(pipeline.iterdir()): 
+            pipeline.rmdir()
 
     end = time.time()
     print("Time elapsed (seconds):", end - start)
