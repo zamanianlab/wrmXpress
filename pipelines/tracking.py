@@ -60,10 +60,6 @@ def tracking(g, options, well_site, video):
             img_output_dir = g.work.joinpath('tracking')
             img_output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Save first frame
-            png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.png"
-            cv2.imwrite(str(png_work), first_frame)
-
             background = np.median(video, axis=0)
             worm_array = video - background
 
@@ -77,7 +73,7 @@ def tracking(g, options, well_site, video):
             tracks_output_dir = g.output.joinpath('tracking')
             tracks_output_dir.mkdir(parents=True, exist_ok=True)
 
-            track_png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.png"
+            track_png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.png"
 
             dpi = 300
             fig = plt.figure(figsize=(2048/dpi, 2048/dpi), dpi=dpi)
@@ -100,7 +96,7 @@ def tracking(g, options, well_site, video):
     # Save the DataFrame to CSV
     t['well_site'] = well_site # Add well_site column to the DataFrame
     t = t[['well_site'] + [col for col in t.columns if col != 'well_site']]
-    tracks_csv_path = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}_tracks.csv"
+    tracks_csv_path = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.csv"
     t.to_csv(str(tracks_csv_path), index=False)
 
 

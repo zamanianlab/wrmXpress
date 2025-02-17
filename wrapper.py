@@ -208,10 +208,11 @@ if __name__ == "__main__":
 
     # Filter and get CSVs for the specific plate in the pipeline directories
     pipeline_csv_list = [
-        d.name
-        for d in g.work.iterdir()
-        if any(glob.glob(str(d / f"*{g.plate_short}*.csv")))
+        d  
+        for d in pipelines.keys()
+        if any(glob.glob(str(Path(g.work) / d / f"*{g.plate_short}*.csv")))
     ]
+
     print("Pipeline CSVs list:", pipeline_csv_list)
 
     # Check if there are any CSVs to process
