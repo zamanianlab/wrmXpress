@@ -155,30 +155,8 @@ if __name__ == "__main__":
             wavelengths_dict["cellprofiler"] = wavelengths
 
         if "tracking" in pipelines:
-            # Search for the video file directly in the input/plate folder using regex
-            video_folder = Path(g.input) / g.plate
-            video_file = next((f for f in video_folder.glob("*.avi") if re.match(f"{g.plate}.*\.avi", f.name)), None)
-            print("Video file:", video_file)
-
-            if video_file:
-                # Read the video file frames into a NumPy array
-                cap = cv2.VideoCapture(str(video_file))
-                frames = []
-
-                while True:
-                    ret, frame = cap.read()  # Read a frame
-                    if not ret:  # If the frame is empty, break the loop
-                        break
-                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Convert the frame to grayscale
-                    frames.append(gray_frame)  # Add the frame to the list
-
-                cap.release()
-
-                # Pass the frames to the tracking function
-                wavelengths = tracking(g, pipelines["tracking"], well_site, np.array(frames))
-                wavelengths_dict["tracking"] = wavelengths
-            else:
-                print(f"Warning: No video found for well {well_site} in the {g.plate} folder. Skipping.")
+            wavelengths = tracking(g, pipelines["tracking"], well_site)
+            wavelengths_dict["tracking"] = wavelengths
 
         well_site_num += 1
 
