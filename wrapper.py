@@ -214,8 +214,9 @@ if __name__ == "__main__":
 
     # Remove empty directories in work
     for pipeline in g.work.iterdir():
-        if not any(pipeline.iterdir()): 
-            pipeline.rmdir()
+        if pipeline.is_dir():
+            if not any(pipeline.iterdir()): 
+                pipeline.rmdir()
 
     end = time.time()
     print("Time elapsed (seconds):", end - start)
