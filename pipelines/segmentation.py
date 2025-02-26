@@ -128,13 +128,13 @@ def segmentation(g, options, well_site):
 
                     progeny_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
 
-                    blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
-                    cv2.imwrite(str(blur_png), blur)
+                    # blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
+                    # cv2.imwrite(str(blur_png), blur)
 
-                    sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
-                    cv2.imwrite(str(sobel_png), sobel * 255)
+                    # sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
+                    # cv2.imwrite(str(sobel_png), sobel * 255)
 
-                    bin_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_binary.png")
+                    bin_png = g.work.joinpath(work_dir, f"{g.plate_short}_{well_site}_w{wavelength+1}.png")
                     cv2.imwrite(str(bin_png), binary * 255)
                     
                     print("Completed in {}".format(datetime.now() - start_time))
