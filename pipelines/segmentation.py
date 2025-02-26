@@ -140,11 +140,11 @@ def segmentation(g, options, well_site):
                     print("Completed in {}".format(datetime.now() - start_time))
 
                     # Save segmentation result
-                    if 'progeny_area' not in cols:
-                        cols.append('progeny_area')
+                    if 'segmented_area' not in cols:
+                        cols.append('segmented_area')
                     out_dict[well_site].append(progeny_area)
                     df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
-                    outpath = output_dir.joinpath(g.plate_short + well_site + str(wavelength + 1) + ".csv")
+                    outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
                     df.to_csv(path_or_buf=outpath, index_label='well_site')
 
             else: # Runs if model_type is Cellpose
