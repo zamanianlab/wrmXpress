@@ -3,13 +3,14 @@ import cv2
 import os
 from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 import numpy as np
-import re
+from datetime import datetime
 
 # stitches all selected wells from a directory into diagnostic image of plate and saves it in output directory for each wavelength
 # if sites need to be stitched first, save them in the specified work directory
 # return list of outpaths of static_dx images generated
 def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_factor, format='TIF'):
-    print("Stitching images for static dx...")
+    start_time = datetime.now()
+    print("Stitching images for static dx.")
     if wavelengths is None:
         wavelengths = [i for i in range(g.n_waves)]
     # get current directory
@@ -40,7 +41,7 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_fa
         outpaths.append(outpath)
         __stitch_plate(g, image_paths, outpath, rescale_factor, format)
 
-    print("Finished stitching images.")
+    print("Finished stitching images in {}".format(datetime.now() - start_time))
     return outpaths
 
 def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, rescale_factor):
@@ -111,6 +112,7 @@ def __stitch_plate(g, image_paths, outpath, rescale_factor, format='TIF'):
 
     # loop through each image path
     for image_path in image_paths:
+        print(f"Reading image: {image_path}")
         # extract well ID from the image path
         letter, number, _, _ = extract_well_name(image_path)
 

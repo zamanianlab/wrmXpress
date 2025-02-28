@@ -108,14 +108,14 @@ for (pipeline in pipeline_list) {
       . == 'Metadata_Well' ~ 'well_site',
       TRUE ~ .
     )) %>%
-    tidyr::separate(well_site, c("well", "site"), sep = "_", remove = TRUE)
+    tidyr::separate(well_site, c("well", "site"), sep = "_", remove = TRUE, fill = "right")
 
   # Try join, if fails write original output_data
   final_df <- tryCatch({
-    suppressMessages(dplyr::left_join(metadata, output_data)) %>% 
+    suppressWarnings(suppressMessages(dplyr::left_join(metadata, output_data))) %>% 
       dplyr::select(plate, well, site, row, col, everything())
   }, error = function(e) {
-    warning("Join failed: ", e$message, "\nWriting output_data without metadata")
+    warning("No metadata provided or merging failed. Writing CSV without metadata")
     return(output_data)
   })
   

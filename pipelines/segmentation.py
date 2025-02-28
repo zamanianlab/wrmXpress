@@ -90,6 +90,7 @@ def segmentation(g, options, well_site):
 
     model_path = f"/root/wrmXpress/pipelines/models/cellpose/{options['model']}"
     model_type = options['model_type']
+    model_sigma = options['model_sigma']
     wavelengths_option = options['wavelengths']
     timepoints = range(1, 2)  # Process only TimePoint_1
 
@@ -116,7 +117,7 @@ def segmentation(g, options, well_site):
                     mask = create_circular_mask(height, width, radius=height / 2.2)
 
                     # gaussian blur
-                    blur = ndimage.filters.gaussian_filter(image, 2.5)
+                    blur = ndimage.filters.gaussian_filter(image, model_sigma)
 
                     # edges
                     sobel = filters.sobel(blur)
@@ -126,25 +127,25 @@ def segmentation(g, options, well_site):
                     binary = sobel > threshold
                     binary = binary * mask
 
-                    progeny_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
+                    segmented_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
 
-                    blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
-                    cv2.imwrite(str(blur_png), blur)
+                    # blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
+                    # cv2.imwrite(str(blur_png), blur)
 
-                    sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
-                    cv2.imwrite(str(sobel_png), sobel * 255)
+                    # sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
+                    # cv2.imwrite(str(sobel_png), sobel * 255)
 
-                    bin_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_binary.png")
+                    bin_png = g.work.joinpath(work_dir, f"{g.plate_short}_{well_site}_w{wavelength+1}.png")
                     cv2.imwrite(str(bin_png), binary * 255)
                     
-                    print("Completed in {}".format(datetime.now() - start_time))
+                    print(f"Segmented area is {segmented_area}")
 
                     # Save segmentation result
-                    if 'progeny_area' not in cols:
-                        cols.append('progeny_area')
-                    out_dict[well_site].append(progeny_area)
+                    if 'segmented_area' not in cols:
+                        cols.append('segmented_area')
+                    out_dict[well_site].append(segmented_area)
                     df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
-                    outpath = output_dir.joinpath(g.plate_short + well_site + str(wavelength + 1) + ".csv")
+                    outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
                     df.to_csv(path_or_buf=outpath, index_label='well_site')
 
             else: # Runs if model_type is Cellpose
