@@ -7,40 +7,55 @@ import shutil
 import math
 import numpy as np
 
-# converts avi to imageXpress
+# converts avi files to IX format
 def avi_to_ix(g):
-    # this assumes that the avi file has the same name as the directory it is in
-    vid_path = os.path.join(g.plate_dir, g.plate + '.avi')
-
-    # gets avi information
-    vid = cv2.VideoCapture(str(vid_path))
-    ret = True
-    frames = []
-    while ret:
-        # returns next frame
-        ret, img = vid.read()
-        if ret:
-            # convert image to unsigned 16-bit format
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
-            frames.append(img)
-
-    timepoints = len(frames)
-
-    # loop through each timepoint
-    for timepoint in range(timepoints):
-        # create directory for timepoint if it doesn't already exist
-        # if it does exist, delete all the files in it
-        dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
-        if os.path.isdir(dir):
-            shutil.rmtree(dir)
-        os.makedirs(dir)
-        # add '_A01_w1' to file name
-        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + '_A01_w1.TIF')
-        # save the frame
-        cv2.imwrite(str(outpath), frames[timepoint])
+    # Get all AVI files in the plate directory
+    avi_files = [os.path.join(g.plate_dir, f) for f in os.listdir(g.plate_dir) if f.endswith('.avi')]
+    if len(avi_files) == 1:
+        vid_path = avi_files[0]
+        # Get AVI information
+        vid = cv2.VideoCapture(str(vid_path))
+        ret = True
+        frames = []
+        while ret:
+            ret, img = vid.read()
+            if ret:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                frames.append(img)
+        timepoints = len(frames)
+        # Loop through each timepoint
+        for timepoint in range(timepoints):
+            dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+            if os.path.isdir(dir):
+                shutil.rmtree(dir)
+            os.makedirs(dir)
+            # Save frame with '_A01_w1' to maintain original naming
+            outpath = os.path.join(dir, g.plate + '_A01_w1.TIF')
+            cv2.imwrite(str(outpath), frames[timepoint])
+    else:
+        # Multiple AVI files case
+        well_names = [re.search(r'_(\D\d{2})\.avi$', os.path.basename(f)).group(1) for f in avi_files]  # Extract well names
+        for avi_file, well in zip(avi_files, well_names):
+            vid = cv2.VideoCapture(avi_file)
+            ret = True
+            frames = []
+            while ret:
+                ret, img = vid.read()
+                if ret:
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                    frames.append(img)
+            timepoints = len(frames)  # Set timepoints based on first AVI
+            # Loop through each timepoint and save frames for each well
+            for timepoint in range(timepoints):
+                dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+                if not os.path.isdir(dir):
+                    os.makedirs(dir)  # Create timepoint directory if not already made
+                # Save the frame with well name appended
+                outpath = os.path.join(dir, f"{g.plate}_{well}_w1.TIF")
+                cv2.imwrite(str(outpath), frames[timepoint])
 
     __create_htd(g, timepoints)
-
+    
     return timepoints
 
 # crops all images to the individual well level
