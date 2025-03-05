@@ -24,7 +24,10 @@ def avi_to_ix(g):
                 frames.append(img)
         timepoints = len(frames)
         # Loop through each timepoint
+        print("Converting AVI to ImageXpress format.")
         for timepoint in range(timepoints):
+            if timepoint % 50 == 0:
+                print(f"Converting timepoint {timepoint + 1} of {timepoints}.")
             dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
             if os.path.isdir(dir):
                 shutil.rmtree(dir)
@@ -46,7 +49,10 @@ def avi_to_ix(g):
                     frames.append(img)
             timepoints = len(frames)  # Set timepoints based on first AVI
             # Loop through each timepoint and save frames for each well
+            print("Converting AVI to ImageXpress format.")
             for timepoint in range(timepoints):
+                if timepoint % 50 == 0:
+                    print(f"Converting timepoint {timepoint + 1} of {timepoints}.")
                 dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
                 if not os.path.isdir(dir):
                     os.makedirs(dir)  # Create timepoint directory if not already made
