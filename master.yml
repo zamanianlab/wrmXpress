@@ -126,6 +126,8 @@ pipelines:
     model: 'celegans_20220830'
     # Model type: 'python' or 'cellpose'
     model_type: 'cellpose'
+    # If using Python as model_type, set the sigma for the kernel of the Guaussian blur
+    model_sigma: 0.25
     # Specify the wavelength to run the segmentation on. If specifying multiple wavelengths, list wavelengths on a single line separated with commas (i.e. 'w1', 'w2', "w3", etc.)
     wavelengths:
       - 'All'
