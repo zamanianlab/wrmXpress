@@ -234,7 +234,7 @@ SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show
     Select the image to save:StraightenedImage
     Select method for constructing file names:Single name
     Select image name for file prefix:None
-    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>
     Number of digits:4
     Append a suffix to the image file name?:No
     Text to append to the image name:
