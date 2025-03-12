@@ -2,7 +2,7 @@ CellProfiler Pipeline: http://www.cellprofiler.org
 Version:5
 DateRevision:421
 GitHash:
-ModuleCount:8
+ModuleCount:10
 HasImagePlaneDetails:False
 
 LoadData:[module_num:1|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -95,12 +95,38 @@ FilterObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:9|sho
     Filter using a maximum measurement value?:Yes
     Maximum value:1.0
 
-MeasureImageAreaOccupied:[module_num:7|svn_version:'Unknown'|variable_revision_number:5|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureImageAreaOccupied:[module_num:7|svn_version:'Unknown'|variable_revision_number:9|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Measure the area occupied by:Objects
     Select binary images to measure:
     Select object sets to measure:GreenWorms
 
-ExportToSpreadsheet:[module_num:8|svn_version:'Unknown'|variable_revision_number:13|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertObjectsToImage:[module_num:8|svn_version:'Unknown'|variable_revision_number:9|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input objects:GreenWorms
+    Name the output image:GreenWormImage
+    Select the color format:Binary (black & white)
+    Select the colormap:Default
+
+SaveImages:[module_num:9|svn_version:'Unknown'|variable_revision_number:9|show_window:True|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the type of image to save:Image
+    Select the image to save:GreenWormImage
+    Select method for constructing file names:Single name
+    Select image name for file prefix:None
+    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>_\g<Well>_w\g<Wavelength>
+    Number of digits:4
+    Append a suffix to the image file name?:No
+    Text to append to the image name:
+    Saved file format:png
+    Output file location:Elsewhere...|/home/work/cellprofiler/
+    Image bit depth:16-bit integer
+    Overwrite existing files without warning?:Yes
+    When to save:Every cycle
+    Record the file and path information to the saved image?:No
+    Create subfolders in the output folder?:No
+    Base image folder:Elsewhere...|
+    How to save the series:T (Time)
+    Save with lossless compression?:Yes
+
+ExportToSpreadsheet:[module_num:10|svn_version:'Unknown'|variable_revision_number:13|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the column delimiter:Comma (",")
     Add image metadata columns to your object data file?:Yes
     Add image file and folder names to your object data file?:Yes
