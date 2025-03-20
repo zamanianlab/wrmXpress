@@ -33,7 +33,7 @@ def avi_to_ix(g):
                 shutil.rmtree(dir)
             os.makedirs(dir)
             # Save frame with '_A01_w1' to maintain original naming
-            outpath = os.path.join(dir, g.plate + f'_{g.wells[0]}_w1.TIF')
+            outpath = os.path.join(dir, g.plate + f'_A01_w1.TIF')
             cv2.imwrite(str(outpath), frames[timepoint])
     else:
         # Multiple AVI files case
