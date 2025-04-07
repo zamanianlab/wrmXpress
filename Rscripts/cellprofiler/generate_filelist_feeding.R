@@ -16,7 +16,7 @@ wavelength <- as.numeric(args[length(args) - 2])
 output_dir <- args[length(args) - 1] 
 plate_short <- args[length(args)]
 
-image_dir <- stringr::str_c(getwd(), 'input', plate, sep = '/')
+image_dir <- stringr::str_c(input, plate, sep = '/')
 
 input_files <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 tl <- input_files %>% magrittr::extract(dplyr::matches("w1", vars = .))
@@ -29,10 +29,10 @@ wd <- getwd() %>% str_remove(., '^/')
 load_csv <- dplyr::tibble(
   Group_Number = 1,
   Group_Index = seq(1, length(tl)),
-  URL_GFP = stringr::str_c('file:', wd, 'input', plate, gfp, sep = '/'),
-  URL_TransmittedLight = stringr::str_c('file:', wd, 'input', plate, tl, sep = '/'),
-  URL_TxRed = stringr::str_c('file:', wd, 'input', plate, txrd, sep = '/'),
-  URL_wellmask = stringr::str_c('file:', wd, 'wrmXpress', 'pipelines', 'cellprofiler', 'masks', mask, sep = '/'),
+  URL_GFP = stringr::str_c('file:', input, plate, gfp, sep = '/'),
+  URL_TransmittedLight = stringr::str_c('file:', input, plate, tl, sep = '/'),
+  URL_TxRed = stringr::str_c('file:', input, plate, txrd, sep = '/'),
+  URL_wellmask = stringr::str_c('file:', 'root', 'wrmXpress', 'pipelines', 'cellprofiler', 'masks', mask, sep = '/'),
   PathName_GFP = stringr::str_remove(URL_GFP, 'file:'),
   PathName_TransmittedLight = stringr::str_remove(URL_TransmittedLight, 'file:'),
   PathName_TxRed = stringr::str_remove(URL_TxRed, 'file:'),
