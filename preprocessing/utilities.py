@@ -246,8 +246,8 @@ def get_wells(g):
             print(f"Missing wells: {', '.join(missing_wells)}")
 
     # Update wells and well_sites to only include available ones
-    wells = list(available_wells)
-    well_sites = list(available_well_sites)
+    wells = sorted(list(available_wells))
+    well_sites = sorted(list(available_well_sites))
 
     # Return updated wells and well_sites
     return wells, well_sites
