@@ -57,7 +57,7 @@ load_csv <- dplyr::tibble(
   Metadata_Plate = stringr::str_extract(plate, '-p[0-9]*-') %>% stringr::str_remove_all(., '-'),
   Metadata_Researcher = stringr::str_extract(plate, '-[A-Z]{2,3}') %>% stringr::str_remove_all(., '-'),
   Metadata_Series = 0,
-  Metadata_Well = stringr::str_extract(FileName_RawImage, '[A-H][0,1]{1}[0-9]{1}'),
+  Metadata_Well = stringr::str_extract(FileName_RawImage, '[A-P]([0-1][0-9]|2[0-4])'),
   Metadata_Wavelength = stringr::str_extract(FileName_RawImage, '(?<=_w)[0-9]+')
 )
 

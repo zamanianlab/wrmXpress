@@ -163,7 +163,8 @@ def segmentation(g, options, well_site):
                 image_path = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
                 if os.path.exists(image_path):
                     image = io.imread(image_path)
-                    for object_id, region in enumerate(measure.regionprops(image), start=1):
+                    labeled_image = measure.label(image)
+                    for object_id, region in enumerate(measure.regionprops(labeled_image), start=1):
                         result = {
                             'well_site': well_site,
                             'object_number': object_id,
@@ -171,6 +172,14 @@ def segmentation(g, options, well_site):
                             'compactness': (region.perimeter ** 2) / (4 * np.pi * region.area) if region.area > 0 else 0
                         }
                         all_results.append(result)
+                else:
+                    result = {
+                        'well_site': well_site,
+                        'object_number': "NA",
+                        'size': "NA",
+                        'compactness': "NA"
+                    }
+                    all_results.append(result)
 
                 # Save results to CSV
                 df = pd.DataFrame(all_results)
