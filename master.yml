@@ -149,6 +149,14 @@ pipelines:
 #### Tracking ####
   tracking: 
     run: False
+    wavelengths: 
+      - 'All'
+    diameter: 15 # If objects are larger/smaller adjust diameter
+    minmass: 150 # If images are noisy, increase minmass
+    noisesize: 1 
+    searchrange: 10 #if objects move quickly between frames, increase searchrange
+    memory: 5 # If objects frequently disappear/reappear, increase memory
+    adaptivestop: 0.05
 
 
 
