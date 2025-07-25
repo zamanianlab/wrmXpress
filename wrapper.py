@@ -174,7 +174,7 @@ if __name__ == "__main__":
                     None,
                     [wavelength],
                     rescale_factor=1,
-                    format="PNG",
+                    format="png",
                 )
         else: 
             print(f"Skipping static_dx for {pipeline}: No PNG files found.")

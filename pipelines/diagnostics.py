@@ -30,7 +30,6 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_fa
 
     # create output directory if it doesn't already exist
     os.makedirs(output_dir, exist_ok=True)
-
     outpaths = []
 
     # for each wavelength, generate image paths of wells to be stitched
