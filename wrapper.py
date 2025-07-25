@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
-    r_script_path = "/root/wrmXpress/Rscripts/metadata_join_master.R"
+    r_script_path = "/opt/wrmXpress/Rscripts/metadata_join_master.R"
 
 
     # Filter and get CSVs for the specific plate in the pipeline directories

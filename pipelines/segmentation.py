@@ -88,7 +88,7 @@ def segmentation(g, options, well_site):
     work_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = f"/root/wrmXpress/pipelines/models/cellpose/{options['model']}"
+    model_path = f"/opt/wrmXpress/pipelines/models/cellpose/{options['model']}"
     model_type = options['model_type']
     model_sigma = options['model_sigma']
     wavelengths_option = options['wavelengths']
