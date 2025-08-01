@@ -1,6 +1,7 @@
 from PIL import Image
 import cv2
 import os
+import re
 from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 import numpy as np
 from datetime import datetime
