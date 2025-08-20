@@ -81,7 +81,6 @@ square_side: NA
 
 pipelines:
 # Modules reflect pipelines with specific input requirements
-# Selected well set
 
 #### Diagnostics ####
 # Returns stiched images of first timepoint across all wavelengths
