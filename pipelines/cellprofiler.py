@@ -63,7 +63,7 @@ def cellprofiler(g, options, well_site):
     work_dir.mkdir(parents=True, exist_ok=True)
     img_out_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['cellpose_model']
+    model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['cellpose_model'] if options['cellpose_model'] else None
     wavelength_option = options["cellpose_wavelength"]  # A single wavelength like 'w1'
     wavelength = int(wavelength_option[1:]) - 1  # Convert 'w1' to 0-based index
     timepoints = range(1, 2)  # Process only TimePoint_1 for now

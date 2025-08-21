@@ -116,7 +116,7 @@ SaveImages:[module_num:9|svn_version:'Unknown'|variable_revision_number:9|show_w
     Append a suffix to the image file name?:No
     Text to append to the image name:
     Saved file format:png
-    Output file location:Elsewhere...|/home/work/cellprofiler/
+    Output file location:Elsewhere...|work/cellprofiler/
     Image bit depth:16-bit integer
     Overwrite existing files without warning?:Yes
     When to save:Every cycle
@@ -134,7 +134,7 @@ ExportToSpreadsheet:[module_num:10|svn_version:'Unknown'|variable_revision_numbe
     Calculate the per-image mean values for object measurements?:No
     Calculate the per-image median values for object measurements?:No
     Calculate the per-image standard deviation values for object measurements?:No
-    Output file location:Elsewhere...|/home/work/cellprofiler/
+    Output file location:Elsewhere...|work/cellprofiler/
     Create a GenePattern GCT file?:No
     Select source of sample row name:Metadata
     Select the image to use as the identifier:None
