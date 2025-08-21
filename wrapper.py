@@ -9,6 +9,11 @@ import cv2
 import re
 import numpy as np
 
+# Import config.py to set program directory
+from config import get_program_dir
+PROGRAM_DIR = get_program_dir()
+
+# Import preprocessing and pipelines
 from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
 from preprocessing.image_processing import (
     avi_to_ix,
@@ -181,7 +186,7 @@ if __name__ == "__main__":
 
     # generate tidy csvs using the R script
     print("Running R script to join metadata and tidy.")
-    r_script_path = "/opt/wrmXpress/Rscripts/metadata_join_master.R"
+    r_script_path = PROGRAM_DIR / "Rscripts" / "metadata_join_master.R"
 
 
     # Filter and get CSVs for the specific plate in the pipeline directories

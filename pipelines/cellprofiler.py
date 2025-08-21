@@ -6,6 +6,9 @@ import shlex
 import tempfile
 from pathlib import Path
 
+from config import get_program_dir
+PROGRAM_DIR = get_program_dir()
+
 
 def rename_file_to_temp_tif(src_file, temp_dir):
     """Rename a single TIF file to tif in a temporary directory."""
@@ -37,7 +40,8 @@ def run_rscript_to_generate_csv(
     plate_short,
 ):
     """Run the R script to generate the CSV file listing the image paths and save csvs to work/cellprofiler."""
-    r_command = f"Rscript /opt/wrmXpress/Rscripts/cellprofiler/generate_filelist_{cellprofiler_pipeline}.R {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
+    r_script_path = PROGRAM_DIR / "Rscripts" / "cellprofiler" / f"generate_filelist_{cellprofiler_pipeline}.R"
+    r_command = f"Rscript {r_script_path} {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
     print(f"Generating file list for {cellprofiler_pipeline}.")
     subprocess.run(shlex.split(r_command))
     
@@ -45,7 +49,8 @@ def run_rscript_to_generate_csv(
 
 def run_cellprofiler(cellprofiler_pipeline, csv_file, img_out_dir):
     """Run CellProfiler using the generated CSV file and save output images to output/cellprofiler/img."""
-    cp_command = f"cellprofiler -c -r -p /opt/wrmXpress/pipelines/cellprofiler/{cellprofiler_pipeline}.cppipe --data-file={csv_file} --output-dir={img_out_dir}"
+    pipeline_path = PROGRAM_DIR / "pipelines" / "cellprofiler" / f"{cellprofiler_pipeline}.cppipe"
+    cp_command = f"cellprofiler -c -r -p {pipeline_path} --data-file={csv_file} --output-dir={img_out_dir}"
     print(f"Running CellProfiler using {csv_file.name}.")
     subprocess.run(shlex.split(cp_command))
     
@@ -58,7 +63,7 @@ def cellprofiler(g, options, well_site):
     work_dir.mkdir(parents=True, exist_ok=True)
     img_out_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = f"/opt/wrmXpress/pipelines/models/cellpose/{options['cellpose_model']}"
+    model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['cellpose_model']
     wavelength_option = options["cellpose_wavelength"]  # A single wavelength like 'w1'
     wavelength = int(wavelength_option[1:]) - 1  # Convert 'w1' to 0-based index
     timepoints = range(1, 2)  # Process only TimePoint_1 for now
