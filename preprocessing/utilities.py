@@ -84,6 +84,7 @@ def parse_yaml(arg_parser, g_class):
     work = conf.get('directories').get('work')[0]
     input = conf.get('directories').get('input')[0]
     output = conf.get('directories').get('output')[0]
+    metadata = conf.get('directories').get('metadata')[0]
     plate = args.plate
     plate_short = re.sub('_[0-9]*$', '', plate)
     print('run-time settings:')
@@ -94,10 +95,12 @@ def parse_yaml(arg_parser, g_class):
     input = Path.home().joinpath(input)
     work = Path.home().joinpath(work)
     output = Path.home().joinpath(output)
+    metadata = Path.home().joinpath(metadata)
     plate_dir = Path.home().joinpath(input, plate)
     print("\t\tinput directory: {}".format(str(input)))
     print("\t\twork directory: {}".format(str(work)))
     print("\t\toutput directory: {}".format(str(output)))
+    print("\t\tmetadata directory: {}".format(str(metadata)))
 
     # add masks (could have mask field which is 'circle', 'square', or 'NA')
     circle_diameter = conf.get('circle_diameter')
@@ -121,7 +124,7 @@ def parse_yaml(arg_parser, g_class):
             raise ValueError("LoopBio file structure requires camera_mapping configuration")
     
     yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
-                       crop, x_sites, y_sites, stitch, input, work, output,
+                       crop, x_sites, y_sites, stitch, input, work, output, metadata,
                        plate_dir, plate, plate_short, wells,
                        circle_diameter, square_side,
                        '', '', '', '', '', camera_mapping, rotations)
@@ -179,7 +182,7 @@ def parse_htd(yaml, g_class):
     print("\t\twavelengths: {}".format(wave_names))
 
     g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols,
-                yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output,
+                yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output, yaml.metadata,
                 yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
                 yaml.circle_diameter, yaml.square_side,
                 desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations)

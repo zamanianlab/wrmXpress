@@ -9,14 +9,15 @@ args <- commandArgs(trailingOnly = TRUE)
 input <- args[1]
 work <- args[2]
 output <- args[3]
-plate <- args[4]
-plate_short <- args[5]
-filled_rows <- as.numeric(args[6])
-cols <- as.numeric(args[7])
-pipeline_list <- str_split(args[8], ",")[[1]]
+metadata <- args[4]
+plate <- args[5]
+plate_short <- args[6]
+filled_rows <- as.numeric(args[7])
+cols <- as.numeric(args[8])
+pipeline_list <- str_split(args[9], ",")[[1]]
 
-# Get the paths to all the metadata files
-metadata_dir <- stringr::str_c(str_remove(input, "/input"), "metadata", plate, sep = "/")
+# Get the paths to all the metadata files using the configurable metadata directory
+metadata_dir <- file.path(metadata, plate)
 
 metadata_files <- dplyr::tibble(base = metadata_dir,
                          plate = plate,
