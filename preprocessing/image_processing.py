@@ -6,6 +6,8 @@ import re
 import shutil
 import math
 import numpy as np
+import yaml
+from pathlib import Path
 
 # converts avi files to IX format
 def avi_to_ix(g):
@@ -64,6 +66,124 @@ def avi_to_ix(g):
     
     return timepoints
 
+# converts LoopBio MP4 files to IX format
+def loopbio_to_ix(g, camera_mapping, rotations):
+    """
+    Convert LoopBio multi-camera MP4 files to ImageXpress format.
+    Memory-efficient approach that processes one camera at a time.
+    
+    Args:
+        g: Configuration object
+        camera_mapping: Dict mapping camera serial numbers to well positions
+        rotations: List of wells that need 180-degree rotation
+    """
+    print("Converting LoopBio MP4 files to ImageXpress format.")
+    
+    # Find all camera directories in the plate directory
+    camera_dirs = []
+    for item in os.listdir(g.plate_dir):
+        item_path = os.path.join(g.plate_dir, item)
+        if os.path.isdir(item_path):
+            camera_dirs.append(item_path)
+    
+    if not camera_dirs:
+        raise ValueError(f"No camera directories found in {g.plate_dir}")
+    
+    # Process each camera directory one at a time (memory efficient)
+    timepoints = 0
+    processed_wells = {}
+    
+    for camera_dir in camera_dirs:
+        # Extract camera serial from directory name (last part after '.')
+        dir_name = os.path.basename(camera_dir)
+        try:
+            camera_serial = dir_name.split('.')[-1]
+        except:
+            print(f"Warning: Could not extract camera serial from directory {dir_name}")
+            continue
+        
+        # Check if this camera serial is in our mapping
+        if int(camera_serial) not in camera_mapping:
+            print(f"Warning: Camera serial {camera_serial} not found in mapping, skipping")
+            continue
+        
+        well_position = camera_mapping[int(camera_serial)]
+        
+        # Find MP4 file in camera directory
+        mp4_file = os.path.join(camera_dir, '000000.mp4')
+        metadata_file = os.path.join(camera_dir, 'metadata.yaml')
+        
+        if not os.path.exists(mp4_file):
+            print(f"Warning: MP4 file not found in {camera_dir}")
+            continue
+        
+        # Validate metadata if it exists
+        if os.path.exists(metadata_file):
+            try:
+                with open(metadata_file, 'r') as f:
+                    metadata = yaml.safe_load(f)
+                    if metadata.get('title') != g.plate:
+                        print(f"Warning: Metadata title '{metadata.get('title')}' doesn't match plate name '{g.plate}'")
+            except Exception as e:
+                print(f"Warning: Could not read metadata from {metadata_file}: {e}")
+        
+        # Process MP4 file - memory efficient approach
+        print(f"Processing camera {camera_serial} -> well {well_position}")
+        vid = cv2.VideoCapture(mp4_file)
+        
+        if not vid.isOpened():
+            print(f"Error: Could not open MP4 file {mp4_file}")
+            continue
+        
+        # Process frames one at a time and write immediately (like avi_to_ix)
+        current_timepoint = 0
+        ret = True
+        
+        while ret:
+            ret, img = vid.read()
+            if ret:
+                current_timepoint += 1 # possible frame skipping option in yml?
+                
+                # Convert to grayscale and uint16
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                
+                # Apply rotation if this well needs it
+                if well_position in rotations:
+                    img = cv2.rotate(img, cv2.ROTATE_180)
+                
+                # Progress indicator
+                if current_timepoint % 50 == 0:
+                    print(f"Converting timepoint {current_timepoint} for well {well_position}")
+                
+                # Create timepoint directory if it doesn't exist
+                timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{current_timepoint}')
+                os.makedirs(timepoint_dir, exist_ok=True)
+                
+                # Save frame immediately with proper naming convention
+                outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
+                cv2.imwrite(outpath, img)
+        
+        vid.release()
+        
+        # Set timepoints based on first processed camera
+        if timepoints == 0:
+            timepoints = current_timepoint
+        elif current_timepoint != timepoints:
+            print(f"Warning: Camera {camera_serial} has {current_timepoint} frames, expected {timepoints}")
+            # Use the minimum to avoid index errors
+            timepoints = min(timepoints, current_timepoint)
+        
+        processed_wells[well_position] = camera_serial
+        print(f"Completed processing camera {camera_serial} -> well {well_position} ({current_timepoint} frames)")
+    
+    # Create HTD file
+    __create_loopbio_htd(g, timepoints, len(processed_wells))
+    
+    print(f"Successfully processed {len(processed_wells)} cameras with {timepoints} timepoints")
+    print(f"Processed wells: {list(processed_wells.keys())}")
+    
+    return timepoints
+
 # crops all images to the individual well level
 def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
@@ -85,6 +205,8 @@ def grid_crop(g):
             # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
             # get group_id using regex by extracting column letter and row number from current
             letter, number, site, wavelength = extract_well_name(current)
+            if letter is None:  # Skip files that don't match the expected image naming pattern
+                continue
             group_id = [__capital_to_num(letter), int(number) - 1]
 
             # split image into individual wells
@@ -96,9 +218,9 @@ def grid_crop(g):
                     well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
                     # save current image as well name
                     if site:
-                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
                     else:
-                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate + f'_{well_name}_w{wavelength}.TIF')
+                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_w{wavelength}.TIF')
                     if g.circle_diameter != 'NA':
                         __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
                     elif g.square_side != 'NA':
@@ -211,7 +333,7 @@ def apply_masks(g):
 # extracts the column letter, row number, site number, and wavelength number from the image name
 def extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?(?:_w(\d+))?\.(tif|TIF|png|PNG)$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG)$'
     match = re.search(pattern, well_string)
 
     # check number of groups to determine site number if applicable and well number
@@ -259,6 +381,23 @@ def __create_htd(g, timepoints):
     lines.append('"TimePoints", ' + str(timepoints) + "\n")
     lines.append('"XWells", ' + str(g.rec_cols) + "\n")
     lines.append('"YWells", ' + str(g.rec_rows) + "\n")
+    lines.append('"XSites", ' + "1" + "\n")
+    lines.append('"YSites", ' + "1" + "\n")
+    lines.append('"NWavelengths", ' + "1" + "\n")
+    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
+
+    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
+    with open(htd_path, mode='w') as htd_file:
+        htd_file.writelines(lines)
+
+# creates HTD for LoopBio input
+def __create_loopbio_htd(g, timepoints, num_wells):
+    # make HTD for LoopBio data
+    lines = []
+    lines.append('"Description", ' + "LoopBio" + "\n")
+    lines.append('"TimePoints", ' + str(timepoints) + "\n")
+    lines.append('"XWells", ' + str(3) + "\n")  # LoopBio uses 3x2 grid (A01-A03, B01-B03)
+    lines.append('"YWells", ' + str(2) + "\n")
     lines.append('"XSites", ' + "1" + "\n")
     lines.append('"YSites", ' + "1" + "\n")
     lines.append('"NWavelengths", ' + "1" + "\n")

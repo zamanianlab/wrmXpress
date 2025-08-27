@@ -17,6 +17,7 @@ PROGRAM_DIR = get_program_dir()
 from preprocessing.utilities import parse_yaml, parse_htd, rename_files, get_wells
 from preprocessing.image_processing import (
     avi_to_ix,
+    loopbio_to_ix,
     grid_crop,
     stitch_all_timepoints,
     apply_masks,
@@ -59,6 +60,8 @@ if __name__ == "__main__":
             "n_waves",
             "wave_names",
             "plate_paths",
+            "camera_mapping",
+            "rotations",
         ],
     )
 
@@ -83,6 +86,10 @@ if __name__ == "__main__":
     elif g.file_structure == "avi":
         # convert avi to tifs and create HTD (done in avi_to_ix)
         avi_to_ix(g)
+        g = parse_htd(g, g_class)
+    elif g.file_structure == "loopbio":
+        # convert LoopBio MP4s to tifs and create HTD (done in loopbio_to_ix)
+        loopbio_to_ix(g, g.camera_mapping, g.rotations)
         g = parse_htd(g, g_class)
     else:
         raise ValueError("Unsupported file structure.")

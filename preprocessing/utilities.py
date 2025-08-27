@@ -105,11 +105,26 @@ def parse_yaml(arg_parser, g_class):
     if circle_diameter != 'NA' and square_side != 'NA':
         raise ValueError("Cannot apply circle mask and square mask at the same time.")
     
+    # LoopBio-specific configuration
+    camera_mapping = {}
+    rotations = []
+    if file_structure == 'loopbio':
+        loopbio_config = conf.get('loopbio', {})
+        camera_mapping = loopbio_config.get('camera_mapping', {})
+        rotations = loopbio_config.get('rotations', [])
+        print('LoopBio settings:')
+        print(f"\t\tcamera mapping: {camera_mapping}")
+        print(f"\t\trotations: {rotations}")
+        
+        # Validate camera mapping
+        if not camera_mapping:
+            raise ValueError("LoopBio file structure requires camera_mapping configuration")
+    
     yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
                        crop, x_sites, y_sites, stitch, input, work, output,
                        plate_dir, plate, plate_short, wells,
                        circle_diameter, square_side,
-                       '', '', '', '', '')
+                       '', '', '', '', '', camera_mapping, rotations)
 
     return yaml_out, pipelines
 
@@ -167,7 +182,7 @@ def parse_htd(yaml, g_class):
                 yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output,
                 yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
                 yaml.circle_diameter, yaml.square_side,
-                desc, time_points, n_waves, wave_names, '')
+                desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations)
 
     return g
 
