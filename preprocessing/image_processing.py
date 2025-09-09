@@ -113,7 +113,7 @@ def avi_to_ix(g):
 def loopbio_to_ix(g, camera_mapping, rotations):
     """
     Convert LoopBio multi-camera MP4 files to ImageXpress format.
-    Memory-efficient approach that processes one camera at a time.
+    Processes one camera at a time.
     
     Args:
         g: Configuration object
@@ -307,7 +307,7 @@ def grid_crop(g):
                 if not os.path.exists(current_path):
                     continue
 
-                # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
+                # conversion of the well name to an array - A01 becomes [0, 0] where the format is [row, col]
                 # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
                 # get group_id using regex by extracting column letter and row number from current
                 letter, number, site, wavelength = extract_well_name(current)
@@ -321,18 +321,34 @@ def grid_crop(g):
                 # loop through individual well images and save with corresponding well name in crop directory
                 for i in range(rows_per_image):
                     for j in range(cols_per_image):
-                        well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
+                        well_name = __generate_well_name(g, group_id, j, i, cols_per_image, rows_per_image)
+                        
+                        # Skip if well_name is None (shouldn't happen but safety check)
+                        if well_name is None:
+                            print(f"    ERROR: well_name is None for sub-well [{i},{j}]")
+                            continue
+                            
                         # save current image as well name in crop directory
+                        # Use a unique temporary filename during cropping to prevent overwrites
+                        temp_filename = f"{current.replace('.TIF', '')}_{well_name}_temp.TIF"
+                        temp_outpath = os.path.join(crop_timepoint_dir, temp_filename)
+                        
+                        # Final filename for transfer back
                         if site:
-                            outpath = os.path.join(crop_timepoint_dir, g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                            final_filename = g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF'
                         else:
-                            outpath = os.path.join(crop_timepoint_dir, g.plate_short + f'_{well_name}_w{wavelength}.TIF')
-                        if g.circle_diameter != 'NA':
-                            __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
-                        elif g.square_side != 'NA':
-                            __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(outpath)
-                        else:
-                            individual_wells[i * cols_per_image + j].save(outpath)
+                            final_filename = g.plate_short + f'_{well_name}_w{wavelength}.TIF'
+                        
+                        try:
+                            if g.circle_diameter != 'NA':
+                                __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(temp_outpath)
+                            elif g.square_side != 'NA':
+                                __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(temp_outpath)
+                            else:
+                                individual_wells[i * cols_per_image + j].save(temp_outpath)
+
+                        except Exception as e:
+                            print(f"    ERROR saving {well_name}: {e}")
         
         # 4. Transfer cropped images back to input directory (overwriting multi-well images)
         print("Transferring cropped individual well images back to input directory.")
@@ -347,12 +363,35 @@ def grid_crop(g):
                     if os.path.isfile(file_path):
                         os.remove(file_path)
                 
-                # Copy all cropped images from crop directory to input directory
+                # Copy all cropped images from crop directory to input directory with proper renaming
                 for filename in os.listdir(crop_timepoint_dir):
-                    if filename.lower().endswith(('.tif', '.tiff')):
-                        src_path = os.path.join(crop_timepoint_dir, filename)
-                        dst_path = os.path.join(input_timepoint_dir, filename)
-                        shutil.copy2(src_path, dst_path)
+                    if filename.lower().endswith(('.tif', '.tiff')) and '_temp.TIF' in filename:
+                        # Extract the well name and construct the final filename
+                        # Temp filename format: "20250813-p01-MZ_A01_w1_A01_temp.TIF"
+                        # Final filename format: "20250813-p01-MZ_A01_w1.TIF"
+                        
+                        # Parse the temp filename to extract well name and other components
+                        parts = filename.replace('_temp.TIF', '').split('_')
+                        if len(parts) >= 4:
+                            # Extract the well name (last part before _temp)
+                            well_name = parts[-1]  # e.g., "A01"
+                            
+                            # Extract wavelength from original filename
+                            wavelength_match = re.search(r'_w(\d+)', filename)
+                            if wavelength_match:
+                                wavelength = wavelength_match.group(1)
+                                
+                                # Construct final filename
+                                final_filename = f"{g.plate_short}_{well_name}_w{wavelength}.TIF"
+                                
+                                src_path = os.path.join(crop_timepoint_dir, filename)
+                                dst_path = os.path.join(input_timepoint_dir, final_filename)
+                                
+                                shutil.copy2(src_path, dst_path)
+                            else:
+                                print(f"    WARNING: Could not extract wavelength from {filename}")
+                        else:
+                            print(f"    WARNING: Could not parse temp filename {filename}")
         
         # 5. Clean up crop directory
         print("Cleaning up crop directory.")
@@ -391,7 +430,7 @@ def grid_crop(g):
                 # loop through individual well images and save with corresponding well name
                 for i in range(rows_per_image):
                     for j in range(cols_per_image):
-                        well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
+                        well_name = __generate_well_name(g, group_id, j, i, cols_per_image, rows_per_image)
                         # save current image as well name
                         if site:
                             outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
@@ -625,10 +664,46 @@ def __split_image(img_path, x, y):
 
 # generates well name using the provided group id
 def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
-    # calculate well_id
-    well_id = [group_id[0] * cols_per_image + col, group_id[1] * rows_per_image + row]
+    if g.mode == "multi-well":
+        # For multi-well mode, group_id represents the camera's assigned well position from LoopBio
+        # The camera mapping is: A01, A02, A03, B01, B02, B03 in a 2x3 grid
+        # But each camera covers a 4x4 region of the final 8x12 plate
+        
+        # group_id[0] = camera row letter index (A=0, B=1), group_id[1] = camera col number index (01=0, 02=1, 03=2)
+        camera_row_idx = group_id[0]  # A=0, B=1
+        camera_col_idx = group_id[1]  # 01=0, 02=1, 03=2
+        
+        # Map camera positions to their coverage areas:
+        # For a 2x3 camera layout covering an 8x12 plate:
+        # - Each camera covers 4 rows (8/2) and 4 columns (12/3)
+        # - Camera A01 [0,0] -> covers plate rows 0-3, cols 0-3   (A01-A04, B01-B04, C01-C04, D01-D04)
+        # - Camera A02 [0,1] -> covers plate rows 0-3, cols 4-7   (A05-A08, B05-B08, C05-C08, D05-D08)  
+        # - Camera A03 [0,2] -> covers plate rows 0-3, cols 8-11  (A09-A12, B09-B12, C09-C12, D09-D12)
+        # - Camera B01 [1,0] -> covers plate rows 4-7, cols 0-3   (E01-E04, F01-F04, G01-G04, H01-H04)
+        # - Camera B02 [1,1] -> covers plate rows 4-7, cols 4-7   (E05-E08, F05-F08, G05-G08, H05-H08)
+        # - Camera B03 [1,2] -> covers plate rows 4-7, cols 8-11  (E09-E12, F09-F12, G09-G12, H09-H12)
+        
+        # Calculate starting well position for this camera
+        start_well_row = camera_row_idx * rows_per_image  # A cameras start at row 0, B cameras at row 4
+        start_well_col = camera_col_idx * cols_per_image  # 01 cameras start at col 0, 02 at col 4, 03 at col 8
+        
+        # Add sub-well offset to get final well position
+        well_row = start_well_row + row
+        well_col = start_well_col + col
+        
+        # Validate that we're within plate bounds
+        if well_row >= g.rows or well_col >= g.cols:
+            print(f"    WARNING: Well position ({well_row}, {well_col}) exceeds plate bounds ({g.rows}, {g.cols})")
+            return None
+            
+    else:
+        # Original single-well logic
+        well_row = group_id[0] * rows_per_image + row
+        well_col = group_id[1] * cols_per_image + col
+    
+    well_name = well_idx_to_name(g, well_row, well_col)
 
-    return well_idx_to_name(g, well_id[0], well_id[1])
+    return well_name
 
 # stitches sites into an n by n square image and fills extra space with black
 # saves stitched image to given outpath
