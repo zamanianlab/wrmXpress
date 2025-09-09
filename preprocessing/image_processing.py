@@ -19,14 +19,32 @@ def avi_to_ix(g):
         vid = cv2.VideoCapture(str(vid_path))
         ret = True
         frames = []
-        while ret:
-            ret, img = vid.read()
-            if ret:
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
-                frames.append(img)
+        frame_counter = 0
+        
+        # Apply frame skipping if enabled
+        if g.frame_skipping_enabled:
+            print(f"Frame skipping enabled: processing every {g.frame_skip_interval} frame(s)")
+            while ret:
+                ret, img = vid.read()
+                if ret:
+                    frame_counter += 1
+                    # Only process frames according to skip interval
+                    if (frame_counter - 1) % g.frame_skip_interval == 0:
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                        frames.append(img)
+        else:
+            # Original behavior - process all frames
+            while ret:
+                ret, img = vid.read()
+                if ret:
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                    frames.append(img)
+        
         timepoints = len(frames)
         # Loop through each timepoint
         print("Converting AVI to ImageXpress format.")
+        if g.frame_skipping_enabled:
+            print(f"Processing {timepoints} frames (skipped {frame_counter - timepoints} frames)")
         for timepoint in range(timepoints):
             if timepoint % 50 == 0:
                 print(f"Converting timepoint {timepoint + 1} of {timepoints}.")
@@ -40,21 +58,46 @@ def avi_to_ix(g):
     else:
         # Multiple AVI files case
         well_names = [re.search(r'_(\D\d{2})\.avi$', os.path.basename(f)).group(1) for f in avi_files]  # Extract well names
+        timepoints = 0
         for avi_file, well in zip(avi_files, well_names):
             vid = cv2.VideoCapture(avi_file)
             ret = True
             frames = []
-            while ret:
-                ret, img = vid.read()
-                if ret:
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
-                    frames.append(img)
-            timepoints = len(frames)  # Set timepoints based on first AVI
+            frame_counter = 0
+            
+            # Apply frame skipping if enabled
+            if g.frame_skipping_enabled:
+                print(f"Frame skipping enabled for {well}: processing every {g.frame_skip_interval} frame(s)")
+                while ret:
+                    ret, img = vid.read()
+                    if ret:
+                        frame_counter += 1
+                        # Only process frames according to skip interval
+                        if (frame_counter - 1) % g.frame_skip_interval == 0:
+                            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                            frames.append(img)
+            else:
+                # Original behavior - process all frames
+                while ret:
+                    ret, img = vid.read()
+                    if ret:
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                        frames.append(img)
+            
+            current_timepoints = len(frames)
+            if timepoints == 0:
+                timepoints = current_timepoints  # Set timepoints based on first AVI
+            elif current_timepoints != timepoints:
+                print(f"Warning: Well {well} has {current_timepoints} frames, expected {timepoints}")
+                timepoints = min(timepoints, current_timepoints)  # Use minimum to avoid errors
+            
             # Loop through each timepoint and save frames for each well
-            print("Converting AVI to ImageXpress format.")
-            for timepoint in range(timepoints):
+            print(f"Converting AVI to ImageXpress format for well {well}.")
+            if g.frame_skipping_enabled:
+                print(f"Processing {current_timepoints} frames for {well} (skipped {frame_counter - current_timepoints} frames)")
+            for timepoint in range(current_timepoints):
                 if timepoint % 50 == 0:
-                    print(f"Converting timepoint {timepoint + 1} of {timepoints}.")
+                    print(f"Converting timepoint {timepoint + 1} of {current_timepoints} for well {well}.")
                 dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
                 if not os.path.isdir(dir):
                     os.makedirs(dir)  # Create timepoint directory if not already made
@@ -137,31 +180,63 @@ def loopbio_to_ix(g, camera_mapping, rotations):
         
         # Process frames one at a time and write immediately (like avi_to_ix)
         current_timepoint = 0
+        frame_counter = 0
         ret = True
         
-        while ret:
-            ret, img = vid.read()
-            if ret:
-                current_timepoint += 1 # possible frame skipping option in yml?
-                
-                # Convert to grayscale and uint16
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
-                
-                # Apply rotation if this well needs it
-                if well_position in rotations:
-                    img = cv2.rotate(img, cv2.ROTATE_180)
-                
-                # Progress indicator
-                if current_timepoint % 50 == 0:
-                    print(f"Converting timepoint {current_timepoint} for well {well_position}")
-                
-                # Create timepoint directory if it doesn't exist
-                timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{current_timepoint}')
-                os.makedirs(timepoint_dir, exist_ok=True)
-                
-                # Save frame immediately with proper naming convention
-                outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
-                cv2.imwrite(outpath, img)
+        # Apply frame skipping if enabled
+        if g.frame_skipping_enabled:
+            print(f"Frame skipping enabled for {well_position}: processing every {g.frame_skip_interval} frame(s)")
+            while ret:
+                ret, img = vid.read()
+                if ret:
+                    frame_counter += 1
+                    # Only process frames according to skip interval
+                    if (frame_counter - 1) % g.frame_skip_interval == 0:
+                        current_timepoint += 1
+                        
+                        # Convert to grayscale and uint16
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                        
+                        # Apply rotation if this well needs it
+                        if well_position in rotations:
+                            img = cv2.rotate(img, cv2.ROTATE_180)
+                        
+                        # Progress indicator
+                        if current_timepoint % 50 == 0:
+                            print(f"Converting timepoint {current_timepoint} for well {well_position}")
+                        
+                        # Create timepoint directory if it doesn't exist
+                        timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{current_timepoint}')
+                        os.makedirs(timepoint_dir, exist_ok=True)
+                        
+                        # Save frame immediately with proper naming convention
+                        outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
+                        cv2.imwrite(outpath, img)
+        else:
+            # Original behavior - process all frames
+            while ret:
+                ret, img = vid.read()
+                if ret:
+                    current_timepoint += 1
+                    
+                    # Convert to grayscale and uint16
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
+                    
+                    # Apply rotation if this well needs it
+                    if well_position in rotations:
+                        img = cv2.rotate(img, cv2.ROTATE_180)
+                    
+                    # Progress indicator
+                    if current_timepoint % 50 == 0:
+                        print(f"Converting timepoint {current_timepoint} for well {well_position}")
+                    
+                    # Create timepoint directory if it doesn't exist
+                    timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{current_timepoint}')
+                    os.makedirs(timepoint_dir, exist_ok=True)
+                    
+                    # Save frame immediately with proper naming convention
+                    outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
+                    cv2.imwrite(outpath, img)
         
         vid.release()
         
@@ -174,7 +249,10 @@ def loopbio_to_ix(g, camera_mapping, rotations):
             timepoints = min(timepoints, current_timepoint)
         
         processed_wells[well_position] = camera_serial
-        print(f"Completed processing camera {camera_serial} -> well {well_position} ({current_timepoint} frames)")
+        if g.frame_skipping_enabled:
+            print(f"Completed processing camera {camera_serial} -> well {well_position} ({current_timepoint} frames, skipped {frame_counter - current_timepoint} frames)")
+        else:
+            print(f"Completed processing camera {camera_serial} -> well {well_position} ({current_timepoint} frames)")
     
     # Create HTD file
     __create_loopbio_htd(g, timepoints, len(processed_wells))
@@ -189,44 +267,142 @@ def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
     cols_per_image = g.cols // g.rec_cols
 
-    # loop through each timepoint folder
-    for timepoint in range(g.time_points):
-        original_images = os.listdir(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}'))
-
-        # loop through each image in timepoint folder
-        for current in original_images:
-            # get path of current image
-            current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
-            # skip over if file does not exist
-            if not os.path.exists(current_path):
+    # Check if we need to use crop directory (multi-well mode)
+    if g.mode == "multi-well":
+        print("Multi-well mode detected. Using crop directory to prevent file overwriting.")
+        
+        # 1. Create crop directory in work folder
+        crop_dir = os.path.join(g.work, 'crop')
+        os.makedirs(crop_dir, exist_ok=True)
+        
+        # 2. Copy input images to crop directory for processing
+        for timepoint in range(g.time_points):
+            input_timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            
+            if os.path.exists(input_timepoint_dir):
+                # Create timepoint directory in crop folder
+                os.makedirs(crop_timepoint_dir, exist_ok=True)
+                
+                # Copy all images to crop directory
+                for filename in os.listdir(input_timepoint_dir):
+                    if filename.lower().endswith(('.tif', '.tiff')):
+                        src_path = os.path.join(input_timepoint_dir, filename)
+                        dst_path = os.path.join(crop_timepoint_dir, filename)
+                        shutil.copy2(src_path, dst_path)
+        
+        # 3. Perform cropping operations in crop directory
+        for timepoint in range(g.time_points):
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            if not os.path.exists(crop_timepoint_dir):
                 continue
+                
+            original_images = os.listdir(crop_timepoint_dir)
 
-            # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
-            # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
-            # get group_id using regex by extracting column letter and row number from current
-            letter, number, site, wavelength = extract_well_name(current)
-            if letter is None:  # Skip files that don't match the expected image naming pattern
-                continue
-            group_id = [__capital_to_num(letter), int(number) - 1]
+            # loop through each image in crop timepoint folder
+            for current in original_images:
+                # get path of current image in crop directory
+                current_path = os.path.join(crop_timepoint_dir, current)
+                # skip over if file does not exist
+                if not os.path.exists(current_path):
+                    continue
 
-            # split image into individual wells
-            individual_wells = __split_image(current_path, cols_per_image, rows_per_image)
+                # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
+                # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
+                # get group_id using regex by extracting column letter and row number from current
+                letter, number, site, wavelength = extract_well_name(current)
+                if letter is None:  # Skip files that don't match the expected image naming pattern
+                    continue
+                group_id = [__capital_to_num(letter), int(number) - 1]
 
-            # loop through individual well images and save with corresponding well name
-            for i in range(rows_per_image):
-                for j in range(cols_per_image):
-                    well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
-                    # save current image as well name
-                    if site:
-                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
-                    else:
-                        outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_w{wavelength}.TIF')
-                    if g.circle_diameter != 'NA':
-                        __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
-                    elif g.square_side != 'NA':
-                        __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(outpath)
-                    else:
-                        individual_wells[i * cols_per_image + j].save(outpath)
+                # split image into individual wells (this deletes the original multi-well image in crop directory)
+                individual_wells = __split_image(current_path, cols_per_image, rows_per_image)
+
+                # loop through individual well images and save with corresponding well name in crop directory
+                for i in range(rows_per_image):
+                    for j in range(cols_per_image):
+                        well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
+                        # save current image as well name in crop directory
+                        if site:
+                            outpath = os.path.join(crop_timepoint_dir, g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                        else:
+                            outpath = os.path.join(crop_timepoint_dir, g.plate_short + f'_{well_name}_w{wavelength}.TIF')
+                        if g.circle_diameter != 'NA':
+                            __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
+                        elif g.square_side != 'NA':
+                            __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(outpath)
+                        else:
+                            individual_wells[i * cols_per_image + j].save(outpath)
+        
+        # 4. Transfer cropped images back to input directory (overwriting multi-well images)
+        print("Transferring cropped individual well images back to input directory.")
+        for timepoint in range(g.time_points):
+            input_timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            
+            if os.path.exists(crop_timepoint_dir):
+                # Remove all existing files in input timepoint directory
+                for filename in os.listdir(input_timepoint_dir):
+                    file_path = os.path.join(input_timepoint_dir, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                
+                # Copy all cropped images from crop directory to input directory
+                for filename in os.listdir(crop_timepoint_dir):
+                    if filename.lower().endswith(('.tif', '.tiff')):
+                        src_path = os.path.join(crop_timepoint_dir, filename)
+                        dst_path = os.path.join(input_timepoint_dir, filename)
+                        shutil.copy2(src_path, dst_path)
+        
+        # 5. Clean up crop directory
+        print("Cleaning up crop directory.")
+        if os.path.exists(crop_dir):
+            shutil.rmtree(crop_dir)
+        
+        print("Multi-well grid cropping completed successfully.")
+    
+    else:
+        # Original single-well logic (unchanged)
+        print("Single-well mode detected. Using standard grid cropping.")
+        
+        # loop through each timepoint folder
+        for timepoint in range(g.time_points):
+            original_images = os.listdir(os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}'))
+
+            # loop through each image in timepoint folder
+            for current in original_images:
+                # get path of current image
+                current_path = os.path.join(g.plate_dir, 'TimePoint_' + str(timepoint + 1), current)
+                # skip over if file does not exist
+                if not os.path.exists(current_path):
+                    continue
+
+                # conversion of the well name to an array - A01 becomes [0, 0] where the format is [col, row]
+                # group refers to group of wells to be split (for example splitting the group A01 into a 2x2 would result in wells A01, A02, B01, and B02)
+                # get group_id using regex by extracting column letter and row number from current
+                letter, number, site, wavelength = extract_well_name(current)
+                if letter is None:  # Skip files that don't match the expected image naming pattern
+                    continue
+                group_id = [__capital_to_num(letter), int(number) - 1]
+
+                # split image into individual wells
+                individual_wells = __split_image(current_path, cols_per_image, rows_per_image)
+
+                # loop through individual well images and save with corresponding well name
+                for i in range(rows_per_image):
+                    for j in range(cols_per_image):
+                        well_name = __generate_well_name(g, group_id, i, j, cols_per_image, rows_per_image)
+                        # save current image as well name
+                        if site:
+                            outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_s{site}_w{wavelength}.TIF')
+                        else:
+                            outpath = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_name}_w{wavelength}.TIF')
+                        if g.circle_diameter != 'NA':
+                            __apply_mask(individual_wells[i * cols_per_image + j], g.circle_diameter, 'circle').save(outpath)
+                        elif g.square_side != 'NA':
+                            __apply_mask(individual_wells[i * cols_per_image + j], g.square_side, 'square').save(outpath)
+                        else:
+                            individual_wells[i * cols_per_image + j].save(outpath)
 
 # given an input directory (containing timepoint folders which contain site images),
 # iterate over all files in each timepoint and stitch sites into well images
@@ -396,8 +572,8 @@ def __create_loopbio_htd(g, timepoints, num_wells):
     lines = []
     lines.append('"Description", ' + "LoopBio" + "\n")
     lines.append('"TimePoints", ' + str(timepoints) + "\n")
-    lines.append('"XWells", ' + str(3) + "\n")  # LoopBio uses 3x2 grid (A01-A03, B01-B03)
-    lines.append('"YWells", ' + str(2) + "\n")
+    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
+    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
     lines.append('"XSites", ' + "1" + "\n")
     lines.append('"YSites", ' + "1" + "\n")
     lines.append('"NWavelengths", ' + "1" + "\n")

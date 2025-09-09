@@ -108,6 +108,14 @@ def parse_yaml(arg_parser, g_class):
     if circle_diameter != 'NA' and square_side != 'NA':
         raise ValueError("Cannot apply circle mask and square mask at the same time.")
     
+    # frame skipping configuration
+    frame_skipping_config = conf.get('frame_skipping', {})
+    frame_skipping_enabled = frame_skipping_config.get('enabled', False)
+    frame_skip_interval = frame_skipping_config.get('skip_interval', 1)
+    print('frame skipping settings:')
+    print(f"\t\tenabled: {frame_skipping_enabled}")
+    print(f"\t\tskip interval: {frame_skip_interval}")
+    
     # LoopBio-specific configuration
     camera_mapping = {}
     rotations = []
@@ -127,7 +135,8 @@ def parse_yaml(arg_parser, g_class):
                        crop, x_sites, y_sites, stitch, input, work, output, metadata,
                        plate_dir, plate, plate_short, wells,
                        circle_diameter, square_side,
-                       '', '', '', '', '', camera_mapping, rotations)
+                       '', '', '', '', '', camera_mapping, rotations,
+                       frame_skipping_enabled, frame_skip_interval)
 
     return yaml_out, pipelines
 
@@ -185,7 +194,8 @@ def parse_htd(yaml, g_class):
                 yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output, yaml.metadata,
                 yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
                 yaml.circle_diameter, yaml.square_side,
-                desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations)
+                desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations,
+                yaml.frame_skipping_enabled, yaml.frame_skip_interval)
 
     return g
 

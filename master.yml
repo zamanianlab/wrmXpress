@@ -15,6 +15,15 @@ imaging_mode:
 
 
 ########################################
+### VIDEO PROCESSING SETTINGS #########
+########################################
+
+# Frame skipping configuration (applies to AVI and LoopBio formats)
+frame_skipping:
+  enabled: False  # Set to True to enable frame skipping
+  skip_interval: 1  # Skip every N frames (1 = no skipping, 2 = skip every other frame, etc.)
+
+########################################
 ### PREPROCESSING MULTI-WELL IMAGES  ###
 ########################################
 

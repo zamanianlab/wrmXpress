@@ -63,6 +63,8 @@ if __name__ == "__main__":
             "plate_paths",
             "camera_mapping",
             "rotations",
+            "frame_skipping_enabled",
+            "frame_skip_interval",
         ],
     )
 
