@@ -105,6 +105,20 @@ def avi_to_ix(g):
                 outpath = os.path.join(dir, f"{g.plate}_{well}_w1.TIF")
                 cv2.imwrite(str(outpath), frames[timepoint])
 
+    # Clean up any incomplete timepoint directories caused by extra frames
+    if len(avi_files) == 1:
+        # Single AVI case - expect 1 file per timepoint
+        final_timepoints = __cleanup_incomplete_timepoints(g, 1)
+    else:
+        # Multiple AVI case - expect one file per well per timepoint
+        final_timepoints = __cleanup_incomplete_timepoints(g, len(well_names))
+    
+    # Update the timepoints value to reflect actual complete timepoints
+    if final_timepoints != timepoints:
+        print(f"Updated timepoints from {timepoints} to {final_timepoints} after cleanup")
+        timepoints = final_timepoints
+    
+    # Create HTD file with final timepoint count
     __create_htd(g, timepoints)
     
     return timepoints
@@ -254,10 +268,18 @@ def loopbio_to_ix(g, camera_mapping, rotations):
         else:
             print(f"Completed processing camera {camera_serial} -> well {well_position} ({current_timepoint} frames)")
     
-    # Create HTD file
+    # Clean up any incomplete timepoint directories caused by extra frames
+    final_timepoints = __cleanup_incomplete_timepoints(g, len(processed_wells))
+    
+    # Update the timepoints value to reflect actual complete timepoints
+    if final_timepoints != timepoints:
+        print(f"Updated timepoints from {timepoints} to {final_timepoints} after cleanup")
+        timepoints = final_timepoints
+    
+    # Create HTD file with final timepoint count
     __create_loopbio_htd(g, timepoints, len(processed_wells))
     
-    print(f"Successfully processed {len(processed_wells)} cameras with {timepoints} timepoints")
+    print(f"Successfully processed {len(processed_wells)} cameras with {timepoints} complete timepoints")
     print(f"Processed wells: {list(processed_wells.keys())}")
     
     return timepoints
@@ -621,6 +643,50 @@ def __create_loopbio_htd(g, timepoints, num_wells):
     htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
+
+# cleans up incomplete timepoint directories that may result from cameras recording extra frames
+def __cleanup_incomplete_timepoints(g, expected_files_per_timepoint):
+    print(f"Checking for incomplete timepoints using TimePoint_1 as reference...")
+    
+    # Get all timepoint directories
+    timepoint_dirs = [d for d in os.listdir(g.plate_dir) 
+                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
+    
+    if not timepoint_dirs:
+        print("No timepoint directories found.")
+        return 0
+    
+    # Use TimePoint_1 as reference for expected file count
+    reference_dir = os.path.join(g.plate_dir, 'TimePoint_1')
+    if not os.path.exists(reference_dir):
+        print("TimePoint_1 not found - cannot determine reference file count.")
+        return 0
+    
+    reference_count = len([f for f in os.listdir(reference_dir) 
+                          if f.lower().endswith(('.tif', '.tiff'))])
+    print(f"Reference count from TimePoint_1: {reference_count} files")
+    
+    # Remove timepoints that don't match the reference count
+    removed_count = 0
+    for tp_dir in timepoint_dirs:
+        tp_path = os.path.join(g.plate_dir, tp_dir)
+        file_count = len([f for f in os.listdir(tp_path) 
+                         if f.lower().endswith(('.tif', '.tiff'))])
+        
+        if file_count != reference_count:
+            print(f"  {tp_dir}: Incomplete ({file_count}/{reference_count} files) - removing")
+            shutil.rmtree(tp_path)
+            removed_count += 1
+    
+    # Count remaining complete timepoints
+    remaining_dirs = [d for d in os.listdir(g.plate_dir) 
+                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
+    
+    if removed_count > 0:
+        print(f"Removed {removed_count} incomplete timepoint directories.")
+    
+    print(f"Final result: {len(remaining_dirs)} complete timepoints.")
+    return len(remaining_dirs)
 
 # converts capital letters to numbers, where A is 0, B is 1, and so on
 def __capital_to_num(alpha):
