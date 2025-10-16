@@ -34,7 +34,9 @@ well-col: 12 # true count of wells in column
 # If multi-well is flagged
 multi-well-row: 1 # recorded plate rows
 multi-well-col: 1 # recorded plate columns
-multi-well-detection: grid # grid just divides evenly across whole image
+multi-well-detection: 
+  method: grid # grid or auto (grid just divides evenly across whole image, auto finds the wells)
+  well_shape: circle # circle or square for auto detection method
 
 # If multi-site is flagged (assumption: connected rectangle and s1 convention for order) - IX
 x-sites: NA # sites on the x axis

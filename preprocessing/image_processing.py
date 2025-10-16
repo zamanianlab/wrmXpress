@@ -837,7 +837,7 @@ def __apply_mask(image, mask_size, type):
 
         return masked_image
     
-    #circle mask
+    # circle mask
     elif type == 'circle':
         # calculate the circle's radius
         radius = (height * mask_size) / 2
@@ -854,3 +854,365 @@ def __apply_mask(image, mask_size, type):
         masked_image = Image.fromarray(masked_array, mode='I;16')
 
         return masked_image
+
+def auto_crop(g):
+    """
+    Automatically detect and crop wells.
+    Supports both circular and square well detection with fallback to grid method.
+    Uses template-based detection: detects wells once in TimePoint_1, then reuses positions.
+    """
+    print("Starting auto crop...")
+    
+    # Get configuration from YAML
+    try:
+        # Parse multi-well-detection configuration
+        if hasattr(g, 'multi_well_detection'):
+            detection_config = g.multi_well_detection
+            if isinstance(detection_config, dict):
+                well_shape = detection_config.get('well_shape', 'circle')
+            else:
+                well_shape = 'circle'  # default
+        else:
+            well_shape = 'circle'  # default
+    except:
+        well_shape = 'circle'  # fallback default
+    
+    print(f"Using well shape detection: {well_shape}")
+    
+    # Determine plate-specific Hough circle parameters based on plate dimensions
+    total_wells = g.rows * g.cols
+    if total_wells == 24:  # 24-well plate (e.g., 4×6 or 6×4)
+        search_multiplier = 0.73
+        hough_param1 = 80
+        hough_param2 = 80
+        print(f"Detected 24-well plate ({g.rows}×{g.cols}): using optimized parameters")
+    elif total_wells == 96:  # 96-well plate (e.g., 8×12 or 12×8)
+        search_multiplier = 1.0
+        hough_param1 = 50
+        hough_param2 = 60
+        print(f"Detected 96-well plate ({g.rows}×{g.cols}): using optimized parameters")
+    else:  # Default for other plate types
+        search_multiplier = 0.8
+        hough_param1 = 50
+        hough_param2 = 30
+        print(f"Using default parameters for {g.rows}×{g.cols} plate")
+    
+    expected_rows = g.rows // g.rec_rows
+    expected_cols = g.cols // g.rec_cols
+    expected_wells = expected_rows * expected_cols
+    
+    # Template detection: analyze TimePoint_1 to get well positions
+    template_positions = __detect_template_positions(g, expected_rows, expected_cols, well_shape, 
+                                                     search_multiplier, hough_param1, hough_param2)
+    
+    if template_positions is None:
+        print("Template detection failed, falling back to grid method for all timepoints")
+        # Fall back to original grid_crop method
+        grid_crop(g)
+        return
+    
+    print("Applying template positions to all timepoints...")
+    
+    # Check if we need to use crop directory (multi-well mode)
+    if g.mode == "multi-well":
+        print("Multi-well mode detected. Using crop directory to prevent file overwriting.")
+        
+        # 1. Create crop directory in work folder
+        crop_dir = os.path.join(g.work, 'crop')
+        os.makedirs(crop_dir, exist_ok=True)
+        
+        # 2. Copy input images to crop directory for processing
+        for timepoint in range(g.time_points):
+            input_timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            
+            if os.path.exists(input_timepoint_dir):
+                # Create timepoint directory in crop folder
+                os.makedirs(crop_timepoint_dir, exist_ok=True)
+                
+                # Copy all images to crop directory
+                for filename in os.listdir(input_timepoint_dir):
+                    if filename.lower().endswith(('.tif', '.tiff')):
+                        src_path = os.path.join(input_timepoint_dir, filename)
+                        dst_path = os.path.join(crop_timepoint_dir, filename)
+                        shutil.copy2(src_path, dst_path)
+        
+        # 3. Perform auto cropping operations in crop directory
+        for timepoint in range(g.time_points):
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            if not os.path.exists(crop_timepoint_dir):
+                continue
+                
+            original_images = os.listdir(crop_timepoint_dir)
+
+            # loop through each image in crop timepoint folder
+            for current in original_images:
+                # get path of current image in crop directory
+                current_path = os.path.join(crop_timepoint_dir, current)
+                # skip over if file does not exist
+                if not os.path.exists(current_path):
+                    continue
+
+                # Extract well information
+                letter, number, site, wavelength = extract_well_name(current)
+                if letter is None:  # Skip files that don't match the expected image naming pattern
+                    continue
+                group_id = [__capital_to_num(letter), int(number) - 1]
+
+                # Load image
+                original_image = Image.open(current_path)
+                
+                # Use template positions instead of detecting wells each time
+                if current in template_positions:
+                    well_positions = template_positions[current]
+                else:
+                    print(f"    WARNING: No template positions found for {current}")
+                    well_positions = None
+                
+                # Extract and save each well
+                for i in range(expected_rows):
+                    for j in range(expected_cols):
+                        well_name = __generate_well_name(g, group_id, j, i, expected_cols, expected_rows)
+                        
+                        # Skip if well_name is None
+                        if well_name is None:
+                            print(f"    ERROR: well_name is None for sub-well [{i},{j}]")
+                            continue
+                        
+                        # Use a unique temporary filename during cropping to prevent overwrites
+                        temp_filename = f"{current.replace('.TIF', '')}_{well_name}_temp.TIF"
+                        temp_outpath = os.path.join(crop_timepoint_dir, temp_filename)
+                        
+                        # Extract the well image using template positions
+                        # Template is guaranteed to have all valid positions or we wouldn't be here
+                        center_x, center_y, size = well_positions[i][j]
+                        well_img = __extract_well_region(original_image, center_x, center_y, size, well_shape)
+                        
+                        # Apply masks if specified
+                        if g.circle_diameter != 'NA':
+                            __apply_mask(well_img, g.circle_diameter, 'circle').save(temp_outpath)
+                        elif g.square_side != 'NA':
+                            __apply_mask(well_img, g.square_side, 'square').save(temp_outpath)
+                        else:
+                            well_img.save(temp_outpath)
+        
+        # 4. Transfer cropped images back to input directory (same as grid_crop)
+        for timepoint in range(g.time_points):
+            input_timepoint_dir = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}')
+            crop_timepoint_dir = os.path.join(crop_dir, f'TimePoint_{timepoint + 1}')
+            
+            if os.path.exists(crop_timepoint_dir):
+                # Remove all existing files in input timepoint directory
+                for filename in os.listdir(input_timepoint_dir):
+                    file_path = os.path.join(input_timepoint_dir, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                
+                # Copy all cropped images from crop directory to input directory with proper renaming
+                for filename in os.listdir(crop_timepoint_dir):
+                    if filename.lower().endswith(('.tif', '.tiff')) and '_temp.TIF' in filename:
+                        # Parse the temp filename to extract well name and other components
+                        parts = filename.replace('_temp.TIF', '').split('_')
+                        if len(parts) >= 4:
+                            # Extract the well name (last part before _temp)
+                            well_name = parts[-1]  # e.g., "A01"
+                            
+                            # Extract wavelength from original filename
+                            wavelength_match = re.search(r'_w(\d+)', filename)
+                            if wavelength_match:
+                                wavelength = wavelength_match.group(1)
+                                
+                                # Construct final filename
+                                final_filename = f"{g.plate_short}_{well_name}_w{wavelength}.TIF"
+                                
+                                src_path = os.path.join(crop_timepoint_dir, filename)
+                                dst_path = os.path.join(input_timepoint_dir, final_filename)
+                                
+                                shutil.copy2(src_path, dst_path)
+                            else:
+                                print(f"    WARNING: Could not extract wavelength from {filename}")
+                        else:
+                            print(f"    WARNING: Could not parse temp filename {filename}")
+        
+        # 5. Clean up crop directory
+        if os.path.exists(crop_dir):
+            shutil.rmtree(crop_dir)
+
+    print("Auto crop completed.")
+
+def __detect_template_positions(g, expected_rows, expected_cols, well_shape, 
+                                search_multiplier, hough_param1, hough_param2):
+    """
+    Detect well positions from TimePoint_1 images to create a template for all timepoints.
+    """
+    timepoint_1_dir = os.path.join(g.plate_dir, 'TimePoint_1')
+    
+    if not os.path.exists(timepoint_1_dir):
+        print("TimePoint_1 directory not found for template detection")
+        return None
+    
+    template_positions = {}
+    images = [f for f in os.listdir(timepoint_1_dir) if f.lower().endswith(('.tif', '.tiff'))]
+    
+    if not images:
+        print("No images found in TimePoint_1 for template detection")
+        return None
+    
+    for image_file in images:
+        image_path = os.path.join(timepoint_1_dir, image_file)
+        
+        try:
+            image = Image.open(image_path)
+            well_positions = __detect_wells(image, expected_rows, expected_cols, well_shape,
+                                           search_multiplier, hough_param1, hough_param2)
+            
+            if well_positions is not None:
+                template_positions[image_file] = well_positions
+            else:
+                print(f"Template detection failed for {image_file}")
+                return None
+                
+        except Exception as e:
+            print(f"Error processing {image_file}: {e}")
+            return None
+    
+    return template_positions
+
+def __detect_wells(image, expected_rows, expected_cols, well_shape,
+                   search_multiplier, hough_param1, hough_param2):
+    """
+    Simplified well detection using Hough circles with distance transform fallback.
+    """
+    # Convert to grayscale
+    np_image = np.array(image)
+    if len(np_image.shape) == 3:
+        gray_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2GRAY)
+    else:
+        gray_image = np_image
+        if gray_image.dtype != np.uint8:
+            min_val, max_val = np.min(gray_image), np.max(gray_image)
+            if max_val > min_val:
+                gray_image = ((gray_image - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+            else:
+                gray_image = np.zeros_like(gray_image, dtype=np.uint8)
+    
+    h, w = gray_image.shape
+    row_spacing = h // expected_rows
+    col_spacing = w // expected_cols
+    estimated_well_size = min(row_spacing, col_spacing) * 0.8
+    
+    grid_positions = []
+    
+    for i in range(expected_rows):
+        row_positions = []
+        for j in range(expected_cols):
+            # Calculate grid center
+            center_y = int((i + 0.5) * row_spacing)
+            center_x = int((j + 0.5) * col_spacing)
+            
+            # Try to refine position
+            try:
+                refined_x, refined_y = __refine_well_position(gray_image, center_x, center_y, 
+                                                                   int(estimated_well_size), well_shape,
+                                                                   search_multiplier, hough_param1, hough_param2)
+                row_positions.append((refined_x, refined_y, estimated_well_size))
+            except:
+                # Use grid position as fallback
+                row_positions.append((center_x, center_y, estimated_well_size))
+        
+        grid_positions.append(row_positions)
+    
+    return grid_positions
+
+def __refine_well_position(gray_image, center_x, center_y, search_radius, well_shape,
+                           search_multiplier, hough_param1, hough_param2):
+    """
+    Simplified well position refinement using Hough circles or distance transform.
+    Uses plate-specific parameters for optimal detection.
+    """
+    h, w = gray_image.shape
+    search_size = int(search_radius * search_multiplier)
+    y1 = max(0, center_y - search_size)
+    y2 = min(h, center_y + search_size)
+    x1 = max(0, center_x - search_size)
+    x2 = min(w, center_x + search_size)
+    
+    search_region = gray_image[y1:y2, x1:x2]
+    blurred = cv2.GaussianBlur(search_region, (5, 5), 1)
+    
+    if well_shape == 'circle':
+        # Use Hough circle detection
+        try:
+            region_h, region_w = search_region.shape
+            min_radius = int(min(region_h, region_w) * 0.2)
+            max_radius = int(min(region_h, region_w) * 0.4)
+            
+            circles = cv2.HoughCircles(
+                blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=min_radius,
+                param1=hough_param1, param2=hough_param2, minRadius=min_radius, maxRadius=max_radius
+            )
+            
+            if circles is not None:
+                circles = np.round(circles[0, :]).astype(int)
+                search_center_x = search_size
+                search_center_y = search_size
+                
+                # Find closest circle to expected center
+                best_circle = min(circles, 
+                                 key=lambda c: np.sqrt((c[0] - search_center_x)**2 + (c[1] - search_center_y)**2))
+                
+                return x1 + best_circle[0], y1 + best_circle[1]
+        except:
+            pass
+    
+    else:  # square wells
+        # Use edge detection for square wells
+        try:
+            edges = cv2.Canny(search_region, 50, 150)
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if contours:
+                largest_contour = max(contours, key=cv2.contourArea)
+                M = cv2.moments(largest_contour)
+                if M["m00"] != 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                    return x1 + cx, y1 + cy
+        except:
+            pass
+    
+    # If all methods fail, use original position
+    return center_x, center_y
+
+def __extract_well_region(image, center_x, center_y, size, well_shape):
+    """Extract a well region from the image."""
+    padding_factor = 1.2
+    crop_size = int(size * padding_factor)
+    
+    left = max(0, center_x - crop_size // 2)
+    top = max(0, center_y - crop_size // 2)
+    right = min(image.width, center_x + crop_size // 2)
+    bottom = min(image.height, center_y + crop_size // 2)
+    
+    cropped_img = image.crop((left, top, right, bottom))
+    
+    if well_shape == 'circle':
+        # Apply circular mask
+        np_img = np.array(cropped_img)
+        rel_center_x = center_x - left
+        rel_center_y = center_y - top
+        
+        Y, X = np.ogrid[:np_img.shape[0], :np_img.shape[1]]
+        dist_from_center = np.sqrt((X - rel_center_x)**2 + (Y - rel_center_y)**2)
+        mask = dist_from_center <= size // 2
+        
+        masked_img = np_img.copy()
+        if len(np_img.shape) == 3:
+            for c in range(np_img.shape[2]):
+                masked_img[:,:,c][~mask] = 0
+        else:
+            masked_img[~mask] = 0
+        
+        return Image.fromarray(masked_img)
+    
+    return cropped_img

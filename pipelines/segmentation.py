@@ -91,7 +91,6 @@ def segmentation(g, options, well_site):
     work_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['model']
     model_type = options['model_type']
     model_sigma = options['model_sigma']
     wavelengths_option = options['wavelengths']
@@ -152,6 +151,7 @@ def segmentation(g, options, well_site):
                     df.to_csv(path_or_buf=outpath, index_label='well_site')
 
             else: # Runs if model_type is Cellpose
+                model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['model']
                 with tempfile.TemporaryDirectory() as temp_dir:
                     if os.path.exists(tiff_file):
                         rename_file_to_temp_tif(tiff_file, temp_dir)

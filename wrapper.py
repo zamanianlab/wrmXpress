@@ -19,6 +19,7 @@ from preprocessing.image_processing import (
     avi_to_ix,
     loopbio_to_ix,
     grid_crop,
+    auto_crop,
     stitch_all_timepoints,
     apply_masks,
 )
@@ -43,6 +44,7 @@ if __name__ == "__main__":
             "rec_rows",
             "rec_cols",
             "crop",
+            "multi_well_detection",
             "x_sites",
             "y_sites",
             "stitch",
@@ -101,8 +103,7 @@ if __name__ == "__main__":
     if g.crop == "grid":
         grid_crop(g)
     elif g.crop == "auto":
-        # auto_crop(g)
-        pass
+        auto_crop(g)
 
     # get wells/sites to be used
     wells, well_sites = get_wells(g)

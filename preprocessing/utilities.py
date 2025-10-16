@@ -35,13 +35,18 @@ def parse_yaml(arg_parser, g_class):
     rows = int(conf.get('well-row'))
     cols = int(conf.get('well-col'))
     if mode == 'multi-well':
-        crop = conf.get('multi-well-detection')
+        multi_well_detection = conf.get('multi-well-detection')
+        if isinstance(multi_well_detection, dict):
+            crop = multi_well_detection.get('method', 'grid')
+        else:
+            crop = multi_well_detection  # backward compatibility
         rec_rows = int(conf.get('multi-well-row'))
         rec_cols = int(conf.get('multi-well-col'))
         image_n_row = rows/rec_rows
         image_n_col = cols/rec_cols
     else:
         crop = 'NA'
+        multi_well_detection = 'NA'
         rec_rows = rows
         rec_cols = cols
         image_n_row = 'NA'
@@ -132,7 +137,7 @@ def parse_yaml(arg_parser, g_class):
             raise ValueError("LoopBio file structure requires camera_mapping configuration")
     
     yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
-                       crop, x_sites, y_sites, stitch, input, work, output, metadata,
+                       crop, multi_well_detection, x_sites, y_sites, stitch, input, work, output, metadata,
                        plate_dir, plate, plate_short, wells,
                        circle_diameter, square_side,
                        '', '', '', '', '', camera_mapping, rotations,
@@ -191,7 +196,7 @@ def parse_htd(yaml, g_class):
     print("\t\twavelengths: {}".format(wave_names))
 
     g = g_class(yaml.file_structure, yaml.mode, yaml.rows, yaml.cols, yaml.rec_rows, yaml.rec_cols,
-                yaml.crop, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output, yaml.metadata,
+                yaml.crop, yaml.multi_well_detection, yaml.x_sites, yaml.y_sites, yaml.stitch, yaml.input, yaml.work, yaml.output, yaml.metadata,
                 yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
                 yaml.circle_diameter, yaml.square_side,
                 desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations,
