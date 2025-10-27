@@ -9,53 +9,13 @@ from pathlib import Path
 from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
 
+##################################
+######### MAIN FUNCTION  #########
+##################################
 
-def rename_file_to_temp_tif(src_file, temp_dir):
-    """Rename a single TIF file to tif in a temporary directory."""
-    temp_file = Path(temp_dir) / (Path(src_file).stem + ".tif")
-    shutil.copy(src_file, temp_file)
-    return temp_file
-
-
-def run_cellpose(model_path, temp_dir):
-    """Run CellPose on a single .tif file."""
-    cellpose_command = (
-        f"python -m cellpose "
-        f"--dir {temp_dir} "
-        f"--pretrained_model {model_path} "
-        f"--diameter 0 --save_png --no_npy --verbose"
-    )
-    cellpose_command_split = shlex.split(cellpose_command)
-    subprocess.run(cellpose_command_split)
-
-
-def run_rscript_to_generate_csv(
-    cellprofiler_pipeline,
-    plate,
-    input,
-    work,
-    well_site,
-    wavelength,
-    csv_out_dir,
-    plate_short,
-):
-    """Run the R script to generate the CSV file listing the image paths and save csvs to work/cellprofiler."""
-    r_script_path = PROGRAM_DIR / "Rscripts" / "cellprofiler" / f"generate_filelist_{cellprofiler_pipeline}.R"
-    r_command = f"Rscript {r_script_path} {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
-    print(f"Generating file list for {cellprofiler_pipeline}.")
-    subprocess.run(shlex.split(r_command))
-    
-
-
-def run_cellprofiler(cellprofiler_pipeline, csv_file, img_out_dir):
-    """Run CellProfiler using the generated CSV file and save output images to output/cellprofiler/img."""
-    pipeline_path = PROGRAM_DIR / "pipelines" / "cellprofiler" / f"{cellprofiler_pipeline}.cppipe"
-    cp_command = f"cellprofiler -c -r -p {pipeline_path} --data-file={csv_file} --output-dir={img_out_dir}"
-    print(f"Running CellProfiler using {csv_file.name}.")
-    subprocess.run(shlex.split(cp_command))
-    
-
-
+# This is the main function that coordinates CellPose and CellProfiler runs.  
+# It prepares the directories, identifies the correct image files, runs CellPose segmentation,  
+# generates the required CSV file via R, and finally runs CellProfiler to analyze the segmented images.
 def cellprofiler(g, options, well_site):
     # Create output and CSV directories at the very start of the function
     work_dir = Path(g.work) / "cellprofiler"
@@ -128,3 +88,52 @@ def cellprofiler(g, options, well_site):
         print(f"CSV file not found: {csv_file}")
 
     return [wavelength]
+
+
+#####################################
+######### HELPER FUNCTIONS  #########
+#####################################
+
+# This function renames and copies a .TIF image to a temporary directory as .tif.  
+# This is necessary because CellPose requires images to be in a directory and in .tif format for processing.
+def rename_file_to_temp_tif(src_file, temp_dir):
+    temp_file = Path(temp_dir) / (Path(src_file).stem + ".tif")
+    shutil.copy(src_file, temp_file)
+    return temp_file
+
+# This function runs the CellPose segmentation model on .tif images in a given directory.  
+def run_cellpose(model_path, temp_dir):
+    cellpose_command = (
+        f"python -m cellpose "
+        f"--dir {temp_dir} "
+        f"--pretrained_model {model_path} "
+        f"--diameter 0 --save_png --no_npy --verbose"
+    )
+    cellpose_command_split = shlex.split(cellpose_command)
+    subprocess.run(cellpose_command_split)
+
+# This function runs an R script to generate a CSV file listing image paths.  
+# The CSV is required by CellProfiler to know which images to analyze and where to find them.
+def run_rscript_to_generate_csv(
+    cellprofiler_pipeline,
+    plate,
+    input,
+    work,
+    well_site,
+    wavelength,
+    csv_out_dir,
+    plate_short,
+):
+    r_script_path = PROGRAM_DIR / "Rscripts" / "cellprofiler" / f"generate_filelist_{cellprofiler_pipeline}.R"
+    r_command = f"Rscript {r_script_path} {plate} {input} {work} {well_site} {wavelength} {csv_out_dir} {plate_short}"
+    print(f"Generating file list for {cellprofiler_pipeline}.")
+    subprocess.run(shlex.split(r_command))
+    
+
+# This function executes the CellProfiler pipeline using the generated CSV file.  
+# It processes images according to the specified pipeline and saves the results to the output directory.
+def run_cellprofiler(cellprofiler_pipeline, csv_file, img_out_dir):
+    pipeline_path = PROGRAM_DIR / "pipelines" / "cellprofiler" / f"{cellprofiler_pipeline}.cppipe"
+    cp_command = f"cellprofiler -c -r -p {pipeline_path} --data-file={csv_file} --output-dir={img_out_dir}"
+    print(f"Running CellProfiler using {csv_file.name}.")
+    subprocess.run(shlex.split(cp_command))

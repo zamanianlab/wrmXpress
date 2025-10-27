@@ -17,73 +17,12 @@ from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
 
 
-def create_circular_mask(h, w, center=None, radius=None):
-    if center is None:
-        center = (int(w / 2), int(h / 2))
-    if radius is None:
-        radius = min(center[0], center[1], w - center[0], h - center[1])
+##################################
+######### MAIN FUNCTION  #########
+##################################
 
-    Y, X = np.ogrid[:h, :w]
-    dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
-    mask = dist_from_center <= radius
-    return mask
-
-
-def segment_sma(g, well_site, binary):
-    filled = ndimage.binary_fill_holes(binary)
-
-    # Remove small segmented debris
-    nb_components, labelled_image, stats, centroids = cv2.connectedComponentsWithStats(
-        filled.astype('uint8'), connectivity=8)
-    sizes = stats[1:, -1]
-    nb_components -= 1
-
-    # empirically derived minimum size
-    min_size, max_size = 10, 500
-    bad_indices = []
-    filtered = np.zeros(labelled_image.shape, dtype=np.uint8)
-
-    for i in range(nb_components):
-        if min_size <= sizes[i] <= max_size:
-            filtered[labelled_image == i + 1] = 255
-        else:
-            bad_indices.append(i)
-
-    sizes_l = list(sizes)
-    filtered_sizes = [j for i, j in enumerate(sizes_l) if i not in bad_indices]
-
-    # Saving the filled and filtered images with proper scaling
-    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filled.png"), filled.astype(np.uint8) * 255)
-    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filtered.png"), filtered.astype(np.uint8) * 255)
-
-    return filtered_sizes
-
-
-def segment_mf(binary):
-    area = np.sum(binary)
-    return area
-
-def rename_file_to_temp_tif(src_file, temp_dir):
-    """Rename a single TIF file to .tif in a temporary directory."""
-    temp_file = Path(temp_dir) / (Path(src_file).stem + '.tif')
-    shutil.copy(src_file, temp_file)
-    return temp_file
-
-
-def run_cellpose(model_type, model_path, temp_dir):
-    """Run Cellpose on a single .tif file."""
-    cellpose_command = (
-        f'python -m {model_type} '
-        f'--dir {temp_dir} '
-        f'--pretrained_model {model_path} '
-        f'--diameter 0 --save_png --no_npy --verbose'
-    )
-
-    # Run the Cellpose command
-    cellpose_command_split = shlex.split(cellpose_command)
-    subprocess.run(cellpose_command_split)
-
-
+# Main segmentation function that performs image segmentation using either a Python-based method or Cellpose.
+# It handles all wavelengths, applies circular masks, thresholds, blurs, edge detection, and saves results as CSV and images.
 def segmentation(g, options, well_site):
     """Perform segmentation based on model type."""
     work_dir = Path(g.work) / 'segmentation'
@@ -129,22 +68,18 @@ def segmentation(g, options, well_site):
                     binary = sobel > threshold
                     binary = binary * mask
 
+                    # Run segmentation based on model selection (segment_sma or segment_mf)
                     segmented_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
-
-                    # blur_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_blur.png")
-                    # cv2.imwrite(str(blur_png), blur)
-
-                    # sobel_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_{wavelength+1}_edge.png")
-                    # cv2.imwrite(str(sobel_png), sobel * 255)
 
                     bin_png = g.work.joinpath(work_dir, f"{g.plate_short}_{well_site}_w{wavelength+1}.png")
                     cv2.imwrite(str(bin_png), binary * 255)
                     
                     print(f"Segmented area is {segmented_area}")
 
-                    # Save segmentation result
+                    # Save segmentation results to CSV
                     if 'segmented_area' not in cols:
                         cols.append('segmented_area')
+                        
                     out_dict[well_site].append(segmented_area)
                     df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
                     outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
@@ -190,3 +125,77 @@ def segmentation(g, options, well_site):
                 df.to_csv(csv_outpath, index=False)
 
     return wavelengths
+
+
+#####################################
+######### HELPER FUNCTIONS  #########
+#####################################
+
+# Create a circular mask for an image of height h and width w. Useful for restricting analysis to a circular region.
+def create_circular_mask(h, w, center=None, radius=None):
+    if center is None:
+        center = (int(w / 2), int(h / 2))
+    if radius is None:
+        radius = min(center[0], center[1], w - center[0], h - center[1])
+
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
+    mask = dist_from_center <= radius
+    return mask
+
+
+# Segment smooth muscle area (SMA) from a binary image, remove small debris, and save intermediate images.
+def segment_sma(g, well_site, binary):
+    filled = ndimage.binary_fill_holes(binary)
+
+    # Remove small segmented debris
+    nb_components, labelled_image, stats, centroids = cv2.connectedComponentsWithStats(
+        filled.astype('uint8'), connectivity=8)
+    sizes = stats[1:, -1]
+    nb_components -= 1
+
+    # empirically derived minimum size
+    min_size, max_size = 10, 500
+    bad_indices = []
+    filtered = np.zeros(labelled_image.shape, dtype=np.uint8)
+
+    for i in range(nb_components):
+        if min_size <= sizes[i] <= max_size:
+            filtered[labelled_image == i + 1] = 255
+        else:
+            bad_indices.append(i)
+
+    sizes_l = list(sizes)
+    filtered_sizes = [j for i, j in enumerate(sizes_l) if i not in bad_indices]
+
+    # Saving the filled and filtered images with proper scaling
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filled.png"), filled.astype(np.uint8) * 255)
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filtered.png"), filtered.astype(np.uint8) * 255)
+
+    return filtered_sizes
+
+
+# Segment muscle fibers (MF) by calculating the area of a binary image.
+def segment_mf(binary):
+    area = np.sum(binary)
+    return area
+
+
+# This function renames and copies a .TIF image to a temporary directory as .tif.  
+# This is necessary because CellPose requires images to be in a directory and in .tif format for processing.
+def rename_file_to_temp_tif(src_file, temp_dir):
+    temp_file = Path(temp_dir) / (Path(src_file).stem + '.tif')
+    shutil.copy(src_file, temp_file)
+    return temp_file
+
+
+# This function runs the CellPose segmentation model on .tif images in a given directory.
+def run_cellpose(model_type, model_path, temp_dir):
+    cellpose_command = (
+        f'python -m {model_type} '
+        f'--dir {temp_dir} '
+        f'--pretrained_model {model_path} '
+        f'--diameter 0 --save_png --no_npy --verbose'
+    )
+    cellpose_command_split = shlex.split(cellpose_command)
+    subprocess.run(cellpose_command_split)

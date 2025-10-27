@@ -6,12 +6,14 @@ import imageio.v3 as iio
 from pathlib import Path
 import matplotlib.patches as patches
 
-########################################################################
-####                                                                ####
-####                             tracking                           ####
-####                                                                ####
-########################################################################
 
+##################################
+######### MAIN FUNCTION  #########
+##################################
+
+# Main tracking function that processes a single well and wavelength.
+# It reads the image sequence for the well, normalizes images, runs Trackpy for particle/worm tracking,
+# plots trajectories on a circular well boundary, and saves both PNG visualizations and CSV results.
 def tracking(g, options, well_site):
     # Ensure the output directories exist
     img_output_dir = g.work.joinpath('tracking')
@@ -30,7 +32,8 @@ def tracking(g, options, well_site):
     else:
         wavelengths = [int(w[1:]) - 1 for w in wavelengths_option.split(',')]
 
-    timepoints = sorted(Path(g.input, g.plate).glob("TimePoint_*"))  # Get timepoints in order
+    # List all timepoint folders in order
+    timepoints = sorted(Path(g.input, g.plate).glob("TimePoint_*"))
 
     # Process each wavelength
     for wavelength in wavelengths:
@@ -65,8 +68,7 @@ def tracking(g, options, well_site):
 
         print(f'Plotting trajectories...')
 
-
-        # Save pngs of the tracking
+        # Save PNGs of the tracking results
         track_png_work = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.png"
 
         dpi = 300
@@ -76,18 +78,19 @@ def tracking(g, options, well_site):
         ax.set_ylim([0, height])
         ax.set_aspect('equal', adjustable='box')
 
-        # Add circular well boundary
+        # Add circular well boundary for reference
         radius = height / 2
         circle = patches.Circle((radius, radius), radius, fill=False)
         ax.add_patch(circle)
         ax.axis('off')
 
+        # Plot trajectories on the figure
         tp.plot_traj(t, ax=ax)
         fig.savefig(track_png_work)
 
         print(f'Tracking for well {well_site}, wavelength {wavelength + 1} completed in {time.time() - start_time:.2f} seconds.')
 
-        # Save the DataFrame to CSV
+        # Save tracking results to CSV
         t['well_site'] = well_site  # Add well_site column
         t = t[['well_site'] + [col for col in t.columns if col != 'well_site']]
         tracks_csv_path = img_output_dir / f"{g.plate}_{well_site}_w{wavelength + 1}.csv"

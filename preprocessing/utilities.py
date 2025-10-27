@@ -5,10 +5,13 @@ from pathlib import Path
 
 from preprocessing.image_processing import well_idx_to_name
 
-# parses yaml
-def parse_yaml(arg_parser, g_class):
+##################################
+######### MAIN FUNCTIONS #########
+##################################
 
-    # required positional arguments
+# Parse YAML file and return configuration as a g_class object
+def parse_yaml(arg_parser, g_class):
+    # Required positional arguments
     arg_parser.add_argument('parameters',
                             help='Path to the parameters.yml file.')
     arg_parser.add_argument('plate',
@@ -16,13 +19,8 @@ def parse_yaml(arg_parser, g_class):
 
     args = arg_parser.parse_args()
 
-    ######################################
-    #########   GET PARAMETERS   #########
-    ######################################
-
     # read the parameters from the YAML
     with open(args.parameters, 'rb') as f:
-        # BaseLoader reads everything as a string, won't recognize boolean
         conf = yaml.load(f.read(), Loader=yaml.FullLoader)
 
     # instrument settings
@@ -31,9 +29,12 @@ def parse_yaml(arg_parser, g_class):
     print('instrument settings:')
     print("\t\timaging mode: {}".format(mode))
     print("\t\tfile structure: {}".format(file_structure))
+
     # physical plate dimensions
     rows = int(conf.get('well-row'))
     cols = int(conf.get('well-col'))
+
+    # Multi-well specific configuration
     if mode == 'multi-well':
         multi_well_detection = conf.get('multi-well-detection')
         if isinstance(multi_well_detection, dict):
@@ -51,6 +52,8 @@ def parse_yaml(arg_parser, g_class):
         rec_cols = cols
         image_n_row = 'NA'
         image_n_col = 'NA'
+
+    # Multi-site specific configuration
     if mode == 'multi-site':
         x_sites = int(conf.get('x-sites'))
         y_sites = int(conf.get('y-sites'))
@@ -59,6 +62,7 @@ def parse_yaml(arg_parser, g_class):
         x_sites = 'NA'
         y_sites = 'NA'
         stitch = False
+
     print(f"\t\trows: {rows}")
     print(f"\t\tcolumns: {cols}")
     print(f"\t\tcrop: {crop}")
@@ -78,11 +82,6 @@ def parse_yaml(arg_parser, g_class):
             del pipelines[key]
         else:
             print("\t\t{}: {}".format(key, value['run']))
-    # if 'cellprofiler' in modules.keys():
-    #     for py_mod in ['segment', 'motility', 'convert']:
-    #         if py_mod in modules.keys():
-    #             raise ValueError(
-    #                 "'{}' cannot be used with 'cellprofiler'".format(py_mod))
 
     # run-time settings
     wells = conf.get('wells')
@@ -92,6 +91,7 @@ def parse_yaml(arg_parser, g_class):
     metadata = conf.get('directories').get('metadata')[0]
     plate = args.plate
     plate_short = re.sub('_[0-9]*$', '', plate)
+
     print('run-time settings:')
     print("\t\twells: {}".format(wells))
     print("\t\tplate: {}".format(plate))
@@ -107,12 +107,12 @@ def parse_yaml(arg_parser, g_class):
     print("\t\toutput directory: {}".format(str(output)))
     print("\t\tmetadata directory: {}".format(str(metadata)))
 
-    # add masks (could have mask field which is 'circle', 'square', or 'NA')
+    # masks
     circle_diameter = conf.get('circle_diameter')
     square_side = conf.get('square_side')
     if circle_diameter != 'NA' and square_side != 'NA':
         raise ValueError("Cannot apply circle mask and square mask at the same time.")
-    
+
     # frame skipping configuration
     frame_skipping_config = conf.get('frame_skipping', {})
     frame_skipping_enabled = frame_skipping_config.get('enabled', False)
@@ -120,7 +120,7 @@ def parse_yaml(arg_parser, g_class):
     print('frame skipping settings:')
     print(f"\t\tenabled: {frame_skipping_enabled}")
     print(f"\t\tskip interval: {frame_skip_interval}")
-    
+
     # LoopBio-specific configuration
     camera_mapping = {}
     rotations = []
@@ -131,11 +131,10 @@ def parse_yaml(arg_parser, g_class):
         print('LoopBio settings:')
         print(f"\t\tcamera mapping: {camera_mapping}")
         print(f"\t\trotations: {rotations}")
-        
-        # Validate camera mapping
+
         if not camera_mapping:
             raise ValueError("LoopBio file structure requires camera_mapping configuration")
-    
+
     yaml_out = g_class(file_structure, mode, rows, cols, rec_rows, rec_cols,
                        crop, multi_well_detection, x_sites, y_sites, stitch, input, work, output, metadata,
                        plate_dir, plate, plate_short, wells,
@@ -145,44 +144,24 @@ def parse_yaml(arg_parser, g_class):
 
     return yaml_out, pipelines
 
-# parses HTD
-def parse_htd(yaml, g_class):
-    '''
-    Parse an HTD file and return experimental metadata as variables.
-    '''
 
-    # HTD
+# Parse HTD file and return experimental metadata as a g_class object
+def parse_htd(yaml, g_class):
     with open(yaml.plate_dir.joinpath(yaml.plate_short + '.HTD'), encoding='utf-8', errors='ignore') as f:
         lines = f.readlines()
         desc = str(next((s for s in lines if 'Description' in s), None).split(', ')[1])
-        time_points = int(
-            next((s for s in lines if 'TimePoints' in s), None).split(', ')[1])
-        rows = int(
-            next((s for s in lines if 'YWells' in s), None).split(', ')[1])
-        cols = int(
-            next((s for s in lines if 'XWells' in s), None).split(', ')[1])
+        time_points = int(next((s for s in lines if 'TimePoints' in s), None).split(', ')[1])
+        rows = int(next((s for s in lines if 'YWells' in s), None).split(', ')[1])
+        cols = int(next((s for s in lines if 'XWells' in s), None).split(', ')[1])
         if rows != yaml.rec_rows:
             raise ValueError("Rows value does not match in yaml and HTD files.")
         if cols != yaml.rec_cols:
             raise ValueError("Columns value does not match in yaml and HTD files.")
-        # if any("XSites" in line for line in lines):
-        #     x_sites = int(
-        #         next((s for s in lines if 'XSites' in s), None).split(', ')[1])
-        # else:
-        #     x_sites = 1
-        # if any("YSites" in line for line in lines):
-        #     y_sites = int(
-        #         next((s for s in lines if 'YSites' in s), None).split(', ')[1])
-        # else:
-        #     y_sites = 1
-        n_waves = int(
-            next((s for s in lines if 'NWavelengths' in s), None).split(', ')[1])
-        # loop to get all the WaveNames
+        n_waves = int(next((s for s in lines if 'NWavelengths' in s), None).split(', ')[1])
         wave_names = []
-        for i in range(n_waves):
+        for i in range(n_waves): # Loop to get all the WaveNames
             name = 'WaveName' + str(i + 1)
-            wave_name = next((s for s in lines if name in s),
-                             None).split(', ')[1]
+            wave_name = next((s for s in lines if name in s), None).split(', ')[1]
             wave_names.append(wave_name.rstrip().replace('"', ''))
 
     print('HTD metadata:')
@@ -190,8 +169,6 @@ def parse_htd(yaml, g_class):
     print("\t\ttime points: {}".format(time_points))
     print("\t\trows: {}".format(rows))
     print("\t\tcolumns: {}".format(cols))
-    # print("\t\tx sites: {}".format(x_sites))
-    # print("\t\ty sites: {}".format(y_sites))
     print("\t\tnumber of wavelengths: {}".format(n_waves))
     print("\t\twavelengths: {}".format(wave_names))
 
@@ -204,7 +181,12 @@ def parse_htd(yaml, g_class):
 
     return g
 
-# checks and adds '_w1' at the end of all filenames within the given directory if it doesn't already exist
+
+###################################
+######### HELPER FUNCTIONS ########
+###################################
+
+# Add '_w1' suffix to all TIF files if missing
 def rename_files(g):
     for timepoint in range(g.time_points):
         images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
@@ -215,13 +197,12 @@ def rename_files(g):
             outpath = current_path[:-4] + '_w1.TIF'
             os.rename(current_path, outpath)
 
-# create list of selected wells and sites (specifically for 'All' wells selected)
-# list of well_sites will be identical to list of wells if stitch == True
-# else it will be a list of all well/site pairings
+# Generate list of wells and well_sites for processing
+# List of well_sites will be identical to list of wells if stitch == True, else it will be a list of all well/site pairings
 def get_wells(g):
     wells = []
     well_sites = []
-    
+
     if g.wells == ['All']:
         for row in range(g.rows):
             for col in range(g.cols):
@@ -237,28 +218,28 @@ def get_wells(g):
                     wells.append(well_id)
                     well_sites.append(well_id)
     else:
+        # If site-level, include sites (e.g. A01_s1)
         if g.mode == 'multi-site' and g.stitch == False:
-            # If site-level, include sites (e.g. A01_s1)
+            
             for well in g.wells:
                 for site in range(g.x_sites * g.y_sites):
                     well_site_id = well + f'_s{site + 1}'
                     well_sites.append(well_site_id)
         else:
             well_sites = g.wells
-        
+
         wells = g.wells
 
     # Check available wells in TimePoint_1 folder
     available_wells = set()
     available_well_sites = set()
     timepoint_dir = os.path.join(g.input, g.plate, "TimePoint_1")
-    
+
     if os.path.exists(timepoint_dir):
         available_images = os.listdir(timepoint_dir)
 
         # Compare well_sites against available images
         for well_site in well_sites:
-            # Match well_site with optional '_w' suffix
             pattern = f"{re.escape(g.plate_short)}_{re.escape(well_site)}.*\\.(tif|TIF)"
             for image in available_images:
                 if re.match(pattern, image):
@@ -282,5 +263,4 @@ def get_wells(g):
     wells = sorted(list(available_wells))
     well_sites = sorted(list(available_well_sites))
 
-    # Return updated wells and well_sites
     return wells, well_sites

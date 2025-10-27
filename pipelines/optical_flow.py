@@ -6,6 +6,13 @@ from PIL import Image
 import pandas as pd
 from pathlib import Path
 
+##################################
+######### MAIN FUNCTION  #########
+##################################
+
+# This main function computes optical flow between consecutive timepoints in microscopy image sequences.  
+# It quantifies cell or particle movement across frames for each wavelength and well site.  
+# The results are visualized as colorized flow maps and summarized as CSV files for downstream analysis.
 def optical_flow(g, options, well_site, multiplier=2):
     # Create output and CSV directories at the start of the function
     work_dir = Path(g.work) / 'optical_flow'

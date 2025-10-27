@@ -1,4 +1,3 @@
-from string import ascii_uppercase
 from PIL import Image
 import cv2
 import os
@@ -7,15 +6,20 @@ import shutil
 import math
 import numpy as np
 import yaml
-from pathlib import Path
 
-# converts avi files to IX format
+##################################
+######### MAIN FUNCTIONS #########
+##################################
+
+# Converts AVI video files into ImageXpress-compatible TIFF sequences.  
+# Handles frame skipping, cleanup, and HTD file generation.
 def avi_to_ix(g):
     # Get all AVI files in the plate directory
     avi_files = [os.path.join(g.plate_dir, f) for f in os.listdir(g.plate_dir) if f.endswith('.avi')]
+    
+    # Case: only 1 AVI file for the entire plate
     if len(avi_files) == 1:
         vid_path = avi_files[0]
-        # Get AVI information
         vid = cv2.VideoCapture(str(vid_path))
         ret = True
         frames = []
@@ -41,10 +45,11 @@ def avi_to_ix(g):
                     frames.append(img)
         
         timepoints = len(frames)
-        # Loop through each timepoint
         print("Converting AVI to ImageXpress format.")
         if g.frame_skipping_enabled:
             print(f"Processing {timepoints} frames (skipped {frame_counter - timepoints} frames)")
+        
+        # Save each frame into TimePoint directories
         for timepoint in range(timepoints):
             if timepoint % 50 == 0:
                 print(f"Converting timepoint {timepoint + 1} of {timepoints}.")
@@ -55,8 +60,9 @@ def avi_to_ix(g):
             # Save frame with '_A01_w1' to maintain original naming
             outpath = os.path.join(dir, g.plate + f'_A01_w1.TIF')
             cv2.imwrite(str(outpath), frames[timepoint])
+    
     else:
-        # Multiple AVI files case
+        # Case: multiple AVI files, one per well
         well_names = [re.search(r'_(\D\d{2})\.avi$', os.path.basename(f)).group(1) for f in avi_files]  # Extract well names
         timepoints = 0
         for avi_file, well in zip(avi_files, well_names):
@@ -123,17 +129,9 @@ def avi_to_ix(g):
     
     return timepoints
 
-# converts LoopBio MP4 files to IX format
+# Converts LoopBio MP4 recordings into ImageXpress-compatible TIFF sequences.  
+# Handles multi-camera input, rotation, frame skipping, and HTD generation.
 def loopbio_to_ix(g, camera_mapping, rotations):
-    """
-    Convert LoopBio multi-camera MP4 files to ImageXpress format.
-    Processes one camera at a time.
-    
-    Args:
-        g: Configuration object
-        camera_mapping: Dict mapping camera serial numbers to well positions
-        rotations: List of wells that need 180-degree rotation
-    """
     print("Converting LoopBio MP4 files to ImageXpress format.")
     
     # Find all camera directories in the plate directory
@@ -146,10 +144,10 @@ def loopbio_to_ix(g, camera_mapping, rotations):
     if not camera_dirs:
         raise ValueError(f"No camera directories found in {g.plate_dir}")
     
-    # Process each camera directory one at a time (memory efficient)
     timepoints = 0
     processed_wells = {}
     
+    # Process each camera directory one at a time
     for camera_dir in camera_dirs:
         # Extract camera serial from directory name (last part after '.')
         dir_name = os.path.basename(camera_dir)
@@ -184,10 +182,9 @@ def loopbio_to_ix(g, camera_mapping, rotations):
             except Exception as e:
                 print(f"Warning: Could not read metadata from {metadata_file}: {e}")
         
-        # Process MP4 file - memory efficient approach
+        # Process MP4 file 
         print(f"Processing camera {camera_serial} -> well {well_position}")
         vid = cv2.VideoCapture(mp4_file)
-        
         if not vid.isOpened():
             print(f"Error: Could not open MP4 file {mp4_file}")
             continue
@@ -284,7 +281,8 @@ def loopbio_to_ix(g, camera_mapping, rotations):
     
     return timepoints
 
-# crops all images to the individual well level
+# Splits multi-well images into individual wells using a grid layout.  
+# Supports masking and both single- and multi-well modes.
 def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
     cols_per_image = g.cols // g.rec_cols
@@ -465,402 +463,9 @@ def grid_crop(g):
                         else:
                             individual_wells[i * cols_per_image + j].save(outpath)
 
-# given an input directory (containing timepoint folders which contain site images),
-# iterate over all files in each timepoint and stitch sites into well images
-# all files of well C03 will be stitched together
-def stitch_all_timepoints(g, wells, input_dir, output_dir, format='TIF'):
-    # check if images in input directory have been stitched already
-    current_dir = os.path.join(input_dir, f'TimePoint_1')
-
-    # # regex pattern to check if file is a site image
-    # pattern = re.compile(r'(.+)_([A-Z][0-9]{2,})_s(\d+)_w(\d+)\.(tif|TIF)$')
-    # # check first file in TimePoint_1 directory
-    # match = pattern.match(os.listdir(current_dir)[0])
-    # if not match:
-    #     return
-
-    # loop through each timepoint folder in input directory
-    for timepoint in range(g.time_points):
-        # get current directory
-        current_dir = os.path.join(input_dir, f'TimePoint_{timepoint+1}')
-
-        # ensure that current directory is valiid
-        if not os.path.isdir(current_dir):
-            raise ValueError("Path is not a valid directory.")
-
-        outpath = os.path.join(output_dir, f'TimePoint_{timepoint+1}')
-
-        # stitch all sites in current timepoint directory
-        stitch_directory(g, wells, current_dir, outpath, format)
-
-# stitch all the sites in a directory and save stitched images in specified output folder
-# if input directory and output directory are the same, delete original image
-def stitch_directory(g, wells, input_dir, output_dir, format='TIF'):
-    # create output directory if it doesn't already exist
-    os.makedirs(output_dir, exist_ok=True)
-    # add site paths to list for each well and wavelength and stitch
-    for wavelength in range(g.n_waves):
-        for well in wells:
-            site_paths = []
-            for site in range(g.x_sites * g.y_sites):
-                site_path = os.path.join(input_dir, g.plate_short + f'_{well}_s{site+1}_w{wavelength+1}.{format}')
-                if not os.path.exists(site_path):
-                    print("Sites have already been stitched.")
-                    return
-                site_paths.append(site_path)
-
-            # create outpath of current well
-            outpath = os.path.join(output_dir, g.plate_short + f'_{well}_w{wavelength+1}.{format}')
-            
-            # stitch sites
-            if input_dir == output_dir:
-                __stitch_sites(sorted(site_paths), outpath, delete_original=True)
-            else:
-                __stitch_sites(sorted(site_paths), outpath, delete_original=False)
-
-# given all wells, the wavelength, and format, create a list of all image paths for that wavelength
-def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF'):
-    image_paths = []
-    for well in wells:
-        tiff_file_base = f"{g.plate_short}_{well}"
-        wavelength_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}.{format}")
-        base_tiff_file = os.path.join(directory, f"{tiff_file_base}.{format}")
-        
-        # Check if the wavelength-specific or base file exists
-        if os.path.exists(wavelength_tiff_file):
-            image_paths.append(wavelength_tiff_file)
-        elif os.path.exists(base_tiff_file):
-            image_paths.append(base_tiff_file)
-        else:
-            print(f"No file found for well {well} in directory {directory}")
-            
-    return image_paths
-
-# loop through all files and apply masks
-def apply_masks(g):
-    # return if no masking required
-    if g.circle_diameter == 'NA' and g.square_side == 'NA':
-        return
-    if g.mode == 'multi-site' and g.stitch == False:
-        print("Masks cannot be applied at the site-level.")
-        return
-    print(f"Applying masks...")
-    # loop through timepoints
-    for timepoint in range(g.time_points):
-        # loop through wavelengths
-        for wavelength in range(g.n_waves):
-            # loop through individual wells
-            for row in range(g.rows):
-                for col in range(g.cols):
-                    # generate well id
-                    well_id = well_idx_to_name(g, row, col)
-                    # get path of current image
-                    img_path = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
-                    # skip over path if it does not exist
-                    if not os.path.exists(img_path):
-                        continue
-                    # open current image, apply mask, and save
-                    with Image.open(img_path) as img:
-                        if g.circle_diameter != 'NA':
-                            __apply_mask(img, g.circle_diameter, 'circle').save(img_path)
-                        elif g.square_side != 'NA':
-                            __apply_mask(img, g.square_side, 'square').save(img_path)
-    print(f"Finished applying masks.")
-
-# extracts the column letter, row number, site number, and wavelength number from the image name
-def extract_well_name(well_string):
-    # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG)$'
-    match = re.search(pattern, well_string)
-
-    # check number of groups to determine site number if applicable and well number
-    if match:
-        # extract column letter
-        letter = match.group(1)
-
-        # extract row number
-        number = match.group(2)
-
-        # extract site number
-        # if no site, site will be None
-        site = match.group(3)
-
-        # extract wavelength number
-        wavelength = match.group(4)
-
-        return letter, number, site, wavelength
-    else:
-        # return None if the pattern doesn't match
-        return None, None, None, None
-
-# converts a row number and column number to well name - e.g. row 1, column 2 (where row and column are 0-indexed) will return 'B03'
-def well_idx_to_name(g, row, col):
-    # generate letter
-    letter = chr(row + 65)
-
-    # determine number of preceding zeroes for single digit numbered columns
-    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
-    if col < 9:
-        if g.cols >= 100:
-            num_zeroes = len(str(g.cols)) - 1
-            number = num_zeroes*"0" + str(col + 1)
-        else:
-            number = f"0{col + 1}"
-    else:
-        number = str(col + 1)
-    return f"{letter}{number}"
-
-# creates HTD for avi input
-def __create_htd(g, timepoints):
-    # make HTD for non-IX data
-    lines = []
-    lines.append('"Description", ' + "AVI" + "\n")
-    lines.append('"TimePoints", ' + str(timepoints) + "\n")
-    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
-    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
-    lines.append('"XSites", ' + "1" + "\n")
-    lines.append('"YSites", ' + "1" + "\n")
-    lines.append('"NWavelengths", ' + "1" + "\n")
-    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
-
-    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
-    with open(htd_path, mode='w') as htd_file:
-        htd_file.writelines(lines)
-
-# creates HTD for LoopBio input
-def __create_loopbio_htd(g, timepoints, num_wells):
-    # make HTD for LoopBio data
-    lines = []
-    lines.append('"Description", ' + "LoopBio" + "\n")
-    lines.append('"TimePoints", ' + str(timepoints) + "\n")
-    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
-    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
-    lines.append('"XSites", ' + "1" + "\n")
-    lines.append('"YSites", ' + "1" + "\n")
-    lines.append('"NWavelengths", ' + "1" + "\n")
-    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
-
-    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
-    with open(htd_path, mode='w') as htd_file:
-        htd_file.writelines(lines)
-
-# cleans up incomplete timepoint directories that may result from cameras recording extra frames
-def __cleanup_incomplete_timepoints(g, expected_files_per_timepoint):
-    print(f"Checking for incomplete timepoints using TimePoint_1 as reference...")
-    
-    # Get all timepoint directories
-    timepoint_dirs = [d for d in os.listdir(g.plate_dir) 
-                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
-    
-    if not timepoint_dirs:
-        print("No timepoint directories found.")
-        return 0
-    
-    # Use TimePoint_1 as reference for expected file count
-    reference_dir = os.path.join(g.plate_dir, 'TimePoint_1')
-    if not os.path.exists(reference_dir):
-        print("TimePoint_1 not found - cannot determine reference file count.")
-        return 0
-    
-    reference_count = len([f for f in os.listdir(reference_dir) 
-                          if f.lower().endswith(('.tif', '.tiff'))])
-    print(f"Reference count from TimePoint_1: {reference_count} files")
-    
-    # Remove timepoints that don't match the reference count
-    removed_count = 0
-    for tp_dir in timepoint_dirs:
-        tp_path = os.path.join(g.plate_dir, tp_dir)
-        file_count = len([f for f in os.listdir(tp_path) 
-                         if f.lower().endswith(('.tif', '.tiff'))])
-        
-        if file_count != reference_count:
-            print(f"  {tp_dir}: Incomplete ({file_count}/{reference_count} files) - removing")
-            shutil.rmtree(tp_path)
-            removed_count += 1
-    
-    # Count remaining complete timepoints
-    remaining_dirs = [d for d in os.listdir(g.plate_dir) 
-                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
-    
-    if removed_count > 0:
-        print(f"Removed {removed_count} incomplete timepoint directories.")
-    
-    print(f"Final result: {len(remaining_dirs)} complete timepoints.")
-    return len(remaining_dirs)
-
-# converts capital letters to numbers, where A is 0, B is 1, and so on
-def __capital_to_num(alpha):
-    return ord(alpha) - 65
-
-# splits image into x by y images and delete original image
-def __split_image(img_path, x, y):
-    original_img = Image.open(img_path)
-    if original_img is None:
-        raise ValueError("Could not load the image")
-
-    # get dimensions of original image
-    original_width, original_height = original_img.size
-
-    # calculate dimensions of cropped images
-    width = original_width // x
-    height = original_height // y
-
-    images = []
-
-    # loop through grid and split the image
-    # place images into array row by row
-    for i in range(y):
-        for j in range(x):
-            # calculate the coordinates for cropping
-            left = j * width
-            upper = i * height
-            right = (j + 1) * width
-            lower = (i + 1) * height
-
-            # crop the region from the original image
-            cropped_img = original_img.crop((left, upper, right, lower))
-
-            # append the small image to the array
-            images.append(cropped_img)
-
-    # delete original uncropped image
-    os.remove(img_path)
-
-    return images
-
-# generates well name using the provided group id
-def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
-    if g.mode == "multi-well":
-        # For multi-well mode, group_id represents the camera's assigned well position from LoopBio
-        # The camera mapping is: A01, A02, A03, B01, B02, B03 in a 2x3 grid
-        # But each camera covers a 4x4 region of the final 8x12 plate
-        
-        # group_id[0] = camera row letter index (A=0, B=1), group_id[1] = camera col number index (01=0, 02=1, 03=2)
-        camera_row_idx = group_id[0]  # A=0, B=1
-        camera_col_idx = group_id[1]  # 01=0, 02=1, 03=2
-        
-        # Map camera positions to their coverage areas:
-        # For a 2x3 camera layout covering an 8x12 plate:
-        # - Each camera covers 4 rows (8/2) and 4 columns (12/3)
-        # - Camera A01 [0,0] -> covers plate rows 0-3, cols 0-3   (A01-A04, B01-B04, C01-C04, D01-D04)
-        # - Camera A02 [0,1] -> covers plate rows 0-3, cols 4-7   (A05-A08, B05-B08, C05-C08, D05-D08)  
-        # - Camera A03 [0,2] -> covers plate rows 0-3, cols 8-11  (A09-A12, B09-B12, C09-C12, D09-D12)
-        # - Camera B01 [1,0] -> covers plate rows 4-7, cols 0-3   (E01-E04, F01-F04, G01-G04, H01-H04)
-        # - Camera B02 [1,1] -> covers plate rows 4-7, cols 4-7   (E05-E08, F05-F08, G05-G08, H05-H08)
-        # - Camera B03 [1,2] -> covers plate rows 4-7, cols 8-11  (E09-E12, F09-F12, G09-G12, H09-H12)
-        
-        # Calculate starting well position for this camera
-        start_well_row = camera_row_idx * rows_per_image  # A cameras start at row 0, B cameras at row 4
-        start_well_col = camera_col_idx * cols_per_image  # 01 cameras start at col 0, 02 at col 4, 03 at col 8
-        
-        # Add sub-well offset to get final well position
-        well_row = start_well_row + row
-        well_col = start_well_col + col
-        
-        # Validate that we're within plate bounds
-        if well_row >= g.rows or well_col >= g.cols:
-            print(f"    WARNING: Well position ({well_row}, {well_col}) exceeds plate bounds ({g.rows}, {g.cols})")
-            return None
-            
-    else:
-        # Original single-well logic
-        well_row = group_id[0] * rows_per_image + row
-        well_col = group_id[1] * cols_per_image + col
-    
-    well_name = well_idx_to_name(g, well_row, well_col)
-
-    return well_name
-
-# stitches sites into an n by n square image and fills extra space with black
-# saves stitched image to given outpath
-# delete original images if specified (e.g. if used in preprocessing)
-def __stitch_sites(image_paths, outpath, delete_original=False, format='TIF'):
-    if not image_paths:
-        raise ValueError("The list of image paths is empty.")
-
-    # load the first image to determine individual image size
-    with Image.open(image_paths[0]) as img:
-        img_width, img_height = img.size
-
-    if img_width != img_height:
-        raise ValueError("Images are not square.")
-
-    # calculate dimensions for the output image
-    num_images = len(image_paths)
-    side_length = math.ceil(math.sqrt(num_images))
-    canvas_size = side_length * img_width
-
-    # create a new image with a black 
-    if format == 'TIF':
-        stitched_image = Image.new('I;16', (canvas_size, canvas_size), 0)
-    else:
-        stitched_image = Image.new('RGB', (canvas_size, canvas_size))
-
-    # place each image into the stitched_image
-    # assumes that stitched sites form a square (if requires change in the future, use x_sites and y_sites)
-    for i, img_path in enumerate(image_paths):
-        with Image.open(img_path) as img:
-            if img.size != (img_width, img_height):
-                raise ValueError(f"Image at {img_path} is not of the correct size.")
-            x = (i % side_length) * img_width
-            y = (i // side_length) * img_height
-            stitched_image.paste(img, (x, y))
-        
-        # delete original image if not diagnostic image
-        if delete_original:
-            os.remove(img_path)
-
-    stitched_image.save(outpath)
-
-# apply a circle or square mask as specified by the type parameter
-# mask_size is a fraction of the current image size
-# circle mask will add a black border around the specified size of circle while square mask  crops the image to the specified size
-def __apply_mask(image, mask_size, type):
-    # get current height and width of image
-    width, height = image.size
-
-    # ensure the image is square
-    # if width != height:
-    #     raise ValueError("Image must be square")
-    
-    # square mask
-    if type == 'square':
-        new_side_length = height * mask_size
-        # calculate the coordinates to crop the image
-        left = (width - new_side_length) // 2
-        top = (height - new_side_length) // 2
-        right = (width + new_side_length) // 2
-        bottom = (height + new_side_length) // 2
-
-        # crop the image
-        masked_image = image.crop((left, top, right, bottom))
-
-        return masked_image
-    
-    # circle mask
-    elif type == 'circle':
-        # calculate the circle's radius
-        radius = (height * mask_size) / 2
-
-        # create a circular mask
-        y, x = np.ogrid[:height, :width]
-        center = (width // 2, height // 2)
-        # find squared distance of each coordinate from the centre and return True if it is within the mask area
-        mask_area = (x - center[0])**2 + (y - center[1])**2 > radius**2
-
-        # apply the mask to the image
-        masked_array = np.array(image)
-        masked_array[mask_area] = 0
-        masked_image = Image.fromarray(masked_array, mode='I;16')
-
-        return masked_image
-
+# Automatically detect and crop wells. Supports both circular and square well detection with fallback to grid method.
+# Uses template-based detection: detects wells once in TimePoint_1, then reuses positions.
 def auto_crop(g):
-    """
-    Automatically detect and crop wells.
-    Supports both circular and square well detection with fallback to grid method.
-    Uses template-based detection: detects wells once in TimePoint_1, then reuses positions.
-    """
     print("Starting auto crop...")
     
     # Get configuration from YAML
@@ -1040,11 +645,345 @@ def auto_crop(g):
 
     print("Auto crop completed.")
 
+# Extracts the column letter, row number, site number, and wavelength number from the image name
+def extract_well_name(well_string):
+    # regular expression pattern to match the format
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG)$'
+    match = re.search(pattern, well_string)
+
+    # check number of groups to determine site number if applicable and well number
+    if match:
+        # extract column letter
+        letter = match.group(1)
+
+        # extract row number
+        number = match.group(2)
+
+        # extract site number
+        # if no site, site will be None
+        site = match.group(3)
+
+        # extract wavelength number
+        wavelength = match.group(4)
+
+        return letter, number, site, wavelength
+    else:
+        # return None if the pattern doesn't match
+        return None, None, None, None
+
+# Stitches all timepoints by merging site images for each timepoint. 
+def stitch_all_timepoints(g, wells, input_dir, output_dir, format='TIF'):
+    # check if images in input directory have been stitched already
+    current_dir = os.path.join(input_dir, f'TimePoint_1')
+
+    # loop through each timepoint folder in input directory
+    for timepoint in range(g.time_points):
+        # get current directory
+        current_dir = os.path.join(input_dir, f'TimePoint_{timepoint+1}')
+
+        # ensure that current directory is valiid
+        if not os.path.isdir(current_dir):
+            raise ValueError("Path is not a valid directory.")
+
+        outpath = os.path.join(output_dir, f'TimePoint_{timepoint+1}')
+
+        # stitch all sites in current timepoint directory
+        stitch_directory(g, wells, current_dir, outpath, format)
+
+# Stitches all site images in a directory into well-level images for each wavelength. 
+def stitch_directory(g, wells, input_dir, output_dir, format='TIF'):
+    # create output directory if it doesn't already exist
+    os.makedirs(output_dir, exist_ok=True)
+    # add site paths to list for each well and wavelength and stitch
+    for wavelength in range(g.n_waves):
+        for well in wells:
+            site_paths = []
+            for site in range(g.x_sites * g.y_sites):
+                site_path = os.path.join(input_dir, g.plate_short + f'_{well}_s{site+1}_w{wavelength+1}.{format}')
+                if not os.path.exists(site_path):
+                    print("Sites have already been stitched.")
+                    return
+                site_paths.append(site_path)
+
+            # create outpath of current well
+            outpath = os.path.join(output_dir, g.plate_short + f'_{well}_w{wavelength+1}.{format}')
+            
+            # stitch sites
+            if input_dir == output_dir:
+                __stitch_sites(sorted(site_paths), outpath, delete_original=True)
+            else:
+                __stitch_sites(sorted(site_paths), outpath, delete_original=False)
+
+# Applies circular or square masks to all well images across timepoints and wavelengths.  
+def apply_masks(g):
+    # return if no masking required
+    if g.circle_diameter == 'NA' and g.square_side == 'NA':
+        return
+    if g.mode == 'multi-site' and g.stitch == False:
+        print("Masks cannot be applied at the site-level.")
+        return
+    print(f"Applying masks...")
+    # loop through timepoints
+    for timepoint in range(g.time_points):
+        # loop through wavelengths
+        for wavelength in range(g.n_waves):
+            # loop through individual wells
+            for row in range(g.rows):
+                for col in range(g.cols):
+                    # generate well id
+                    well_id = well_idx_to_name(g, row, col)
+                    # get path of current image
+                    img_path = os.path.join(g.plate_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well_id}_w{wavelength + 1}.TIF')
+                    # skip over path if it does not exist
+                    if not os.path.exists(img_path):
+                        continue
+                    # open current image, apply mask, and save
+                    with Image.open(img_path) as img:
+                        if g.circle_diameter != 'NA':
+                            __apply_mask(img, g.circle_diameter, 'circle').save(img_path)
+                        elif g.square_side != 'NA':
+                            __apply_mask(img, g.square_side, 'square').save(img_path)
+    print(f"Finished applying masks.")
+
+# Converts 0-indexed row and column indices to a well name (e.g., row=1, col=2 → 'B03')
+def well_idx_to_name(g, row, col):
+    # generate letter
+    letter = chr(row + 65)
+
+    # determine number of preceding zeroes for single digit numbered columns
+    # if total columns is less than 100, columns will be two digits, else number of digits for columns will match the total columns
+    if col < 9:
+        if g.cols >= 100:
+            num_zeroes = len(str(g.cols)) - 1
+            number = num_zeroes*"0" + str(col + 1)
+        else:
+            number = f"0{col + 1}"
+    else:
+        number = str(col + 1)
+    return f"{letter}{number}"
+
+# Generates a list of image paths for the given wells and wavelength
+def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF'):
+    image_paths = []
+    for well in wells:
+        tiff_file_base = f"{g.plate_short}_{well}"
+        wavelength_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}.{format}")
+        base_tiff_file = os.path.join(directory, f"{tiff_file_base}.{format}")
+        
+        # Check if the wavelength-specific or base file exists
+        if os.path.exists(wavelength_tiff_file):
+            image_paths.append(wavelength_tiff_file)
+        elif os.path.exists(base_tiff_file):
+            image_paths.append(base_tiff_file)
+        else:
+            print(f"No file found for well {well} in directory {directory}")
+            
+    return image_paths
+
+
+####################################
+######### HELPER FUNCTIONS #########
+####################################
+
+# Cleans up incomplete timepoint directories that may result from cameras recording extra frames
+def __cleanup_incomplete_timepoints(g, expected_files_per_timepoint):
+    print(f"Checking for incomplete timepoints using TimePoint_1 as reference...")
+    
+    # Get all timepoint directories
+    timepoint_dirs = [d for d in os.listdir(g.plate_dir) 
+                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
+    
+    if not timepoint_dirs:
+        print("No timepoint directories found.")
+        return 0
+    
+    # Use TimePoint_1 as reference for expected file count
+    reference_dir = os.path.join(g.plate_dir, 'TimePoint_1')
+    if not os.path.exists(reference_dir):
+        print("TimePoint_1 not found - cannot determine reference file count.")
+        return 0
+    
+    reference_count = len([f for f in os.listdir(reference_dir) 
+                          if f.lower().endswith(('.tif', '.tiff'))])
+    print(f"Reference count from TimePoint_1: {reference_count} files")
+    
+    # Remove timepoints that don't match the reference count
+    removed_count = 0
+    for tp_dir in timepoint_dirs:
+        tp_path = os.path.join(g.plate_dir, tp_dir)
+        file_count = len([f for f in os.listdir(tp_path) 
+                         if f.lower().endswith(('.tif', '.tiff'))])
+        
+        if file_count != reference_count:
+            print(f"  {tp_dir}: Incomplete ({file_count}/{reference_count} files) - removing")
+            shutil.rmtree(tp_path)
+            removed_count += 1
+    
+    # Count remaining complete timepoints
+    remaining_dirs = [d for d in os.listdir(g.plate_dir) 
+                     if d.startswith('TimePoint_') and os.path.isdir(os.path.join(g.plate_dir, d))]
+    
+    if removed_count > 0:
+        print(f"Removed {removed_count} incomplete timepoint directories.")
+    
+    print(f"Final result: {len(remaining_dirs)} complete timepoints.")
+    return len(remaining_dirs)
+
+# Creates HTD for avi input
+def __create_htd(g, timepoints):
+    # make HTD for non-IX data
+    lines = []
+    lines.append('"Description", ' + "AVI" + "\n")
+    lines.append('"TimePoints", ' + str(timepoints) + "\n")
+    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
+    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
+    lines.append('"XSites", ' + "1" + "\n")
+    lines.append('"YSites", ' + "1" + "\n")
+    lines.append('"NWavelengths", ' + "1" + "\n")
+    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
+
+    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
+    with open(htd_path, mode='w') as htd_file:
+        htd_file.writelines(lines)
+
+# Creates HTD for LoopBio input
+def __create_loopbio_htd(g, timepoints, num_wells):
+    # make HTD for LoopBio data
+    lines = []
+    lines.append('"Description", ' + "LoopBio" + "\n")
+    lines.append('"TimePoints", ' + str(timepoints) + "\n")
+    lines.append('"XWells", ' + str(g.rec_cols) + "\n")
+    lines.append('"YWells", ' + str(g.rec_rows) + "\n")
+    lines.append('"XSites", ' + "1" + "\n")
+    lines.append('"YSites", ' + "1" + "\n")
+    lines.append('"NWavelengths", ' + "1" + "\n")
+    lines.append('"WaveName1", ' + '"Transmitted Light"' + "\n")
+
+    htd_path = os.path.join(g.plate_dir, g.plate_short + '.HTD')
+    with open(htd_path, mode='w') as htd_file:
+        htd_file.writelines(lines)
+
+# Converts capital letters to numbers, where A is 0, B is 1, and so on
+def __capital_to_num(alpha):
+    return ord(alpha) - 65
+
+# Splits image into x by y images and delete original image
+def __split_image(img_path, x, y):
+    original_img = Image.open(img_path)
+    if original_img is None:
+        raise ValueError("Could not load the image")
+
+    # get dimensions of original image
+    original_width, original_height = original_img.size
+
+    # calculate dimensions of cropped images
+    width = original_width // x
+    height = original_height // y
+
+    images = []
+
+    # loop through grid and split the image
+    # place images into array row by row
+    for i in range(y):
+        for j in range(x):
+            # calculate the coordinates for cropping
+            left = j * width
+            upper = i * height
+            right = (j + 1) * width
+            lower = (i + 1) * height
+
+            # crop the region from the original image
+            cropped_img = original_img.crop((left, upper, right, lower))
+
+            # append the small image to the array
+            images.append(cropped_img)
+
+    # delete original uncropped image
+    os.remove(img_path)
+
+    return images
+
+# Generates well name using the provided group id
+def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
+    if g.mode == "multi-well":
+        # For multi-well mode, group_id represents the camera's assigned well position from LoopBio
+        # The camera mapping is: A01, A02, A03, B01, B02, B03 in a 2x3 grid
+        # But each camera covers a 4x4 region of the final 8x12 plate
+        
+        # group_id[0] = camera row letter index (A=0, B=1), group_id[1] = camera col number index (01=0, 02=1, 03=2)
+        camera_row_idx = group_id[0]  # A=0, B=1
+        camera_col_idx = group_id[1]  # 01=0, 02=1, 03=2
+        
+        # Map camera positions to their coverage areas:
+        # For a 2x3 camera layout covering an 8x12 plate:
+        # - Each camera covers 4 rows (8/2) and 4 columns (12/3)
+        # - Camera A01 [0,0] -> covers plate rows 0-3, cols 0-3   (A01-A04, B01-B04, C01-C04, D01-D04)
+        # - Camera A02 [0,1] -> covers plate rows 0-3, cols 4-7   (A05-A08, B05-B08, C05-C08, D05-D08)  
+        # - Camera A03 [0,2] -> covers plate rows 0-3, cols 8-11  (A09-A12, B09-B12, C09-C12, D09-D12)
+        # - Camera B01 [1,0] -> covers plate rows 4-7, cols 0-3   (E01-E04, F01-F04, G01-G04, H01-H04)
+        # - Camera B02 [1,1] -> covers plate rows 4-7, cols 4-7   (E05-E08, F05-F08, G05-G08, H05-H08)
+        # - Camera B03 [1,2] -> covers plate rows 4-7, cols 8-11  (E09-E12, F09-F12, G09-G12, H09-H12)
+        
+        # Calculate starting well position for this camera
+        start_well_row = camera_row_idx * rows_per_image  # A cameras start at row 0, B cameras at row 4
+        start_well_col = camera_col_idx * cols_per_image  # 01 cameras start at col 0, 02 at col 4, 03 at col 8
+        
+        # Add sub-well offset to get final well position
+        well_row = start_well_row + row
+        well_col = start_well_col + col
+        
+        # Validate that we're within plate bounds
+        if well_row >= g.rows or well_col >= g.cols:
+            print(f"    WARNING: Well position ({well_row}, {well_col}) exceeds plate bounds ({g.rows}, {g.cols})")
+            return None
+            
+    else:
+        # Original single-well logic
+        well_row = group_id[0] * rows_per_image + row
+        well_col = group_id[1] * cols_per_image + col
+    
+    well_name = well_idx_to_name(g, well_row, well_col)
+
+    return well_name
+
+# Applies a circular or square mask to an image based on the specified type.
+def __apply_mask(image, mask_size, type):
+    # get current height and width of image
+    width, height = image.size
+
+    if type == 'square': # Square mask crops the image to the specified size
+        new_side_length = height * mask_size
+        # calculate the coordinates to crop the image
+        left = (width - new_side_length) // 2
+        top = (height - new_side_length) // 2
+        right = (width + new_side_length) // 2
+        bottom = (height + new_side_length) // 2
+
+        # crop the image
+        masked_image = image.crop((left, top, right, bottom))
+
+        return masked_image
+
+    elif type == 'circle': # Circle mask will add a black border around the specified size of circle
+        # calculate the circle's radius
+        radius = (height * mask_size) / 2
+
+        # create a circular mask
+        y, x = np.ogrid[:height, :width]
+        center = (width // 2, height // 2)
+        # find squared distance of each coordinate from the centre and return True if it is within the mask area
+        mask_area = (x - center[0])**2 + (y - center[1])**2 > radius**2
+
+        # apply the mask to the image
+        masked_array = np.array(image)
+        masked_array[mask_area] = 0
+        masked_image = Image.fromarray(masked_array, mode='I;16')
+
+        return masked_image
+
+# Detect well positions from TimePoint_1 images to create a template for all timepoints.
 def __detect_template_positions(g, expected_rows, expected_cols, well_shape, 
                                 search_multiplier, hough_param1, hough_param2):
-    """
-    Detect well positions from TimePoint_1 images to create a template for all timepoints.
-    """
     timepoint_1_dir = os.path.join(g.plate_dir, 'TimePoint_1')
     
     if not os.path.exists(timepoint_1_dir):
@@ -1078,11 +1017,9 @@ def __detect_template_positions(g, expected_rows, expected_cols, well_shape,
     
     return template_positions
 
+# Simplified well detection using Hough circles with distance transform fallback.
 def __detect_wells(image, expected_rows, expected_cols, well_shape,
                    search_multiplier, hough_param1, hough_param2):
-    """
-    Simplified well detection using Hough circles with distance transform fallback.
-    """
     # Convert to grayscale
     np_image = np.array(image)
     if len(np_image.shape) == 3:
@@ -1124,12 +1061,9 @@ def __detect_wells(image, expected_rows, expected_cols, well_shape,
     
     return grid_positions
 
+# Simplified well position refinement using Hough circles or distance transform.
 def __refine_well_position(gray_image, center_x, center_y, search_radius, well_shape,
                            search_multiplier, hough_param1, hough_param2):
-    """
-    Simplified well position refinement using Hough circles or distance transform.
-    Uses plate-specific parameters for optimal detection.
-    """
     h, w = gray_image.shape
     search_size = int(search_radius * search_multiplier)
     y1 = max(0, center_y - search_size)
@@ -1184,8 +1118,8 @@ def __refine_well_position(gray_image, center_x, center_y, search_radius, well_s
     # If all methods fail, use original position
     return center_x, center_y
 
+# Extract a well region from the image.
 def __extract_well_region(image, center_x, center_y, size, well_shape):
-    """Extract a well region from the image."""
     padding_factor = 1.2
     crop_size = int(size * padding_factor)
     
@@ -1216,3 +1150,42 @@ def __extract_well_region(image, center_x, center_y, size, well_shape):
         return Image.fromarray(masked_img)
     
     return cropped_img
+
+# Stitches sites into an n by n square image and fills extra space with black and deletes original images if specified
+def __stitch_sites(image_paths, outpath, delete_original=False, format='TIF'):
+    if not image_paths:
+        raise ValueError("The list of image paths is empty.")
+
+    # load the first image to determine individual image size
+    with Image.open(image_paths[0]) as img:
+        img_width, img_height = img.size
+
+    if img_width != img_height:
+        raise ValueError("Images are not square.")
+
+    # calculate dimensions for the output image
+    num_images = len(image_paths)
+    side_length = math.ceil(math.sqrt(num_images))
+    canvas_size = side_length * img_width
+
+    # create a new image with a black 
+    if format == 'TIF':
+        stitched_image = Image.new('I;16', (canvas_size, canvas_size), 0)
+    else:
+        stitched_image = Image.new('RGB', (canvas_size, canvas_size))
+
+    # place each image into the stitched_image
+    # assumes that stitched sites form a square (if requires change in the future, use x_sites and y_sites)
+    for i, img_path in enumerate(image_paths):
+        with Image.open(img_path) as img:
+            if img.size != (img_width, img_height):
+                raise ValueError(f"Image at {img_path} is not of the correct size.")
+            x = (i % side_length) * img_width
+            y = (i // side_length) * img_height
+            stitched_image.paste(img, (x, y))
+        
+        # delete original image if not diagnostic image
+        if delete_original:
+            os.remove(img_path)
+
+    stitched_image.save(outpath)
