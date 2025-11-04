@@ -1,11 +1,11 @@
-from PIL import Image
+from datetime import datetime
 import cv2
 import os
-import re
-from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 import numpy as np
-from datetime import datetime
+import re
+from PIL import Image
 
+from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 
 ##################################
 ######### MAIN FUNCTIONS #########
@@ -103,6 +103,11 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
                 __create_video(frame_paths, outpath)
                 
     print("Finished creating video.")
+
+
+#####################################
+######### HELPER FUNCTIONS  #########
+#####################################
 
 # Stitch a list of well images into a single plate image
 def __stitch_plate(g, image_paths, outpath, rescale_factor, format='TIF'):

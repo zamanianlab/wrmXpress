@@ -1,8 +1,8 @@
+import glob
 import os
 import shutil
-import glob
-import subprocess
 import shlex
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -25,45 +25,33 @@ def cellprofiler(g, options, well_site):
 
     model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['cellpose_model'] if options['cellpose_model'] else None
     wavelength_option = options["cellpose_wavelength"]  # A single wavelength like 'w1'
-    wavelength = int(wavelength_option[1:]) - 1  # Convert 'w1' to 0-based index
+    wavelength = int(wavelength_option[1:]) - 1  # Convert 'w1' to zero-based index
     timepoints = range(1, 2)  # Process only TimePoint_1 for now
 
-    # Only proceed with the timepoints loop if cellpose_model is not empty
     if options['cellpose_model'] != None:
-        # Iterate over the timepoints for CellPose processing
         for timepoint in timepoints:
+             # Construct the source TIF file path (it may or may not have wavelength suffix)
+            tiff_file_base = os.path.join(g.input, g.plate, f"TimePoint_{timepoint}", f"{g.plate_short}_{well_site}")
+            tiff_file = next((f for f in (f"{tiff_file_base}_w{wavelength + 1}.TIF", f"{tiff_file_base}.TIF") if os.path.exists(f)), None)
+
+            if tiff_file is None:
+                print(f"No TIF file found for well site {well_site} for timepoint {timepoint}. Skipping to next timepoint.")
+                continue                                         
+
+            # CellPose requires images to be in a directory for processing.
+            # A temporary directory is chosen as it is automatically cleaned up after use
             with tempfile.TemporaryDirectory() as temp_dir:
-                # Construct the source TIFF file path
-                tiff_file_base = os.path.join(
-                    g.input,
-                    g.plate,
-                    f"TimePoint_{timepoint}",
-                    f"{g.plate_short}_{well_site}",
-                )
+                
+                # Rename the TIF file to .tif as Cellpose also requires images to be in .tif format.
+                rename_file_to_tif(tiff_file, temp_dir)
 
-                # Check if the wavelength is specified in the filename
-                tiff_file = None
-                base_tiff_file = f"{tiff_file_base}.TIF"
-                wavelength_tiff_file = f"{tiff_file_base}_w{wavelength + 1}.TIF"
+                # Run CellPose to segment the images for the current timepoint and wavelength
+                run_cellpose(model_path, temp_dir)
 
-                if os.path.exists(wavelength_tiff_file):
-                    tiff_file = wavelength_tiff_file
-                elif os.path.exists(base_tiff_file):
-                    tiff_file = base_tiff_file
-
-                if tiff_file:
-                    # Rename the TIF file to .tif and copy it to the temporary directory
-                    rename_file_to_temp_tif(tiff_file, temp_dir)
-
-                    # Step 1: Run CellPose to segment the images for the current timepoint and wavelength
-                    run_cellpose(model_path, temp_dir)
-
-                    # Rename and move the resulting PNG mask to the 'work/cellprofiler' directory
-                    for file in glob.glob(f"{temp_dir}/*.png"):
-                        if "cp_masks" in file:
-                            new_filename = (
-                                f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
-                            )
+                # Rename and move the resulting PNG mask to the 'work/cellprofiler' directory
+                for file in glob.glob(f"{temp_dir}/*.png"):
+                    if "cp_masks" in file:
+                            new_filename = (f"{g.plate_short}_{well_site}_w{wavelength + 1}.png")
                             shutil.copy(file, work_dir / new_filename)
 
     # Generate the CSV file using the R script
@@ -94,9 +82,9 @@ def cellprofiler(g, options, well_site):
 ######### HELPER FUNCTIONS  #########
 #####################################
 
-# This function renames and copies a .TIF image to a temporary directory as .tif.  
+# This function renames a .TIF file as .tif.  
 # This is necessary because CellPose requires images to be in a directory and in .tif format for processing.
-def rename_file_to_temp_tif(src_file, temp_dir):
+def rename_file_to_tif(src_file, temp_dir):
     temp_file = Path(temp_dir) / (Path(src_file).stem + ".tif")
     shutil.copy(src_file, temp_file)
     return temp_file

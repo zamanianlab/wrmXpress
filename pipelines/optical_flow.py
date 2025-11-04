@@ -1,10 +1,10 @@
-import cv2
-import numpy as np
-from scipy import ndimage
 from matplotlib import cm
-from PIL import Image
-import pandas as pd
+import cv2
 from pathlib import Path
+from PIL import Image
+import numpy as np
+import pandas as pd
+from scipy import ndimage
 
 ##################################
 ######### MAIN FUNCTION  #########

@@ -120,7 +120,7 @@ for (pipeline in pipeline_list) {
     return(output_data)
   })
   
-  final_csv_path <- file.path(output_dir, paste0(plate, '_tidy.csv'))
+  final_csv_path <- file.path(output_dir, paste0(plate_short, '_tidy.csv'))
   readr::write_csv(final_df, final_csv_path)
     } else {
   # Handle the case where no files were found

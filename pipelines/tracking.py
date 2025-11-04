@@ -1,11 +1,10 @@
+import imageio.v3 as iio
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
-import trackpy as tp
 import time
-import imageio.v3 as iio
+import trackpy as tp
 from pathlib import Path
-import matplotlib.patches as patches
-
 
 ##################################
 ######### MAIN FUNCTION  #########

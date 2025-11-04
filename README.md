@@ -18,16 +18,36 @@ Experimental protocols used to generate images that are compatible with wrmXpres
 - [wrmXpress manuscript](https://doi.org/10.1371/journal.pntd.0010937)
 
     Contains all the wrmXpress details. See this manuscript for an explanation of pipelines (previously called modules) included.
-- [Multivariate screening preprint](https://doi.org/10.1101/2022.07.25.501423)
-
-    Includes comprehensive protocols for microfilariae imaging (motility and viability) and adult filaria imaging (motility). Detailed step-by-step procedures can be found at Protocol Exchange for the [bivariate high-content mf screen](https://doi.org/10.21203/rs.3.pex-1916/v1) and the [multivarite adult screen](https://doi.org/10.21203/rs.3.pex-1918/v1).
-- [*C. elegans* feeding preprint](https://doi.org/10.1101/2022.08.31.506057)
-
-    Includes details on the development and validation of a feeding protocol using fluorescent stains. Detailed step-by-step procedures for parts of this assay can be found [here](https://doi.org/10.21203/rs.3.pex-2018/v1).
 
 # Installation and usage
 
-The Zamanian Lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker recipe containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-wrmxpress), and a pre-compiled image can be found at [DockerHub](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). A Conda environment file has also been provided at `local_env/conda_env.yml`, though this may need modification based on the user's processor (e.g., Apple vs Intel).
+The Zamanian Lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker recipe containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-wrmxpress), and a pre-compiled image can be found at [DockerHub](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). 
+
+External dependencies used: 
+
+- `numpy` – used in [diagnostics, optical_flow, segmentation, tracking] pipelines and [image_processing] preprocessing for numerical operations and array handling.
+- `pandas` – used in [optical_flow, segmentation] pipelines for reading, writing, and managing CSV files and tabular data.
+- `cv2` – used in [diagnostics, optical_flow, segmentation] pipelines and [image_processing] preprocessing for image reading, processing, filtering, and writing.
+- `skimage` – used in [segmentation] pipeline for advanced image processing, including filters, edge detection, and measurements.
+- `scipy` – used in [optical_flow, segmentation] pipelines for additional image processing functions (e.g., Gaussian filtering).
+- `trackpy` – used in [tracking] pipeline for tracking individual objects across video frames.
+- `imageio` – used in [tracking] pipeline for reading and writing image files when cv2 is not effective.
+- `matplotlib` – used in [tracking] pipeline for plotting visualizations.
+- `yaml` – used in [image_processing, utilities] preprocessing for reading and writing YAML configuration files.
+- `PIL` – used in [diagnostics, optical_flow] pipelines and [image_processing] preprocessing for reading, writing, and basic manipulation of images.
+
+Python standard library modules (do not require installation):  
+
+- `os` – used in [cellprofiler, diagnostics, segmentation] pipelines and [image_processing, utilities] preprocessing for file/directory operations.
+- `shutil` – used in [cellprofiler, segmentation] pipelines and [image_processing] preprocessing for copying/moving files and directories.
+- `glob` – used in [cellprofiler, segmentation, tracking] pipelines for pattern-based file searching.
+- `time` – used in [cellprofiler, diagnostics, optical_flow, segmentation, tracking] pipelines for timing operations and logging.
+- `re` – used in [diagnostics] pipeline and [image_processing, utilities] preprocessing for regular expression matching and filename parsing.
+- `pathlib` – used in [cellprofiler, optical_flow, segmentation, tracking] pipelines and [utilities] preprocessing for path management and cross-platform file handling.
+- `subprocess` – used in [cellprofiler, segmentation] pipelines for calling external programs.
+- `shlex` – used in [cellprofiler, segmentation] pipelines for splitting shell commands safely.
+- `tempfile` – used in [cellprofiler, segmentation] to create temporary directories for image processing.
+
 
 ## Running wrmXpress in a Docker container (local or remote)
 
@@ -39,6 +59,13 @@ The Zamanian Lab run all analyses on a node at the [Center for High-Throughput C
 
 4. Clone the wrmXpress repository from GitHub in the same folder.
 
+### Plate ID Naming Convention
+Labs can use any naming convention they prefer but the yaml and the plate  in `input/` and `metadata/` must share the same base name. Our lab typically uses the following naming convention: `YYYYMMDD-p##-XXX` whereby
+    - `YYYYMMDD` → date of experiment  
+    - `p##` → plate number  
+    - `XXX` → researcher initials (does not have to be 3 letters)  
+So an example would be `20220527-p02-KTR`. Note that if your plate id uses an underscore followed by a number, that portion will be cut off. So for instance, `20251028-p01-LRN_35678` will convert to `20251028-p01-LRN`.
+
 5. Transfer the imaging data to `input`. If using a directory of images from wells of a multi-well plate, ensure the image directories are structured in the same was as the example datasets at this Zenodo repository: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648).
 
 6. Transfer the metadata to `metadata`. A given experiment can have any amount of metadata CSVs, and each CSV should contain a single piece of metadata (i.e., strain.csv, species.csv, treatment.csv, conc.csv, etc.). CSVs should be structured to have the same shape as the multi-well plate (that is, A01 should be the top-left cell).
@@ -47,29 +74,49 @@ The Zamanian Lab run all analyses on a node at the [Center for High-Throughput C
 
 8. At this point, your home directory should look like this:
 ```
-[name of home directory]/
-├── input/{plate}
-├── metadata/{plate}
-├── work/
-├── output/
-├── wrmXpress/
-└── {plate}.yml
+[home directory]/
+├── input/        # Raw imaging data organized by plate
+│   └── {plate}/  # Example: 20250411-p01-NBR
+├── metadata/     # Metadata CSVs corresponding to the plates
+│   └── {plate}/  # Example: 20250411-p01-NBR
+├── work/         # Temporary files and intermediate results generated during processing
+├── output/       # Final analysis results (images, CSVs)
+├── wrmXpress/    # Cloned repository containing the code and pipelines
+└── {plate}.yml   # YAML configuration file for the plate (same name as the plate directory in input/)
+
+```
+
+After running wrmXpress, the output/ folder will contain organized results per pipeline chosen. For example:
+```
+├── output/       # Final analysis results
+│   └── {pipeline}/  # Folder for each selected pipeline
+│       ├── cellprofiler/
+│       │   ├── {plate_id}.png       # Stitched overview of the plate
+│       │   └── img/                 # Folder containing wavelength images
+│       ├── optical_flow/
+│       │   ├── {plate_id}.png       # Stitched overview of the plate
+│       │   └── {plate_id}_tidy.csv  # Motility/flow measurements
+│       ├── segmentation/
+│       │   ├── {plate_id}.png       # Stitched overview of the plate
+│       │   └── {plate_id}_tidy.csv  # Segmentation measurements
+│       └── tracking/
+│           ├── {plate_id}.png       # Stitched overview of the plate
+│           └── {plate_id}_tidy.csv  # Tracking measurements
 ```
 
 9. Open Docker and a terminal window, and run this command with the path to your home directory
 ```
-docker run -it -v /Path/To/Home/Directory:/home -rm=TRUE zamanianlab/chtc-wrmxpress:v7/bin/bash
+docker run -it -v ${PWD}:/scratch -w /scratch zamanianlab/chtc-wrmxpress:v8 bash
 ```
 
-10. Run these two commands:
+10. Run this command:
 ```
-cd .. && cd home
 export HOME=$PWD
 ```
 
 11. Run this final command: 
 ```
-python wrmXpress/wrapper.py {plate}.yml {plate}
+python /opt/wrmXpress/wrapper.py {plate}.yml {plate}
 ```
 where `{plate}` is the name of the directory that contains the data in `input`.
 
@@ -134,7 +181,7 @@ Generates a plate-shaped thumbnail of each wavelength, as well as diagnostic ima
 
 Generates a plate-shaped video of each wavelength, where single-well video can be captured as well.
 
-## Motility
+## Optical Flow
 
 <img src="img/flow_dx.png" alt="flow" align = "left" width="200" />
 
@@ -156,7 +203,7 @@ Segments worms using a combination of Sobel and Gaussian filters. Has been teste
 <br>
 <br>
 
-## CellProfiler pipelines
+## CellProfiler
 
 ### mf_celltox
 
@@ -204,7 +251,7 @@ Implementation of `wormsize_intensity` that uses [Cellpose](https://github.com/M
 
 <img src="img/tracking.png" alt="straightened" align = "left" width="200" />
 
-Tracks the individual worms by generating frame-by-frame coordinated data
+Tracks individual worms across timepoints using the Trackpy library. Generates trajectory visualizations and CSV files containing frame-by-frame coordinate data for each worm, enabling quantitative analysis of movement and behavior.
 
 <br>
 <br>
@@ -212,3 +259,14 @@ Tracks the individual worms by generating frame-by-frame coordinated data
 # Issues
 
 Please use the provided issue template when submitting a bug report.
+
+## Additional Information
+
+Supplemental papers: 
+
+- [Multivariate screening preprint](https://doi.org/10.1101/2022.07.25.501423)
+
+    Includes comprehensive protocols for microfilariae imaging (motility and viability) and adult filaria imaging (motility). Detailed step-by-step procedures can be found at Protocol Exchange for the [bivariate high-content mf screen](https://doi.org/10.21203/rs.3.pex-1916/v1) and the [multivarite adult screen](https://doi.org/10.21203/rs.3.pex-1918/v1).
+- [*C. elegans* feeding preprint](https://doi.org/10.1101/2022.08.31.506057)
+
+    Includes details on the development and validation of a feeding protocol using fluorescent stains. Detailed step-by-step procedures for parts of this assay can be found [here](https://doi.org/10.21203/rs.3.pex-2018/v1).
