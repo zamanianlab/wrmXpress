@@ -7,12 +7,11 @@ import shutil
 import yaml
 from PIL import Image
 
-##################################
-######### MAIN FUNCTIONS #########
-##################################
+###################################################
+######### IMAGE PROCESSING MAIN FUNCTIONS #########
+###################################################
 
-# Converts AVI video files into ImageXpress-compatible TIFF sequences.  
-# Handles frame skipping, cleanup, and HTD file generation.
+# Called in step 2 of wrapper.py to convert AVI videos to IX format and create HTD file
 def avi_to_ix(g):
     # Get all AVI files in the plate directory
     avi_files = [os.path.join(g.plate_dir, f) for f in os.listdir(g.plate_dir) if f.endswith('.avi')]
@@ -129,8 +128,7 @@ def avi_to_ix(g):
     
     return timepoints
 
-# Converts LoopBio MP4 recordings into ImageXpress-compatible TIFF sequences.  
-# Handles multi-camera input, rotation, frame skipping, and HTD generation.
+# Called in step 2 of wrapper.py to convert loopbio (multi-camera array) videos to IX format and create HTD file
 def loopbio_to_ix(g, camera_mapping, rotations):
     print("Converting LoopBio MP4 files to ImageXpress format.")
     
@@ -283,6 +281,7 @@ def loopbio_to_ix(g, camera_mapping, rotations):
 
 # Splits multi-well images into individual wells using a grid layout.  
 # Supports masking and both single- and multi-well modes.
+# Called after conversion to IX format and HTDs are parsed
 def grid_crop(g):
     rows_per_image = g.rows // g.rec_rows
     cols_per_image = g.cols // g.rec_cols
@@ -465,6 +464,7 @@ def grid_crop(g):
 
 # Automatically detect and crop wells. Supports both circular and square well detection with fallback to grid method.
 # Uses template-based detection: detects wells once in TimePoint_1, then reuses positions.
+# Called after conversion to IX format and HTDs are parsed
 def auto_crop(g):
     print("Starting auto crop...")
     
@@ -646,6 +646,7 @@ def auto_crop(g):
     print("Auto crop completed.")
 
 # Extracts the column letter, row number, site number, and wavelength number from the image name
+# Called in grid_crop() and auto_crop()
 def extract_well_name(well_string):
     # regular expression pattern to match the format
     pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG)$'
@@ -671,7 +672,8 @@ def extract_well_name(well_string):
         # return None if the pattern doesn't match
         return None, None, None, None
 
-# Stitches all timepoints by merging site images for each timepoint. 
+# Stitches all timepoints by merging site images for each timepoint
+# Called in wrapper.py after plate has been cropped, and wells/sites used are retrieved
 def stitch_all_timepoints(g, wells, input_dir, output_dir, format='TIF'):
     # check if images in input directory have been stitched already
     current_dir = os.path.join(input_dir, f'TimePoint_1')
@@ -690,7 +692,8 @@ def stitch_all_timepoints(g, wells, input_dir, output_dir, format='TIF'):
         # stitch all sites in current timepoint directory
         stitch_directory(g, wells, current_dir, outpath, format)
 
-# Stitches all site images in a directory into well-level images for each wavelength. 
+# Stitches all site images in a directory into well-level images for each wavelength
+# Called in stitch_all_timepoints()
 def stitch_directory(g, wells, input_dir, output_dir, format='TIF'):
     # create output directory if it doesn't already exist
     os.makedirs(output_dir, exist_ok=True)
@@ -714,7 +717,8 @@ def stitch_directory(g, wells, input_dir, output_dir, format='TIF'):
             else:
                 __stitch_sites(sorted(site_paths), outpath, delete_original=False)
 
-# Applies circular or square masks to all well images across timepoints and wavelengths.  
+# Applies circular or square masks to all well images across timepoints and wavelengths
+# Called in wrapper.py after plate is stitched
 def apply_masks(g):
     # return if no masking required
     if g.circle_diameter == 'NA' and g.square_side == 'NA':
@@ -746,6 +750,7 @@ def apply_masks(g):
     print(f"Finished applying masks.")
 
 # Converts 0-indexed row and column indices to a well name (e.g., row=1, col=2 → 'B03')
+# Called in __generate_well_name() and __apply_masks()
 def well_idx_to_name(g, row, col):
     # generate letter
     letter = chr(row + 65)
@@ -781,11 +786,12 @@ def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF')
     return image_paths
 
 
-####################################
-######### HELPER FUNCTIONS #########
-####################################
+#####################################################
+######### IMAGE PROCESSING HELPER FUNCTIONS #########
+#####################################################
 
-# Cleans up incomplete timepoint directories that may result from cameras recording extra frames. Used in avi_to_ix and loopbio_to_ix.
+# Cleans up incomplete timepoint directories that may result from cameras recording extra frames 
+# Called in avi_to_ix() and loopbio_to_ix()
 def __cleanup_incomplete_timepoints(g, expected_files_per_timepoint):
     print(f"Checking for incomplete timepoints using TimePoint_1 as reference...")
     
@@ -829,7 +835,8 @@ def __cleanup_incomplete_timepoints(g, expected_files_per_timepoint):
     print(f"Final result: {len(remaining_dirs)} complete timepoints.")
     return len(remaining_dirs)
 
-# Creates HTD for avi input or loopbio input. Used in avi_to_ix and loopbio_to_ix.
+# Creates HTD for avi input or loopbio input. 
+# Called in avi_to_ix() and loopbio_to_ix()
 def __create_htd(g, timepoints, source): # source is set to "AVI" or "LoopBio" in avi_to_ix and loopbio_to_ix respectively
     lines = []
     lines.append('"Description", ' + source + "\n")
@@ -845,11 +852,13 @@ def __create_htd(g, timepoints, source): # source is set to "AVI" or "LoopBio" i
     with open(htd_path, mode='w') as htd_file:
         htd_file.writelines(lines)
 
-# Converts capital letters to numbers, where A is 0, B is 1, and so on. Used in grid_crop and auto_crop.
+# Converts capital letters to numbers, where A is 0, B is 1, and so on. 
+# Called in grid_crop() and auto_crop()
 def __capital_to_num(alpha):
     return ord(alpha) - 65
 
-# Splits image into x by y images and delete original image. Used in grid_crop.
+# Splits image into x by y images and delete original image. 
+# Called in grid_crop()
 def __split_image(img_path, x, y):
     original_img = Image.open(img_path)
     if original_img is None:
@@ -885,7 +894,8 @@ def __split_image(img_path, x, y):
 
     return images
 
-# Generates well name using the provided group id. Used in grid_crop and auto_crop.
+# Generates well name using the provided group id
+# Called in grid_crop() and auto_crop()
 def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
     if g.mode == "multi-well":
         # For multi-well mode, group_id represents the camera's assigned well position from LoopBio
@@ -928,7 +938,8 @@ def __generate_well_name(g, group_id, col, row, cols_per_image, rows_per_image):
 
     return well_name
 
-# Applies a circular or square mask to an image based on the specified type. Used in grid_crop, auto_crop, and apply_masks.
+# Applies a circular or square mask to an image based on the specified type.
+# Called in grid_crop(), auto_crop(), and apply_masks()
 def __apply_mask(image, mask_size, type):
     # get current height and width of image
     width, height = image.size
@@ -963,7 +974,8 @@ def __apply_mask(image, mask_size, type):
 
         return masked_image
 
-# Detect well positions from TimePoint_1 images to create a template for all timepoints. Used in auto_crop.
+# Detect well positions from TimePoint_1 images to create a template for all timepoints 
+# Called in auto_crop()
 def __detect_template_positions(g, expected_rows, expected_cols, well_shape, 
                                 search_multiplier, hough_param1, hough_param2):
     timepoint_1_dir = os.path.join(g.plate_dir, 'TimePoint_1')
@@ -999,7 +1011,8 @@ def __detect_template_positions(g, expected_rows, expected_cols, well_shape,
     
     return template_positions
 
-# Simplified well detection using Hough circles with distance transform fallback. Used in __detect_template_positions.
+# Simplified well detection using Hough circles with distance transform fallback
+# Called in __detect_template_positions()
 def __detect_wells(image, expected_rows, expected_cols, well_shape,
                    search_multiplier, hough_param1, hough_param2):
     # Convert to grayscale
@@ -1043,7 +1056,8 @@ def __detect_wells(image, expected_rows, expected_cols, well_shape,
     
     return grid_positions
 
-# Simplified well position refinement using Hough circles or distance transform. Used in __detect_wells.
+# Simplified well position refinement using Hough circles or distance transform
+# Called in __detect_wells()
 def __refine_well_position(gray_image, center_x, center_y, search_radius, well_shape,
                            search_multiplier, hough_param1, hough_param2):
     h, w = gray_image.shape
@@ -1100,7 +1114,8 @@ def __refine_well_position(gray_image, center_x, center_y, search_radius, well_s
     # If all methods fail, use original position
     return center_x, center_y
 
-# Extract a well region from the image. Used in auto_crop.
+# Extract a well region from the image
+# Called in auto_crop()
 def __extract_well_region(image, center_x, center_y, size, well_shape):
     padding_factor = 1.2
     crop_size = int(size * padding_factor)
@@ -1133,7 +1148,8 @@ def __extract_well_region(image, center_x, center_y, size, well_shape):
     
     return cropped_img
 
-# Stitches sites into an n by n square image and fills extra space with black and deletes original images if specified. Used in stitch_directory.
+# Stitches sites into an n by n square image and fills extra space with black and deletes original images if specified
+# Called in stitch_directory()
 def __stitch_sites(image_paths, outpath, delete_original=False, format='TIF'):
     if not image_paths:
         raise ValueError("The list of image paths is empty.")

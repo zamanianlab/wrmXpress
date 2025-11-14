@@ -19,9 +19,26 @@ Experimental protocols used to generate images that are compatible with wrmXpres
 
     Contains all the wrmXpress details. See this manuscript for an explanation of pipelines (previously called modules) included.
 
-# Installation and usage
+# Table of Contents
+- [Installation and Dependencies](#installation-and-dependencies)
+- [Running wrmXpress](#running-wrmxpress)
+- [Plate ID Naming Convention](#plate-id-naming-convention)
+- [Input Structure](#input-structure)
+- [Metadata Structure](#metadata-structure)
+- [YAML Structure](#yaml-structure)
+- [Pipelines](#pipelines)
+    - [Diagnostics](#diagnostics)
+    - [Optical Flow](#optical-flow)
+    - [Segmentation](#segmentation)
+    - [CellProfiler](#cellprofiler)
+    - [Tracking](#tracking)
+- [Issues](#issues)
+- [Additional Information](#additional-information)
 
-The Zamanian Lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker recipe containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-wrmxpress), and a pre-compiled image can be found at [DockerHub](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). 
+
+# Installation and Dependencies
+
+The Zamanian Lab run all analyses on a node at the [Center for High-Throughput Computing at UW-Madison](https://chtc.cs.wisc.edu). A Docker recipe containing all the dependendenies can be found in our [Docker GitHub repo](https://github.com/zamanianlab/Docker/tree/main/chtc-wrmxpress), and a pre-compiled image can be found at [DockerHub](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). Please download and install [Docker Desktop](https://docs.docker.com/desktop/) and pull the latest version of the Docker, currently: `zamanianlab/chtc-wrmxpress: v9`
 
 External dependencies used: 
 
@@ -36,7 +53,7 @@ External dependencies used:
 - `yaml` – used in [image_processing, utilities] preprocessing for reading and writing YAML configuration files.
 - `PIL` – used in [diagnostics, optical_flow] pipelines and [image_processing] preprocessing for reading, writing, and basic manipulation of images.
 
-Python standard library modules (do not require installation):  
+Python standard library modules:  
 
 - `os` – used in [cellprofiler, diagnostics, segmentation] pipelines and [image_processing, utilities] preprocessing for file/directory operations.
 - `shutil` – used in [cellprofiler, segmentation] pipelines and [image_processing] preprocessing for copying/moving files and directories.
@@ -49,116 +66,125 @@ Python standard library modules (do not require installation):
 - `tempfile` – used in [cellprofiler, segmentation] to create temporary directories for image processing.
 
 
-## Running wrmXpress in a Docker container (local or remote)
+# Running wrmXpress
 
-1. If running locally, use the Docker desktop app to access the [pre-compiled docker image](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). If running on a remote server, consult with the server administrator for using Docker images.
+1. If running locally, use the Docker desktop app to access the [pre-compiled docker image](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). If running on a remote server, consult with a server administrator for using Docker images. 
 
-2. Create a directory where all the wrmXpress operations will take place.
+2. Create a directory where all the wrmXpress operations will take place. You may name this home directory whatever you would like. 
 
 3. In this new home directory, make `input`, `output`, `metadata`, and `work` directories.
 
-4. Clone the wrmXpress repository from GitHub in the same folder.
+4. Clone the wrmXpress repository from GitHub in the home directory using this command:
 
-### Plate ID Naming Convention
-Labs can use any naming convention they prefer but the yaml and the plate  in `input/` and `metadata/` must share the same base name. Our lab typically uses the following naming convention: `YYYYMMDD-p##-XXX` whereby
-    - `YYYYMMDD` → date of experiment  
-    - `p##` → plate number  
-    - `XXX` → researcher initials (does not have to be 3 letters)  
-So an example would be `20220527-p02-KTR`. Note that if your plate id uses an underscore followed by a number, that portion will be cut off. So for instance, `20251028-p01-LRN_35678` will convert to `20251028-p01-LRN`.
+```git clone https://github.com/zamanianlab/wrmXpress.git```
 
-5. Transfer the imaging data to `input`. If using a directory of images from wells of a multi-well plate, ensure the image directories are structured in the same was as the example datasets at this Zenodo repository: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648).
+5. Transfer your imaging data to `input`. Ensure the image directories are structured in the same way as shown further below or the example datasets at this Zenodo repository: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648). 
 
-6. Transfer the metadata to `metadata`. A given experiment can have any amount of metadata CSVs, and each CSV should contain a single piece of metadata (i.e., strain.csv, species.csv, treatment.csv, conc.csv, etc.). CSVs should be structured to have the same shape as the multi-well plate (that is, A01 should be the top-left cell).
+6. Transfer any metadata to `metadata`. See further below on how to structure the metadata.
 
-7. Use and edit the provided YAML file `master.yml` to configure the run and add it to the home directory. The file should have the same name as the plate directory in `input`.
+7. Use and edit the provided YAML file, `master.yml` to configure the run and add it to the home directory. The file should have the same name as the plate directory in `input`. Please see further below and in the `master.yml` on how to configure your run. 
 
 8. At this point, your home directory should look like this:
 ```
 [home directory]/
 ├── input/        # Raw imaging data organized by plate
-│   └── {plate}/  # Example: 20250411-p01-NBR
+│   └── {plate}/  # Example: 20250127-p01-ABC
 ├── metadata/     # Metadata CSVs corresponding to the plates
-│   └── {plate}/  # Example: 20250411-p01-NBR
-├── work/         # Temporary files and intermediate results generated during processing
+│   └── {plate}/  # Example: 20250127-p01-ABC
+├── work/         # Intermediate results generated during processing
 ├── output/       # Final analysis results (images, CSVs)
 ├── wrmXpress/    # Cloned repository containing the code and pipelines
 └── {plate}.yml   # YAML configuration file for the plate (same name as the plate directory in input/)
 
 ```
 
-After running wrmXpress, the output/ folder will contain organized results per pipeline chosen. For example:
+9. Open Docker and a terminal window, navigate to your home directory created above, and run this command to mount your home directory. Ensure you are using the most recent version of the Docker:
 ```
-├── output/       # Final analysis results
-│   └── {pipeline}/  # Folder for each selected pipeline
-│       ├── cellprofiler/
-│       │   ├── {plate_id}.png       # Stitched overview of the plate
-│       │   └── img/                 # Folder containing wavelength images
-│       ├── optical_flow/
-│       │   ├── {plate_id}.png       # Stitched overview of the plate
-│       │   └── {plate_id}_tidy.csv  # Motility/flow measurements
-│       ├── segmentation/
-│       │   ├── {plate_id}.png       # Stitched overview of the plate
-│       │   └── {plate_id}_tidy.csv  # Segmentation measurements
-│       └── tracking/
-│           ├── {plate_id}.png       # Stitched overview of the plate
-│           └── {plate_id}_tidy.csv  # Tracking measurements
+docker run -it -v ${PWD}:/scratch -w /scratch zamanianlab/chtc-wrmxpress:v9 /bin/bash
 ```
 
-9. Open Docker and a terminal window, and run this command with the path to your home directory
-```
-docker run -it -v ${PWD}:/scratch -w /scratch zamanianlab/chtc-wrmxpress:v8 bash
-```
-
-10. Run this command:
+10. Run this command to redefine your home directory as the current working directory:
 ```
 export HOME=$PWD
 ```
 
-11. Run this final command: 
+11. Run this command to run your plate: 
 ```
 python /opt/wrmXpress/wrapper.py {plate}.yml {plate}
 ```
-where `{plate}` is the name of the directory that contains the data in `input`.
 
-If using a CellProfiler pipeline that implements Cellpose for *C. elegans* segementation, training of a custom model may be required. Follow the instructions [here](cellpose_training/README.md) to train a model on custom images.
+After running wrmXpress, the output folder will contain organized results per pipeline chosen. For example:
+```
+├── output/       # Final analysis results
+│   └── {pipeline}/  # Folder for each selected pipeline
+│       ├── cellprofiler/
+│       │   ├── {plate_id}.png       # Stitched diagnostic of the plate
+│       │   └── img/                 # Folder containing wavelength images
+│       ├── optical_flow/
+│       │   ├── {plate_id}.png       # Stitched diagnostic of the plate
+│       │   └── {plate_id}_tidy.csv  # Motility/flow measurements
+│       ├── segmentation/
+│       │   ├── {plate_id}.png       # Stitched diagnostic of the plate
+│       │   └── {plate_id}_tidy.csv  # Segmentation measurements
+│       └── tracking/
+│           ├── {plate_id}.png       # Stitched diagnostic of the plate
+│           └── {plate_id}_tidy.csv  # Tracking measurements
+```
 
 For testing, example data for each pipline is provided here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648).
 
-# Structure
+# Plate ID Naming Convention
+Users can use any naming convention they prefer but the YAML configuration file and the plate ID in `input/` and `metadata/` must share the same name. Our lab uses the following naming convention: `YYYYMMDD-p##-XXX` whereby:
 
-Pipeline parameters are provided in a YAML file (a template with all the fields and options can be found in the main folder as `master.yml`). Parameters are organized within the following headings:
+    - `YYYYMMDD` → date of experiment  
+    - `p##` → plate number of said date
+    - `XXX` → researcher initials (does not have to be 3 letters)  
 
-### Instrument settings
+An example of a plate would be `20250127-p01-ABC`. 
 
-**File structure** - A raw, uncompressed avi (typically associated with multi-well imaging) or the opinionated structure used by the ImageXpress.
+Important note: If your plate ID uses an underscore followed by a number, that portion will be cut off. So for instance, `20250127-p01-ABC_123456` will convert to `20250127-p01-ABC`.
 
-**Imaging mode** - Single well per image, multiple wells per image, or single sites per image (multi-site).
+# Input Structure
 
-### Processing multi-well images
+Below are the image types that wrmxpress can currently handle. Please note that wherever you see `{plate}`, it is refering to what you name your plate. 
 
-**Physical plate dimensions** - The true count of wells in each row and column
+Structure for an ImageXpress plate (single-well or multi-site images). Our lab uses a high-content imaging machine called the ImageXpress from [Molecular Devices](https://www.moleculardevices.com/products), which automatically strucutres data in this format:
+```
+{plate}_Plate_unique_identifier/
+├── {plate}.HTD     # HTD file associated with the plate
+├── TimePoint_1/    # Timepoint for plate (may have multiple timepoints)
+│   └── images      # Images labeled by well/site (e.g. 20250127-p01-ABC_A01.TIF)
+```
 
-**Number of rows and columns per image** - If performing multi-well imaging, include the number of rows/columns in each image. Set both to 1 if mode is single-well.
+Structure for an AVI video of a plate (multi-well images):
+```
+{plate}/
+├── {plate}.AVI     # Video of plate
+```
 
-**Multi-well detection mode** - If performing multi-well imaging, choose the method for detecting wells. `auto` works for cropped videos of 24-well plates; use `grid` for other formats.
+Structure for a multicamera array (multi-well images). Our lab uses a 6 camera [loopbio](http://loopbio.com/index.html) recording system:
+```
+{plate}/
+├── {plate}.{camera_serial number}/     # May have video from multiple cameras
+│   └──  MPEG4 video                    # Video of section of plate
+```
 
-**Sites** - If multi-site is flagged, set the number of sites on the x and y axis.
+# Metadata Structure
 
-### Run-time settings
+A given experiment can have any number of metadata CSVs, and each CSV should contain a single piece of metadata (i.e., strain.csv, species.csv, treatment.csv, concentration.csv, etc.). Values within the CSVs should mirror the same shape as the plate (96 well-plate metadata csv should be 8x12). Metadata will be automatically mapped to analysis results by well. The metadata folder can be left blank if you do not have any, otherwise it can be structured like below:
 
-**Wells** - Either `All` or a list of wells (each well on a new line, initiated with a hyphen)
+```
+├── metadata/  
+│   └── {plate}/  
+│       ├── species.csv     
+│       ├── treatment.csv
+│       ├── concentration.csv
+│       ├── other.csv           # You may name and use any kind of metadata
+```
 
-**Directories** - Full paths of the `input/`, `output/`, and `work/` directories. If using a Docker image, each can be in the root directory.
+# YAML structure
 
-### Universal Image Transformations
-
-**Circle diameter** - To apply a circular mask where the radius is a fraction of the image height
-
-**Square side** - To apply a square mask where the square side is a fraction of the image height
-
-### Pipeline selection
-
-**Pipelines** contains a key for each possible pipeline, including CellProfiler. Pipelines are invoked by setting the value of `run` to `True`; additional pipeline-specific parameters may apply.
+Pipeline parameters are provided and configured through a YAML file. A template with all the fields and options can be found in the main folder as `master.yml`. **Pipelines** contains a key for each possible pipeline. Pipelines are invoked by setting the value of `run` to `True`; additional pipeline-specific parameters may apply. Some options must be uncommented to be run. Pipelines can be run simultaneously but for those that are not needed, set the value of `run` to `False`
 
 # Pipelines 
 
@@ -179,13 +205,20 @@ Generates a plate-shaped thumbnail of each wavelength, as well as diagnostic ima
 
 ### video_dx
 
+<img src="img/20251018-p02-JDC_w1.gif" alt="wormsize" align = "left" width="200" />
+
 Generates a plate-shaped video of each wavelength, where single-well video can be captured as well.
+
+<br>
+<br>
+<br>
+<br>
 
 ## Optical Flow
 
 <img src="img/flow_dx.png" alt="flow" align = "left" width="200" />
 
-A Python implementation of CV2's dense flow algorithm. Requires video input and supports `imagexpress` or `avi` modalities. Thumbnails of flow output are generated by `static_dx`. If using `multi-well`, `auto` works for videos of 24-well plates cropped to only include the plate; otherwise use `grid`.
+A Python implementation of CV2's dense flow algorithm and calculates the flow magnitude for each well. Requires video input and supports `imagexpress`, `avi`, or `loopbio` (multi-camera array) modalities.
 
 <br>
 <br>
@@ -196,7 +229,7 @@ A Python implementation of CV2's dense flow algorithm. Requires video input and 
 
 <img src="img/segment_dx.png" alt="segment" align = "left" width="200" />
 
-Segments worms using a combination of Sobel and Gaussian filters. Has been tested with microfilaria, nematode larvae and adults, and schistosome adults. Can be run on multiple wavelengths and with multi-site images. Thumbnails of segmented worms are generated by `static_dx`.
+Segments worms using [Cellpose](https://github.com/MouseLand/cellpose/blob/main/README.md) or Python's Sobel and Gaussian filters. Custom models can be created via Cellpose for various species and added to pipelines/models/cellpose to use in the segmentation pipeline. Can be run on multiple wavelengths and with multi-site images. Thumbnails of segmented worms are generated by `static_dx`.
 
 <br>
 <br>
@@ -204,6 +237,7 @@ Segments worms using a combination of Sobel and Gaussian filters. Has been teste
 <br>
 
 ## CellProfiler
+Custom models can be created via [CellProfiler](https://github.com/CellProfiler/CellProfiler/blob/main/README.md) for various species and added to pipelines/cellprofiler to use in the CellProfiler pipeline. Below are various custom pipelines for measuring viability and development.  
 
 ### mf_celltox
 
@@ -235,17 +269,9 @@ Generic pipeline for measuring the size of worms. Has been tested with mixed sta
 <br>
 <br>
 
-### wormsize_trans
-
-Implementation of `wormsize` that also measures worm fluorescence in a single wavelength. Useful for filtering for transgenic worms containing a fluorescent marker.
-
-### wormsize_intensity
-
-Implementation of `wormsize` that also measures intensity features, which may be helpful for filtering non-worms.
-
 ### wormsize_intensity_cellpose
 
-Implementation of `wormsize_intensity` that uses [Cellpose](https://github.com/MouseLand/cellpose) and a pre-trained model for *C. elegans* segmentation.
+Implementation of `wormsize_intensity` that uses [Cellpose](https://github.com/MouseLand/cellpose/blob/main/README.md) and a pre-trained model for *C. elegans* segmentation.
 
 ## Tracking
 
@@ -258,9 +284,9 @@ Tracks individual worms across timepoints using the Trackpy library. Generates t
 
 # Issues
 
-Please use the provided issue template when submitting a bug report.
+Please use the provided issue template when submitting a bug report. For other issues or questions about model development, please reach out to the zamanian lab at these emails: mzamanian@wisc.edu or lrnunn@wisc.edu.  
 
-## Additional Information
+# Additional Information
 
 Supplemental papers: 
 

@@ -5,11 +5,12 @@ from pathlib import Path
 
 from preprocessing.image_processing import well_idx_to_name
 
-##################################
-######### MAIN FUNCTIONS #########
-##################################
+############################################
+######### UTILITIES MAIN FUNCTIONS #########
+############################################
 
 # Parse YAML file and return configuration as a g_class object
+# Called in step 1 of wrapper.py
 def parse_yaml(arg_parser, g_class):
     # Required positional arguments
     arg_parser.add_argument('parameters',
@@ -146,6 +147,7 @@ def parse_yaml(arg_parser, g_class):
 
 
 # Parse HTD file and return experimental metadata as a g_class object
+# Called in step 2 of wrapper.py after conversion to IX format and HTD files have been created
 def parse_htd(yaml, g_class):
     with open(yaml.plate_dir.joinpath(yaml.plate_short + '.HTD'), encoding='utf-8', errors='ignore') as f:
         lines = f.readlines()
@@ -182,11 +184,12 @@ def parse_htd(yaml, g_class):
     return g
 
 
-###################################
-######### HELPER FUNCTIONS ########
-###################################
+#############################################
+######### UTILITIES HELPER FUNCTIONS ########
+#############################################
 
 # Add '_w1' suffix to all TIF files if missing
+# Called in step 2 of wrapper.py, specifically for IX plates
 def rename_files(g):
     for timepoint in range(g.time_points):
         images = os.listdir(g.plate_dir.joinpath('TimePoint_' + str(timepoint + 1)))
@@ -199,6 +202,7 @@ def rename_files(g):
 
 # Generate list of wells and well_sites for processing
 # List of well_sites will be identical to list of wells if stitch == True, else it will be a list of all well/site pairings
+# Called in step 2 of wrapper.py, after plate is cropped and before stitching of timepoints
 def get_wells(g):
     wells = []
     well_sites = []

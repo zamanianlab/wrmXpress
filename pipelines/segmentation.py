@@ -16,9 +16,9 @@ from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
 
 
-##################################
-######### MAIN FUNCTION  #########
-##################################
+###############################################
+######### SEGMENTATION MAIN FUNCTION  #########
+###############################################
 
 # Main segmentation function that performs image segmentation using either a Python-based method or Cellpose.
 # It handles all wavelengths, applies circular masks, thresholds, blurs, edge detection, and saves results as CSV and images.
@@ -86,6 +86,8 @@ def segmentation(g, options, well_site):
                 df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
                 outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
                 df.to_csv(path_or_buf=outpath, index_label='well_site')
+            
+            # elif model_type = 'yolo':
 
             else: # Runs if model_type is Cellpose
                 model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['model']
@@ -136,9 +138,9 @@ def segmentation(g, options, well_site):
     return wavelengths
 
 
-#####################################
-######### HELPER FUNCTIONS  #########
-#####################################
+##################################################
+######### SEGMENTATION HELPER FUNCTIONS  #########
+##################################################
 
 # Create a circular mask for an image of height h and width w. Useful for restricting analysis to a circular region.
 def create_circular_mask(h, w, center=None, radius=None):
@@ -153,7 +155,7 @@ def create_circular_mask(h, w, center=None, radius=None):
     return mask
 
 
-# Segment smooth muscle area (SMA) from a binary image, remove small debris, and save intermediate images.
+# Originally developed to segment S. mansoni from a binary image, remove small debris, and save intermediate images.
 def segment_sma(g, well_site, binary):
     filled = ndimage.binary_fill_holes(binary)
 
@@ -184,7 +186,8 @@ def segment_sma(g, well_site, binary):
     return filtered_sizes
 
 
-# Segment muscle fibers (MF) by calculating the area of a binary image.
+# Originally created to segment microfilarae by calculating the area of a binary image.
+# Can be used as a general segmentation tool
 def segment_mf(binary):
     area = np.sum(binary)
     return area

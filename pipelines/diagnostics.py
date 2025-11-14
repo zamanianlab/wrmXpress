@@ -7,9 +7,9 @@ from PIL import Image
 
 from preprocessing.image_processing import stitch_all_timepoints, stitch_directory, extract_well_name, generate_selected_image_paths
 
-##################################
-######### MAIN FUNCTIONS #########
-##################################
+##############################################
+######### DIAGNOSTICS MAIN FUNCTIONS #########
+##############################################
 
 # Generate a static diagnostic image for a plate by stitching selected wells
 # Saves the resulting stitched image in the output directory for each wavelength
@@ -105,11 +105,12 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
     print("Finished creating video.")
 
 
-#####################################
-######### HELPER FUNCTIONS  #########
-#####################################
+#################################################
+######### DIAGNOSTICS HELPER FUNCTIONS  #########
+#################################################
 
 # Stitch a list of well images into a single plate image
+# Called in static_dx()
 def __stitch_plate(g, image_paths, outpath, rescale_factor, format='TIF'):
     first_image = __rescale_image(image_paths[0], rescale_factor)
     width = first_image.size[0]
@@ -145,6 +146,7 @@ def __stitch_plate(g, image_paths, outpath, rescale_factor, format='TIF'):
     plate_image.save(outpath)
 
 # Rescale an image by the rescale factor
+# Called in __stitch_plate()
 def __rescale_image(image_path, rescale_factor):
     with Image.open(image_path) as img:
         # If rescale factor is less than or equal to 0 or greater than 1, raise an error.

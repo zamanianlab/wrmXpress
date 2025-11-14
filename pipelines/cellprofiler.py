@@ -9,12 +9,12 @@ from pathlib import Path
 from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
 
-##################################
-######### MAIN FUNCTION  #########
-##################################
+###############################################
+######### CELLPROFILER MAIN FUNCTION  #########
+###############################################
 
-# This is the main function that coordinates CellPose and CellProfiler runs.  
-# It prepares the directories, identifies the correct image files, runs CellPose segmentation,  
+# This is the main function that coordinates CellProfiler runs.  
+# It prepares the directories, identifies the correct image files, runs CellPose segmentation (for certain models),  
 # generates the required CSV file via R, and finally runs CellProfiler to analyze the segmented images.
 def cellprofiler(g, options, well_site):
     # Create output and CSV directories at the very start of the function
@@ -78,9 +78,9 @@ def cellprofiler(g, options, well_site):
     return [wavelength]
 
 
-#####################################
-######### HELPER FUNCTIONS  #########
-#####################################
+##################################################
+######### CELLPROFILER HELPER FUNCTIONS  #########
+##################################################
 
 # This function renames a .TIF file as .tif.  
 # This is necessary because CellPose requires images to be in a directory and in .tif format for processing.

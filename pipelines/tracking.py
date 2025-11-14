@@ -6,9 +6,9 @@ import time
 import trackpy as tp
 from pathlib import Path
 
-##################################
-######### MAIN FUNCTION  #########
-##################################
+###########################################
+######### TRACKING MAIN FUNCTION  #########
+###########################################
 
 # Main tracking function that processes a single well and wavelength.
 # It reads the image sequence for the well, normalizes images, runs Trackpy for particle/worm tracking,
