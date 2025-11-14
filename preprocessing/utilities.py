@@ -91,7 +91,7 @@ def parse_yaml(arg_parser, g_class):
     output = conf.get('directories').get('output')[0]
     metadata = conf.get('directories').get('metadata')[0]
     plate = args.plate
-    plate_short = re.sub('_[0-9]*$', '', plate)
+    plate_short = re.sub('(_Plate)?_[0-9]+$', '', plate)
 
     print('run-time settings:')
     print("\t\twells: {}".format(wells))
