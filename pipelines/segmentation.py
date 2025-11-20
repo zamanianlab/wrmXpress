@@ -11,19 +11,18 @@ import pandas as pd
 import cv2
 from skimage import io, filters, measure
 from scipy import ndimage
+from ultralytics import YOLO
 
 from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
-
 
 ###############################################
 ######### SEGMENTATION MAIN FUNCTION  #########
 ###############################################
 
-# Main segmentation function that performs image segmentation using either a Python-based method or Cellpose.
-# It handles all wavelengths, applies circular masks, thresholds, blurs, edge detection, and saves results as CSV and images.
+# Main segmentation function that performs image segmentation using either a Python-based method, Cellpose, or yolo.
 def segmentation(g, options, well_site):
-    """Perform segmentation based on model type."""
+    # Create work and output directories and gather the segmentation method
     work_dir = Path(g.work) / 'segmentation'
     output_dir = Path(g.output) / 'segmentation'
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -87,7 +86,68 @@ def segmentation(g, options, well_site):
                 outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
                 df.to_csv(path_or_buf=outpath, index_label='well_site')
             
-            # elif model_type = 'yolo':
+            elif model_type == 'yolo': # Runs if model_type is YOLO
+                model_path = PROGRAM_DIR / "pipelines" / "models" / "yolo" / options['model']
+                
+                # YOLO requires PNG format for processing
+                # Use a temporary directory that is automatically cleaned up after use
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    
+                    # Convert TIF to PNG for YOLO processing
+                    png_path = convert_tif_to_png_for_yolo(tiff_file, temp_dir)
+                    
+                    # Run YOLO segmentation
+                    output_img_dir = output_dir / 'img'
+                    masks_data = run_yolo_segmentation(
+                        model_path, 
+                        png_path, 
+                        output_img_dir,
+                        g.plate_short,
+                        well_site,
+                        wavelength + 1
+                    )
+                    
+                    # Create combined labeled mask image (matching cellpose format)
+                    if masks_data:
+                        # Get image shape from first mask
+                        image_shape = masks_data[0]['mask'].shape
+                        labeled_image = create_labeled_mask_from_yolo(masks_data, image_shape)
+                        
+                        # Scale labeled image for visibility (multiply by 255 so objects are visible)
+                        labeled_image_scaled = labeled_image * 255
+                        
+                        # Save labeled mask PNG to work directory
+                        mask_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                        mask_path = work_dir / mask_filename
+                        cv2.imwrite(str(mask_path), labeled_image_scaled.astype(np.uint16))
+                        
+                        # Process segmentation metrics
+                        for mask_info in masks_data:
+                            result = {
+                                'well_site': well_site,
+                                'object_number': mask_info['mask_id'],
+                                'size': mask_info['area'],
+                                'compactness': mask_info['compactness'],
+                                'width_px': mask_info['width'],
+                                'length_px': mask_info['length']
+                            }
+                            all_results.append(result)
+                    else:
+                        # No masks detected
+                        result = {
+                            'well_site': well_site,
+                            'object_number': "NA",
+                            'size': "NA",
+                            'compactness': "NA",
+                            'width_px': "NA",
+                            'length_px': "NA"
+                        }
+                        all_results.append(result)
+                
+                # Save results to CSV
+                df = pd.DataFrame(all_results)
+                csv_outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
+                df.to_csv(csv_outpath, index=False)
 
             else: # Runs if model_type is Cellpose
                 model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['model']
@@ -211,3 +271,139 @@ def run_cellpose(model_type, model_path, temp_dir):
     )
     cellpose_command_split = shlex.split(cellpose_command)
     subprocess.run(cellpose_command_split)
+
+
+# Convert a TIF file to PNG format for YOLO processing and returns the path to the PNGs.
+# Called in segmentation after temp directory is made
+def convert_tif_to_png_for_yolo(tif_path, temp_dir, p_low=2.0, p_high=98.0):
+
+    # Read the TIF file
+    img = cv2.imread(str(tif_path), cv2.IMREAD_ANYDEPTH)
+    
+    if img is None:
+        raise ValueError(f"Failed to read TIF file: {tif_path}")
+    
+    # Convert to float for processing
+    array = img.astype(np.float64)
+    
+    # Calculate percentile-based min/max for robust contrast
+    lo = float(np.percentile(array, p_low))
+    hi = float(np.percentile(array, p_high))
+    
+    # Rescale to 0-255 range
+    if hi > lo:
+        scaled = (array - lo) / (hi - lo)
+        scaled = np.clip(scaled, 0.0, 1.0)
+        img_uint8 = (scaled * 255.0 + 0.5).astype(np.uint8)
+    else:
+        img_uint8 = np.zeros_like(array, dtype=np.uint8)
+    
+    # Save as PNG
+    png_path = Path(temp_dir) / (Path(tif_path).stem + '.png')
+    cv2.imwrite(str(png_path), img_uint8)
+    
+    return png_path
+
+
+# Measures a binary mask and returns a tuple of the area, width, length, and compactness in pixels.
+# Called in run_yolo_segmentation()
+def measure_mask_yolo(mask):
+
+    mask_uint8 = (mask * 255).astype(np.uint8)
+    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
+        return 0, 0, 0, 0
+    
+    cnt = max(contours, key=cv2.contourArea)  # largest contour
+    area = cv2.contourArea(cnt)
+    perimeter = cv2.arcLength(cnt, True)
+    
+    # Fit a rotated rectangle to estimate length and width
+    rect = cv2.minAreaRect(cnt)
+    (cx, cy), (w, h), angle = rect
+    length = max(w, h)
+    width = min(w, h)
+    
+    # Calculate compactness (for cellpose compatibility)
+    compactness = (perimeter ** 2) / (4 * np.pi * area) if area > 0 else 0
+    
+    return area, width, length, compactness
+
+
+# Run YOLO segmentation model on an image and process results.
+# Called in segmentation after mask paths are returned
+def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, well_site, wavelength):
+    # Load YOLO model
+    model = YOLO(str(model_path))
+    
+    # Create output directory for prediction images
+    output_img_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Run inference - save prediction images with bounding boxes
+    # YOLO will create a subdirectory with the name parameter
+    run_name = f"{plate_short}_{well_site}_w{wavelength}"
+    results = model.predict(
+        source=str(image_path),
+        save=True,
+        project=str(output_img_dir),
+        name=run_name,
+        exist_ok=True
+    )
+    
+    # Move prediction image from nested folder to img folder directly
+    nested_folder = output_img_dir / run_name
+    if nested_folder.exists():
+        # Find the prediction image (usually a jpg or png)
+        for img_file in nested_folder.glob('*'):
+            if img_file.is_file() and img_file.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                # Move to parent img directory with descriptive name
+                dest_path = output_img_dir / f"{run_name}{img_file.suffix}"
+                shutil.move(str(img_file), str(dest_path))
+        
+        # Remove the now-empty nested folder
+        try:
+            nested_folder.rmdir()
+        except OSError:
+            # Folder not empty or other error, leave it
+            pass
+    
+    # Process results
+    masks_data = []
+    
+    for result in results:
+        if not result.masks:
+            continue
+        
+        for i, mask in enumerate(result.masks.data):
+            mask_np = mask.cpu().numpy()
+            
+            # Measure the mask
+            area, width, length, compactness = measure_mask_yolo(mask_np)
+            
+            masks_data.append({
+                'mask': mask_np,
+                'mask_id': i + 1,
+                'area': area,
+                'width': width,
+                'length': length,
+                'compactness': compactness
+            })
+    
+    return masks_data
+
+
+# Creates a single labeled image where each mask has a unique pixel value to match the cellpose output format.
+# Called in segmentation after getting mask shape
+def create_labeled_mask_from_yolo(masks_data, image_shape):
+
+    labeled_image = np.zeros(image_shape, dtype=np.uint16)
+    
+    for mask_info in masks_data:
+        mask = mask_info['mask']
+        mask_id = mask_info['mask_id']
+        
+        # Assign unique label to each mask
+        labeled_image[mask > 0.5] = mask_id
+    
+    return labeled_image

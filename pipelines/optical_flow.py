@@ -14,7 +14,7 @@ from scipy import ndimage
 # It quantifies movement across frames for each wavelength and well site.  
 # The results are visualized as colorized flow maps and summarized as CSV files for downstream analysis.
 def optical_flow(g, options, well_site, multiplier=2):
-    # Create output and CSV directories at the start of the function
+    # Create work and output directories
     work_dir = Path(g.work) / 'optical_flow'
     output_dir = Path(g.output) / 'optical_flow'
     work_dir.mkdir(parents=True, exist_ok=True)

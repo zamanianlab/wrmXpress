@@ -17,7 +17,7 @@ PROGRAM_DIR = get_program_dir()
 # It prepares the directories, identifies the correct image files, runs CellPose segmentation (for certain models),  
 # generates the required CSV file via R, and finally runs CellProfiler to analyze the segmented images.
 def cellprofiler(g, options, well_site):
-    # Create output and CSV directories at the very start of the function
+    # Create work and output directories and gather model/pipeline selection
     work_dir = Path(g.work) / "cellprofiler"
     img_out_dir = Path(g.output) / "cellprofiler" / "img"
     work_dir.mkdir(parents=True, exist_ok=True)

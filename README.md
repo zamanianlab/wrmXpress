@@ -32,6 +32,7 @@ Experimental protocols used to generate images that are compatible with wrmXpres
     - [Segmentation](#segmentation)
     - [CellProfiler](#cellprofiler)
     - [Tracking](#tracking)
+- [Custom Development and Model Creation](#custom-development-and-model-creation)
 - [Issues](#issues)
 - [Additional Information](#additional-information)
 
@@ -52,6 +53,7 @@ External dependencies used:
 - `matplotlib` – used in [tracking] pipeline for plotting visualizations.
 - `yaml` – used in [image_processing, utilities] preprocessing for reading and writing YAML configuration files.
 - `PIL` – used in [diagnostics, optical_flow] pipelines and [image_processing] preprocessing for reading, writing, and basic manipulation of images.
+- `ultralytics` - used in [segmentation] for yolo machine learning models and mask creation.
 
 Python standard library modules:  
 
@@ -65,26 +67,26 @@ Python standard library modules:
 - `shlex` – used in [cellprofiler, segmentation] pipelines for splitting shell commands safely.
 - `tempfile` – used in [cellprofiler, segmentation] to create temporary directories for image processing.
 
+External programs used:
+- `CellProfiler` - used in [cellprofiler] for measuring fluorescence and straightening/untangling worms.
+- `CellPose` - used in [segmentation, cellprofiler] to segment objects and create masks.
+
 
 # Running wrmXpress
 
-1. If running locally, use the Docker desktop app to access the [pre-compiled docker image](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). If running on a remote server, consult with a server administrator for using Docker images. 
+1. If running locally, use the Docker desktop app to access the [pre-compiled docker image](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). If running on a remote server, consult with a server administrator for using Docker images. wrmXpress comes pre-loaded on the Docker. 
 
 2. Create a directory where all the wrmXpress operations will take place. You may name this home directory whatever you would like. 
 
 3. In this new home directory, make `input`, `output`, `metadata`, and `work` directories.
 
-4. Clone the wrmXpress repository from GitHub in the home directory using this command:
+4. Transfer your imaging data to `input`. Ensure the image directories are structured in the same way as shown further below or the example datasets at this Zenodo repository: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648). 
 
-```git clone https://github.com/zamanianlab/wrmXpress.git```
+5. Transfer any metadata to `metadata`. See further below on how to structure the metadata.
 
-5. Transfer your imaging data to `input`. Ensure the image directories are structured in the same way as shown further below or the example datasets at this Zenodo repository: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648). 
+6. Use and edit the provided YAML file, `master.yml` to configure the run and add it to the home directory. The file should have the same name as the plate directory in `input`. Please see further below and in the `master.yml` on how to configure your run. 
 
-6. Transfer any metadata to `metadata`. See further below on how to structure the metadata.
-
-7. Use and edit the provided YAML file, `master.yml` to configure the run and add it to the home directory. The file should have the same name as the plate directory in `input`. Please see further below and in the `master.yml` on how to configure your run. 
-
-8. At this point, your home directory should look like this:
+7. At this point, your home directory should look like this:
 ```
 [home directory]/
 ├── input/        # Raw imaging data organized by plate
@@ -93,22 +95,21 @@ Python standard library modules:
 │   └── {plate}/  # Example: 20250127-p01-ABC
 ├── work/         # Intermediate results generated during processing
 ├── output/       # Final analysis results (images, CSVs)
-├── wrmXpress/    # Cloned repository containing the code and pipelines
 └── {plate}.yml   # YAML configuration file for the plate (same name as the plate directory in input/)
 
 ```
 
-9. Open Docker and a terminal window, navigate to your home directory created above, and run this command to mount your home directory. Ensure you are using the most recent version of the Docker:
+8. Open Docker and a terminal window, navigate to your home directory created above, and run this command to mount your home directory. Ensure you are using the most recent version of the Docker:
 ```
 docker run -it -v ${PWD}:/scratch -w /scratch zamanianlab/chtc-wrmxpress:v9 /bin/bash
 ```
 
-10. Run this command to redefine your home directory as the current working directory:
+9. Run this command to redefine your home directory as the current working directory:
 ```
 export HOME=$PWD
 ```
 
-11. Run this command to run your plate: 
+10. Run this command to run your plate: 
 ```
 python /opt/wrmXpress/wrapper.py {plate}.yml {plate}
 ```
@@ -171,7 +172,7 @@ Structure for a multicamera array (multi-well images). Our lab uses a 6 camera [
 
 # Metadata Structure
 
-A given experiment can have any number of metadata CSVs, and each CSV should contain a single piece of metadata (i.e., strain.csv, species.csv, treatment.csv, concentration.csv, etc.). Values within the CSVs should mirror the same shape as the plate (96 well-plate metadata csv should be 8x12). Metadata will be automatically mapped to analysis results by well. The metadata folder can be left blank if you do not have any, otherwise it can be structured like below:
+A given experiment can have any number of metadata CSVs, and each CSV should contain a single piece of metadata (i.e., strain.csv, species.csv, treatment.csv, concentration.csv, etc.). Values within the CSVs should mirror the same shape as the plate (96 well-plate metadata csv should be 8x12). Please see the `supplemental` folder in the main GitHub repository to see an example metadata folder. Metadata will be automatically mapped to analysis results by well. The metadata folder can be left blank if you do not have any, otherwise it can be structured like below:
 
 ```
 ├── metadata/  
@@ -205,7 +206,7 @@ Generates a plate-shaped thumbnail of each wavelength, as well as diagnostic ima
 
 ### video_dx
 
-<img src="img/20251018-p02-JDC_w1.gif" alt="wormsize" align = "left" width="200" />
+<img src="img/20250827-p01-KTR_w1.gif" alt="wormsize" align = "left" width="200" />
 
 Generates a plate-shaped video of each wavelength, where single-well video can be captured as well.
 
@@ -229,7 +230,7 @@ A Python implementation of CV2's dense flow algorithm and calculates the flow ma
 
 <img src="img/segment_dx.png" alt="segment" align = "left" width="200" />
 
-Segments worms using [Cellpose](https://github.com/MouseLand/cellpose/blob/main/README.md) or Python's Sobel and Gaussian filters. Custom models can be created via Cellpose for various species and added to pipelines/models/cellpose to use in the segmentation pipeline. Can be run on multiple wavelengths and with multi-site images. Thumbnails of segmented worms are generated by `static_dx`.
+Segments worms using [Cellpose](https://github.com/MouseLand/cellpose/blob/main/README.md), [YOLOV8](https://yolov8.com/), or Python's Sobel and Gaussian filters. Custom models can be created via Cellpose or Yolo for various species and added to pipelines/models/cellpose to use in the segmentation pipeline. Can be run on multiple wavelengths and with multi-site images.
 
 <br>
 <br>
@@ -281,6 +282,19 @@ Tracks individual worms across timepoints using the Trackpy library. Generates t
 
 <br>
 <br>
+
+# Custom Development and Model Creation 
+The Docker comes pre-loaded with wrmXpress in a specific folder called `opt`, which can be difficult for some to navigate to and easily edit code. For those interested in an easier way of editing or customizing their pipelines via editing wrmXpress code, clone the wrmXpress repository from GitHub in the home directory using this command:
+
+```git clone https://github.com/zamanianlab/wrmXpress.git```
+
+To run a plate with your edited code or new model addition, you may follow the same steps above with only one slight change to run the plate:
+
+```python wrmXpress/wrapper.py {plate}.yml {plate}```
+
+Models are created generally for segmentation purposes and are tailored to specific species and life cycle stages. The frameworks used to build segmentation models are Cellpose and YoloV8. CellProfiler is a program which can be used to segment, measure fluoresence, and untangle and straighten worms. Please see the `supplemental` folder in the GitHub main folder to see how to create your own custom models and CellProfiler pipelines. 
+
+
 
 # Issues
 
