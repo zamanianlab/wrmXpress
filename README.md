@@ -76,7 +76,7 @@ External programs used:
 
 1. If running locally, use the Docker desktop app to access the [pre-compiled docker image](https://hub.docker.com/repository/docker/zamanianlab/chtc-wrmxpress). If running on a remote server, consult with a server administrator for using Docker images. wrmXpress comes pre-loaded on the Docker. 
 
-2. Create a directory where all the wrmXpress operations will take place. You may name this home directory whatever you would like. 
+2. Create a directory where all the wrmXpress operations will take place. You may name this home directory whatever you would like and should be in a place where you can easily navigate to. 
 
 3. In this new home directory, make `input`, `output`, `metadata`, and `work` directories.
 
@@ -180,7 +180,7 @@ A given experiment can have any number of metadata CSVs, and each CSV should con
 │       ├── species.csv     
 │       ├── treatment.csv
 │       ├── concentration.csv
-│       ├── other.csv           # You may name and use any kind of metadata
+│       ├── other.csv          
 ```
 
 # YAML structure

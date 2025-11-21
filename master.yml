@@ -24,6 +24,12 @@ frame_skipping:
   enabled: False  # Set to True to enable frame skipping
   skip_interval: 1  # Skip every N frames (1 = no skipping, 2 = skip every other frame, etc.)
 
+# Frame capping configuration (applies to AVI and LoopBio formats)
+# Use this to limit processing to only the first N frames (applied after frame skipping)
+frame_cap:
+  enabled: False  # Set to True to enable frame capping
+  max_frames: 50  # Maximum number of frames to process
+
 ########################################
 ### PREPROCESSING MULTI-WELL IMAGES  ###
 ########################################

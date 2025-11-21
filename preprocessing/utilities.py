@@ -122,6 +122,14 @@ def parse_yaml(arg_parser, g_class):
     print(f"\t\tenabled: {frame_skipping_enabled}")
     print(f"\t\tskip interval: {frame_skip_interval}")
 
+    # frame capping configuration
+    frame_cap_config = conf.get('frame_cap', {})
+    frame_cap_enabled = frame_cap_config.get('enabled', False)
+    frame_cap_max_frames = frame_cap_config.get('max_frames', 50)
+    print('frame capping settings:')
+    print(f"\t\tenabled: {frame_cap_enabled}")
+    print(f"\t\tmax frames: {frame_cap_max_frames}")
+
     # LoopBio-specific configuration
     camera_mapping = {}
     rotations = []
@@ -141,7 +149,8 @@ def parse_yaml(arg_parser, g_class):
                        plate_dir, plate, plate_short, wells,
                        circle_diameter, square_side,
                        '', '', '', '', '', camera_mapping, rotations,
-                       frame_skipping_enabled, frame_skip_interval)
+                       frame_skipping_enabled, frame_skip_interval,
+                       frame_cap_enabled, frame_cap_max_frames)
 
     return yaml_out, pipelines
 
@@ -179,7 +188,8 @@ def parse_htd(yaml, g_class):
                 yaml.plate_dir, yaml.plate, yaml.plate_short, yaml.wells,
                 yaml.circle_diameter, yaml.square_side,
                 desc, time_points, n_waves, wave_names, '', yaml.camera_mapping, yaml.rotations,
-                yaml.frame_skipping_enabled, yaml.frame_skip_interval)
+                yaml.frame_skipping_enabled, yaml.frame_skip_interval,
+                yaml.frame_cap_enabled, yaml.frame_cap_max_frames)
 
     return g
 

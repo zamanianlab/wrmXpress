@@ -67,6 +67,8 @@ if __name__ == "__main__":
             "rotations",
             "frame_skipping_enabled",
             "frame_skip_interval",
+            "frame_cap_enabled",
+            "frame_cap_max_frames",
         ],
     )
 

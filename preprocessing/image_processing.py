@@ -35,6 +35,11 @@ def avi_to_ix(g):
                     if (frame_counter - 1) % g.frame_skip_interval == 0:
                         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
                         frames.append(img)
+                        
+                        # Check frame cap
+                        if g.frame_cap_enabled and len(frames) >= g.frame_cap_max_frames:
+                            print(f"Frame cap reached: stopping at {len(frames)} frames")
+                            break
         else:
             # Original behavior - process all frames
             while ret:
@@ -42,6 +47,11 @@ def avi_to_ix(g):
                 if ret:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
                     frames.append(img)
+                    
+                    # Check frame cap
+                    if g.frame_cap_enabled and len(frames) >= g.frame_cap_max_frames:
+                        print(f"Frame cap reached: stopping at {len(frames)} frames")
+                        break
         
         timepoints = len(frames)
         print("Converting AVI to ImageXpress format.")
@@ -81,6 +91,11 @@ def avi_to_ix(g):
                         if (frame_counter - 1) % g.frame_skip_interval == 0:
                             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
                             frames.append(img)
+                            
+                            # Check frame cap
+                            if g.frame_cap_enabled and len(frames) >= g.frame_cap_max_frames:
+                                print(f"Frame cap reached for {well}: stopping at {len(frames)} frames")
+                                break
             else:
                 # Original behavior - process all frames
                 while ret:
@@ -88,6 +103,11 @@ def avi_to_ix(g):
                     if ret:
                         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype('uint16')
                         frames.append(img)
+                        
+                        # Check frame cap
+                        if g.frame_cap_enabled and len(frames) >= g.frame_cap_max_frames:
+                            print(f"Frame cap reached for {well}: stopping at {len(frames)} frames")
+                            break
             
             current_timepoints = len(frames)
             if timepoints == 0:
@@ -133,10 +153,11 @@ def loopbio_to_ix(g, camera_mapping, rotations):
     print("Converting LoopBio MP4 files to ImageXpress format.")
     
     # Find all camera directories in the plate directory
+    # Skip TimePoint directories from previous runs
     camera_dirs = []
     for item in os.listdir(g.plate_dir):
         item_path = os.path.join(g.plate_dir, item)
-        if os.path.isdir(item_path):
+        if os.path.isdir(item_path) and not item.startswith('TimePoint_'):
             camera_dirs.append(item_path)
     
     if not camera_dirs:
@@ -221,6 +242,11 @@ def loopbio_to_ix(g, camera_mapping, rotations):
                         # Save frame immediately with proper naming convention
                         outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
                         cv2.imwrite(outpath, img)
+                        
+                        # Check frame cap
+                        if g.frame_cap_enabled and current_timepoint >= g.frame_cap_max_frames:
+                            print(f"Frame cap reached for {well_position}: stopping at {current_timepoint} frames")
+                            break
         else:
             # Original behavior - process all frames
             while ret:
@@ -246,6 +272,11 @@ def loopbio_to_ix(g, camera_mapping, rotations):
                     # Save frame immediately with proper naming convention
                     outpath = os.path.join(timepoint_dir, f"{g.plate}_{well_position}_w1.TIF")
                     cv2.imwrite(outpath, img)
+                    
+                    # Check frame cap
+                    if g.frame_cap_enabled and current_timepoint >= g.frame_cap_max_frames:
+                        print(f"Frame cap reached for {well_position}: stopping at {current_timepoint} frames")
+                        break
         
         vid.release()
         
