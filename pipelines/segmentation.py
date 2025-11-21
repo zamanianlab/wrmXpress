@@ -16,6 +16,9 @@ from ultralytics import YOLO
 from config import get_program_dir
 PROGRAM_DIR = get_program_dir()
 
+# Import static_dx for stitching prediction images
+from pipelines.diagnostics import static_dx
+
 ###############################################
 ######### SEGMENTATION MAIN FUNCTION  #########
 ###############################################
@@ -129,7 +132,8 @@ def segmentation(g, options, well_site):
                                 'size': mask_info['area'],
                                 'compactness': mask_info['compactness'],
                                 'width_px': mask_info['width'],
-                                'length_px': mask_info['length']
+                                'length_px': mask_info['length'],
+                                'confidence': mask_info['confidence']
                             }
                             all_results.append(result)
                     else:
@@ -140,7 +144,8 @@ def segmentation(g, options, well_site):
                             'size': "NA",
                             'compactness': "NA",
                             'width_px': "NA",
-                            'length_px': "NA"
+                            'length_px': "NA",
+                            'confidence': "NA"
                         }
                         all_results.append(result)
                 
@@ -148,6 +153,9 @@ def segmentation(g, options, well_site):
                 df = pd.DataFrame(all_results)
                 csv_outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
                 df.to_csv(csv_outpath, index=False)
+                
+                # Check if all wells have been processed and stitch prediction images
+                stitch_yolo_predictions(g, wavelength, output_dir)
 
             else: # Runs if model_type is Cellpose
                 model_path = PROGRAM_DIR / "pipelines" / "models" / "cellpose" / options['model']
@@ -375,11 +383,17 @@ def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, w
         if not result.masks:
             continue
         
+        # Extract confidence scores if available
+        confidences = result.boxes.conf.cpu().numpy() if result.boxes is not None else []
+        
         for i, mask in enumerate(result.masks.data):
             mask_np = mask.cpu().numpy()
             
             # Measure the mask
             area, width, length, compactness = measure_mask_yolo(mask_np)
+            
+            # Get confidence score for this detection (default to 0.0 if not available)
+            confidence = float(confidences[i]) if i < len(confidences) else 0.0
             
             masks_data.append({
                 'mask': mask_np,
@@ -387,7 +401,8 @@ def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, w
                 'area': area,
                 'width': width,
                 'length': length,
-                'compactness': compactness
+                'compactness': compactness,
+                'confidence': confidence
             })
     
     return masks_data
@@ -407,3 +422,84 @@ def create_labeled_mask_from_yolo(masks_data, image_shape):
         labeled_image[mask > 0.5] = mask_id
     
     return labeled_image
+
+
+# Check if all wells have been processed and stitch YOLO prediction images
+# Called at the end of YOLO segmentation for each well
+def stitch_yolo_predictions(g, wavelength, output_dir):
+    img_dir = output_dir / 'img'
+    
+    # Only proceed if img directory exists
+    if not img_dir.exists():
+        print(f"Image directory {img_dir} does not exist, skipping stitching")
+        return
+    
+    # Determine which wells to check (handle 'All' case)
+    if g.wells == ['All']:
+        # Generate all well names based on plate dimensions
+        from preprocessing.utilities import get_wells
+        wells, _ = get_wells(g)
+    else:
+        wells = g.wells
+    
+    # Determine file format by looking for any prediction images
+    # Check for both jpg and png
+    all_prediction_files = list(img_dir.glob(f"{g.plate_short}_*_w{wavelength + 1}.*"))
+    
+    if not all_prediction_files:
+        print(f"No prediction images found in {img_dir} for wavelength {wavelength + 1}")
+        return
+    
+    # Determine the actual format being used
+    file_format = all_prediction_files[0].suffix.lstrip('.')
+    print(f"Found {len(all_prediction_files)} prediction images in {file_format} format")
+    
+    # Check if all expected prediction images exist
+    all_wells_complete = True
+    missing_wells = []
+    for well in wells:
+        expected_file = img_dir / f"{g.plate_short}_{well}_w{wavelength + 1}.{file_format}"
+        if not expected_file.exists():
+            all_wells_complete = False
+            missing_wells.append(well)
+    
+    if not all_wells_complete:
+        # Not all wells processed yet, skip stitching
+        return
+    
+    # Check if we've already stitched this wavelength (avoid duplicate stitching)
+    predicted_output = output_dir / f"{g.plate_short}_w{wavelength + 1}_predicted.{file_format}"
+    if predicted_output.exists():
+        print(f"Prediction image already stitched: {predicted_output}")
+        return
+    
+    try:
+        print(f"All wells complete for wavelength {wavelength + 1}. Stitching {len(wells)} prediction images...")
+        
+        # Call static_dx to stitch the images
+        outpaths = static_dx(
+            g,
+            wells,
+            img_dir,
+            output_dir,
+            None,
+            [wavelength],
+            rescale_factor=1,
+            format=file_format,
+        )
+        
+        # Rename the output file to include "_predicted" suffix
+        for outpath in outpaths:
+            if os.path.exists(outpath):
+                path_obj = Path(outpath)
+                new_name = f"{path_obj.stem}_predicted{path_obj.suffix}"
+                new_path = path_obj.parent / new_name
+                os.rename(outpath, new_path)
+                print(f"✓ Stitched prediction image saved to: {new_path}")
+            else:
+                print(f"Warning: Expected output path does not exist: {outpath}")
+                
+    except Exception as e:
+        print(f"Error stitching YOLO prediction images: {e}")
+        import traceback
+        traceback.print_exc()

@@ -680,7 +680,7 @@ def auto_crop(g):
 # Called in grid_crop() and auto_crop()
 def extract_well_name(well_string):
     # regular expression pattern to match the format
-    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG)$'
+    pattern = r'_([A-Z])(\d+)(?:_s(\d+))?_w(\d+)\.(tif|TIF|png|PNG|jpg|JPG|jpeg|JPEG)$'
     match = re.search(pattern, well_string)
 
     # check number of groups to determine site number if applicable and well number
