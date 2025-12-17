@@ -164,7 +164,7 @@ pipelines:
     run: False
     # Model name. If model type is 'python', leave the model blank 
     model: 'celegans_20220830'
-    # Model type: 'python' or 'cellpose'
+    # Model type: 'python', 'cellpose', or 'yolo'
     model_type: 'cellpose'
     # If using Python as model_type, set the sigma for the kernel of the Guaussian blur
     model_sigma: 0.25

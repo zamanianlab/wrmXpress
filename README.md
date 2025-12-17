@@ -135,7 +135,7 @@ After running wrmXpress, the output folder will contain organized results per pi
 For testing, example data for each pipline is provided here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7116648.svg)](https://doi.org/10.5281/zenodo.7116648).
 
 # Plate ID Naming Convention
-Users can use any naming convention they prefer but the YAML configuration file and the plate ID in `input/` and `metadata/` must share the same name. Our lab uses the following naming convention: `YYYYMMDD-p##-XXX` whereby:
+It his highly recommended that your plate ID uses our naming convention. Diagnostic, optical flow, segmentation, and tracking pipelines should be able to handle any naming convention, but any plate running cellprofiler must use our naming convention. The YAML configuration file and the plate ID in `input/` and `metadata/` must share the same name. Our lab uses the following naming convention: `YYYYMMDD-p##-XXX` whereby:
 
     - `YYYYMMDD` → date of experiment  
     - `p##` → plate number of said date
@@ -143,7 +143,11 @@ Users can use any naming convention they prefer but the YAML configuration file 
 
 An example of a plate would be `20250127-p01-ABC`. 
 
-Important note: If your plate ID uses an underscore followed by a number, that portion will be cut off. So for instance, `20250127-p01-ABC_123456` will convert to `20250127-p01-ABC`.
+Please do not use spaces in your plate ID.
+
+Important note: If your plate ID uses an underscore followed by a number, that portion will be cut off in the final output files. So for instance, `20250127-p01-ABC_123456` will convert to `20250127-p01-ABC`.
+
+If you have imaged your plates already using an ImageXpress and your file names are not in our format, you may download and use the `rename_ix_plate_id` folder in `supplemental/scripts`. Once downloaded, add your plate(s) to the input folder. Run this command: `python rename_plate_id.py` and it will prompt you to convert your plate(s) to our naming format. 
 
 # Input Structure
 

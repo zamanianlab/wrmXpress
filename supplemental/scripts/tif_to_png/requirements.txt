@@ -1,0 +1,5 @@
+imageio>=2.34.0
+numpy>=1.26.0
+# tifffile is a dependency of imageio for TIFF support, but pin explicitly for stability
+tifffile>=2024.6.18
+
