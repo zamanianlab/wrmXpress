@@ -133,7 +133,9 @@ def segmentation(g, options, well_site):
                                 'compactness': mask_info['compactness'],
                                 'width_px': mask_info['width'],
                                 'length_px': mask_info['length'],
-                                'confidence': mask_info['confidence']
+                                'confidence': mask_info['confidence'],
+                                'class_id': mask_info['class_id'],
+                                'class_name': mask_info['class_name']
                             }
                             all_results.append(result)
                     else:
@@ -145,7 +147,9 @@ def segmentation(g, options, well_site):
                             'compactness': "NA",
                             'width_px': "NA",
                             'length_px': "NA",
-                            'confidence': "NA"
+                            'confidence': "NA",
+                            'class_id': "NA",
+                            'class_name': "NA"
                         }
                         all_results.append(result)
                 
@@ -383,9 +387,10 @@ def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, w
         if not result.masks:
             continue
         
-        # Extract confidence scores if available
+        # Extract confidence scores and class IDs if available
         confidences = result.boxes.conf.cpu().numpy() if result.boxes is not None else []
-        
+        class_ids = result.boxes.cls.cpu().numpy() if result.boxes is not None else [] 
+
         for i, mask in enumerate(result.masks.data):
             mask_np = mask.cpu().numpy()
             
@@ -394,6 +399,10 @@ def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, w
             
             # Get confidence score for this detection (default to 0.0 if not available)
             confidence = float(confidences[i]) if i < len(confidences) else 0.0
+
+            # Get class ID and class name for this detection
+            class_id = int(class_ids[i]) if i < len(class_ids) else -1
+            class_name = model.names[class_id] if class_id >= 0 and class_id in model.names else "unknown"
             
             masks_data.append({
                 'mask': mask_np,
@@ -402,7 +411,9 @@ def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, w
                 'width': width,
                 'length': length,
                 'compactness': compactness,
-                'confidence': confidence
+                'confidence': confidence,
+                'class_id': class_id,
+                'class_name': class_name
             })
     
     return masks_data
