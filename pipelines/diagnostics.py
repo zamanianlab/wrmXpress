@@ -14,10 +14,15 @@ from preprocessing.image_processing import stitch_all_timepoints, stitch_directo
 # Generate a static diagnostic image for a plate by stitching selected wells
 # Saves the resulting stitched image in the output directory for each wavelength
 # Returns a list of paths to the stitched images
-def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_factor, format='TIF'):
+def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_factor, format='TIF', name_base=None):
     start_time = datetime.now()
     print("Stitching images for static dx.")
-    
+
+    # name_base is the basename of the images being READ. Source images use plate_short;
+    # generated (work/output) images use the unique plate. Output is always named with g.plate.
+    if name_base is None:
+        name_base = g.plate_short
+
     if wavelengths is None:
         wavelengths = [i for i in range(g.n_waves)]
     
@@ -40,8 +45,8 @@ def static_dx(g, wells, input_dir, output_dir, work_dir, wavelengths, rescale_fa
 
     # For each wavelength, generate image paths of wells to be stitched
     for wavelength in wavelengths:
-        image_paths = generate_selected_image_paths(g, wells, wavelength+1, base_dir, format)
-        outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength+1}.{format}')
+        image_paths = generate_selected_image_paths(g, wells, wavelength+1, base_dir, format, name_base=name_base)
+        outpath = os.path.join(output_dir, g.plate + f'_w{wavelength+1}.{format}')
         outpaths.append(outpath)
         __stitch_plate(g, image_paths, outpath, rescale_factor, format)
 
@@ -82,7 +87,7 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
 
         # Create video for each wavelength and save in output directory
         for wavelength in range(g.n_waves):
-            outpath = os.path.join(output_dir, g.plate_short + f'_w{wavelength + 1}.AVI')
+            outpath = os.path.join(output_dir, g.plate + f'_w{wavelength + 1}.AVI')
             __create_video(frame_paths[wavelength], outpath)
     
     else:
@@ -99,7 +104,7 @@ def video_dx(g, wells, input_dir, output_dir, static_work_dir, video_work_dir, r
                 for timepoint in range(g.time_points):
                     frame_path = os.path.join(base_dir, f'TimePoint_{timepoint + 1}', g.plate_short + f'_{well}_w{wavelength + 1}.TIF')
                     frame_paths.append(frame_path)
-                outpath = os.path.join(output_dir, g.plate_short + f'_{well}_w{wavelength + 1}.AVI')
+                outpath = os.path.join(output_dir, g.plate + f'_{well}_w{wavelength + 1}.AVI')
                 __create_video(frame_paths, outpath)
                 
     print("Finished creating video.")

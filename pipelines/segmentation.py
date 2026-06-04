@@ -75,7 +75,7 @@ def segmentation(g, options, well_site):
                 # Run segmentation based on model selection (segment_sma or segment_mf)
                 segmented_area  = segment_sma(g, well_site, binary) if options['model'] == 'segment_sma' else segment_mf(binary)
 
-                bin_png = g.work.joinpath(work_dir, f"{g.plate_short}_{well_site}_w{wavelength+1}.png")
+                bin_png = g.work.joinpath(work_dir, f"{g.plate}_{well_site}_w{wavelength+1}.png")
                 cv2.imwrite(str(bin_png), binary * 255)
                     
                 print(f"Segmented area is {segmented_area}")
@@ -86,7 +86,7 @@ def segmentation(g, options, well_site):
                         
                 out_dict[well_site].append(segmented_area)
                 df = pd.DataFrame.from_dict(out_dict, orient='index', columns=cols)
-                outpath = work_dir.joinpath(f"{g.plate_short}_{well_site}_w{wavelength+1}.csv")
+                outpath = work_dir.joinpath(f"{g.plate}_{well_site}_w{wavelength+1}.csv")
                 df.to_csv(path_or_buf=outpath, index_label='well_site')
             
             elif model_type == 'yolo': # Runs if model_type is YOLO
@@ -102,10 +102,10 @@ def segmentation(g, options, well_site):
                     # Run YOLO segmentation
                     output_img_dir = output_dir / 'img'
                     masks_data = run_yolo_segmentation(
-                        model_path, 
-                        png_path, 
+                        model_path,
+                        png_path,
                         output_img_dir,
-                        g.plate_short,
+                        g.plate,
                         well_site,
                         wavelength + 1
                     )
@@ -120,7 +120,7 @@ def segmentation(g, options, well_site):
                         labeled_image_scaled = labeled_image * 255
                         
                         # Save labeled mask PNG to work directory
-                        mask_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                        mask_filename = f"{g.plate}_{well_site}_w{wavelength + 1}.png"
                         mask_path = work_dir / mask_filename
                         cv2.imwrite(str(mask_path), labeled_image_scaled.astype(np.uint16))
                         
@@ -155,9 +155,9 @@ def segmentation(g, options, well_site):
                 
                 # Save results to CSV
                 df = pd.DataFrame(all_results)
-                csv_outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
+                csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
                 df.to_csv(csv_outpath, index=False)
-                
+
                 # Check if all wells have been processed and stitch prediction images
                 stitch_yolo_predictions(g, wavelength, output_dir)
 
@@ -177,11 +177,11 @@ def segmentation(g, options, well_site):
                     # Rename and move the resulting PNG mask to the 'work/cellprofiler' directory
                     for file in glob.glob(f"{temp_dir}/*.png"):
                         if 'cp_masks' in file:
-                            new_filename = f"{g.plate_short}_{well_site}_w{wavelength + 1}.png"
+                            new_filename = f"{g.plate}_{well_site}_w{wavelength + 1}.png"
                             shutil.copy(file, work_dir / new_filename)
 
                 # Process segmentation metrics
-                image_path = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
+                image_path = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.png'
                 if os.path.exists(image_path):
                     image = io.imread(image_path)
                     labeled_image = measure.label(image)
@@ -204,7 +204,7 @@ def segmentation(g, options, well_site):
 
                 # Save results to CSV
                 df = pd.DataFrame(all_results)
-                csv_outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.csv'
+                csv_outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.csv'
                 df.to_csv(csv_outpath, index=False)
 
     return wavelengths
@@ -252,8 +252,8 @@ def segment_sma(g, well_site, binary):
     filtered_sizes = [j for i, j in enumerate(sizes_l) if i not in bad_indices]
 
     # Saving the filled and filtered images with proper scaling
-    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate_short}_{well_site}_filled.png"), filled.astype(np.uint8) * 255)
-    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate_short}_{well_site}_filtered.png"), filtered.astype(np.uint8) * 255)
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filled.png"), filled.astype(np.uint8) * 255)
+    cv2.imwrite(str(Path(g.work) / "segmentation" / f"{g.plate}_{well_site}_filtered.png"), filtered.astype(np.uint8) * 255)
 
     return filtered_sizes
 
@@ -345,16 +345,16 @@ def measure_mask_yolo(mask):
 
 # Run YOLO segmentation model on an image and process results.
 # Called in segmentation after mask paths are returned
-def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_short, well_site, wavelength):
+def run_yolo_segmentation(model_path, image_path, output_img_dir, plate_name, well_site, wavelength):
     # Load YOLO model
     model = YOLO(str(model_path))
-    
+
     # Create output directory for prediction images
     output_img_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Run inference - save prediction images with bounding boxes
     # YOLO will create a subdirectory with the name parameter
-    run_name = f"{plate_short}_{well_site}_w{wavelength}"
+    run_name = f"{plate_name}_{well_site}_w{wavelength}"
     results = model.predict(
         source=str(image_path),
         save=True,
@@ -455,7 +455,7 @@ def stitch_yolo_predictions(g, wavelength, output_dir):
     
     # Determine file format by looking for any prediction images
     # Check for both jpg and png
-    all_prediction_files = list(img_dir.glob(f"{g.plate_short}_*_w{wavelength + 1}.*"))
+    all_prediction_files = list(img_dir.glob(f"{g.plate}_*_w{wavelength + 1}.*"))
     
     if not all_prediction_files:
         print(f"No prediction images found in {img_dir} for wavelength {wavelength + 1}")
@@ -469,7 +469,7 @@ def stitch_yolo_predictions(g, wavelength, output_dir):
     all_wells_complete = True
     missing_wells = []
     for well in wells:
-        expected_file = img_dir / f"{g.plate_short}_{well}_w{wavelength + 1}.{file_format}"
+        expected_file = img_dir / f"{g.plate}_{well}_w{wavelength + 1}.{file_format}"
         if not expected_file.exists():
             all_wells_complete = False
             missing_wells.append(well)
@@ -479,7 +479,7 @@ def stitch_yolo_predictions(g, wavelength, output_dir):
         return
     
     # Check if we've already stitched this wavelength (avoid duplicate stitching)
-    predicted_output = output_dir / f"{g.plate_short}_w{wavelength + 1}_predicted.{file_format}"
+    predicted_output = output_dir / f"{g.plate}_w{wavelength + 1}_predicted.{file_format}"
     if predicted_output.exists():
         print(f"Prediction image already stitched: {predicted_output}")
         return
@@ -497,6 +497,7 @@ def stitch_yolo_predictions(g, wavelength, output_dir):
             [wavelength],
             rescale_factor=1,
             format=file_format,
+            name_base=g.plate,  # YOLO prediction images are named with the unique plate
         )
         
         # Rename the output file to include "_predicted" suffix

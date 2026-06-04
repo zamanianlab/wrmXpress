@@ -29,7 +29,7 @@ pattern <- paste0(wells, ".*w", wavelength_label, ".*\\.TIF$")
 # Filter input files matching the pattern
 #input_raw <- list.files(path = image_dir, pattern = '.*TIF$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .))
 input_raw <- list.files(path = image_dir, pattern = pattern, recursive = TRUE)
-input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate_short, vars = .))
+input_mask <- list.files(path = mask_dir, pattern = '.*png$', recursive = TRUE) %>% magrittr::extract(dplyr::matches(wells, vars = .)) %>% magrittr::extract(dplyr::matches(plate, vars = .))
 mask <- 'well_mask.png'
 
 wd <- getwd() %>% str_remove(., '^/')
@@ -54,7 +54,9 @@ load_csv <- dplyr::tibble(
   Metadata_Date = stringr::str_extract(plate, '202[0-9]{5}'),
   Metadata_FileLocation = 'nan',
   Metadata_Frame = 0,
-  Metadata_Plate = stringr::str_extract(plate, '-p[0-9]*-') %>% stringr::str_remove_all(., '-'),
+  # Use the full plate id so output filenames work for any plate-naming convention
+  # and stay unique per plate folder (see metadata_join_master.R / the .cppipe templates)
+  Metadata_Plate = plate,
   Metadata_Researcher = stringr::str_extract(plate, '-[A-Z]{2,3}') %>% stringr::str_remove_all(., '-'),
   Metadata_Series = 0,
   Metadata_Well = stringr::str_extract(FileName_RawImage, '[A-P]([0-1][0-9]|2[0-4])'),
@@ -63,7 +65,7 @@ load_csv <- dplyr::tibble(
 
 #readr::write_csv(load_csv, file = stringr::str_c('/', wd, '/input', '/image_paths_wormsize_intensity_cellpose.csv', sep = ''))
 # Generate a unique output CSV for each well_site
-output_csv <- file.path(output_dir, paste0("image_paths_", plate_short, "_", well_site, "_w", wavelength + 1, ".csv"))
+output_csv <- file.path(output_dir, paste0("image_paths_", plate, "_", well_site, "_w", wavelength + 1, ".csv"))
 
 # Debug check for output path
 print(paste("Writing CSV to:", output_csv))

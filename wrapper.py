@@ -193,6 +193,7 @@ if __name__ == "__main__":
                     [wavelength],
                     rescale_factor=1,
                     format="png",
+                    name_base=g.plate,  # work/output images are named with the unique plate
                 )
         else: 
             print(f"Skipping static_dx for {pipeline}: No PNG files found.")
@@ -203,10 +204,11 @@ if __name__ == "__main__":
 
 
     # Filter and get CSVs for the specific plate in the pipeline directories
+    # Generated CSVs are named with the unique plate folder name (g.plate)
     pipeline_csv_list = [
-        d  
+        d
         for d in pipelines.keys()
-        if any(glob.glob(str(Path(g.work) / d / f"*{g.plate_short}*.csv")))
+        if any(glob.glob(str(Path(g.work) / d / f"*{g.plate}*.csv")))
     ]
 
     print("Pipeline CSVs list:", pipeline_csv_list)

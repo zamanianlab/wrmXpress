@@ -799,10 +799,14 @@ def well_idx_to_name(g, row, col):
     return f"{letter}{number}"
 
 # Generates a list of image paths for the given wells and wavelength
-def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF'):
+# name_base is the filename base of the images being read: g.plate_short for raw source
+# images, g.plate for generated (work/output) images. Defaults to plate_short.
+def generate_selected_image_paths(g, wells, wavelength, directory, format='TIF', name_base=None):
+    if name_base is None:
+        name_base = g.plate_short
     image_paths = []
     for well in wells:
-        tiff_file_base = f"{g.plate_short}_{well}"
+        tiff_file_base = f"{name_base}_{well}"
         wavelength_tiff_file = os.path.join(directory, f"{tiff_file_base}_w{wavelength}.{format}")
         base_tiff_file = os.path.join(directory, f"{tiff_file_base}.{format}")
         

@@ -87,7 +87,7 @@ def optical_flow(g, options, well_site, multiplier=2):
         sum_blur_colour = Image.fromarray(np.uint8(cm.inferno(new_im) * 255))
 
         # Save flow image in 'work/optical_flow' folder
-        outpath = work_dir / f'{g.plate_short}_{well_site}_w{wavelength + 1}.png'
+        outpath = work_dir / f'{g.plate}_{well_site}_w{wavelength + 1}.png'
         sum_blur_colour.save(outpath)
 
         # Prepare results for the current well_site and wavelength

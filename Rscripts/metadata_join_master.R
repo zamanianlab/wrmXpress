@@ -83,9 +83,10 @@ for (pipeline in pipeline_list) {
   work_dir <- stringr::str_c(work, pipeline, sep = "/")
   
   # List only CSV files that contain the plate name
+  # Generated CSVs are named with the unique plate folder name (plate)
   all_files <- list.files(
     path = work_dir,
-    pattern = paste0(plate_short, ".*\\.csv$"),
+    pattern = paste0(plate, ".*\\.csv$"),
     recursive = TRUE
   )
   
@@ -120,7 +121,7 @@ for (pipeline in pipeline_list) {
     return(output_data)
   })
   
-  final_csv_path <- file.path(output_dir, paste0(plate_short, '_tidy.csv'))
+  final_csv_path <- file.path(output_dir, paste0(plate, '_tidy.csv'))
   readr::write_csv(final_df, final_csv_path)
     } else {
   # Handle the case where no files were found

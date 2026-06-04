@@ -44,7 +44,7 @@ load_csv <- dplyr::tibble(
   Metadata_Date = stringr::str_extract(plate, '202[0-9]{5}'),
   Metadata_FileLocation = stringr::str_c(URL_GFP),
   Metadata_Frame = 0,
-  Metadata_Plate = stringr::str_extract(plate, '-p[0-9]*-') %>% stringr::str_remove_all(., '-'),
+  Metadata_Plate = plate,
   Metadata_Researcher = stringr::str_extract(plate, '-[A-Z]{2,3}') %>% stringr::str_remove_all(., '-'),
   Metadata_Series = 0,
   Metadata_Site = stringr::str_extract(plate, '_s[0-9]_') %>% stringr::str_remove_all(., 'Z'),
@@ -53,7 +53,7 @@ load_csv <- dplyr::tibble(
 )
 
 # Generate a unique output CSV for each well_site
-output_csv <- file.path(output_dir, paste0("image_paths_", plate_short, "_", well_site, "_w", wavelength + 1, ".csv"))
+output_csv <- file.path(output_dir, paste0("image_paths_", plate, "_", well_site, "_w", wavelength + 1, ".csv"))
 
 # Debug check for output path
 print(paste("Writing CSV to:", output_csv))

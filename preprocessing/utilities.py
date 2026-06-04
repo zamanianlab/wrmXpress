@@ -91,7 +91,6 @@ def parse_yaml(arg_parser, g_class):
     output = conf.get('directories').get('output')[0]
     metadata = conf.get('directories').get('metadata')[0]
     plate = args.plate
-    plate_short = re.sub('(_Plate)?_[0-9]+$', '', plate)
 
     print('run-time settings:')
     print("\t\twells: {}".format(wells))
@@ -103,6 +102,19 @@ def parse_yaml(arg_parser, g_class):
     output = Path.home().joinpath(output)
     metadata = Path.home().joinpath(metadata)
     plate_dir = Path.home().joinpath(input, plate)
+
+    # Determine plate_short, the basename used by the raw source images / HTD.
+    # 'plate' (the folder name) is always unique and is used to name every generated
+    # artifact; 'plate_short' is used only to READ the source images and HTD.
+    if file_structure == 'imagexpress':
+        # The raw IX export names its files/HTD without the unique identifier the lab
+        # appends to the folder, so detect the real basename from the files themselves.
+        plate_short = detect_plate_short(plate_dir, plate)
+    else:
+        # AVI/LoopBio inputs are converted by wrmXpress itself (files are named with
+        # 'plate'), so there is no instrument suffix to strip.
+        plate_short = plate
+    print("\t\tplate_short: {}".format(plate_short))
     print("\t\tinput directory: {}".format(str(input)))
     print("\t\twork directory: {}".format(str(work)))
     print("\t\toutput directory: {}".format(str(output)))
@@ -197,6 +209,32 @@ def parse_htd(yaml, g_class):
 #############################################
 ######### UTILITIES HELPER FUNCTIONS ########
 #############################################
+
+# Detect the basename used by an ImageXpress plate's raw files (the HTD and TIFs).
+# The IX export names these without the unique identifier that the lab appends to the
+# folder name, so we read the actual filenames rather than guessing with a regex.
+# Falls back to stripping a trailing '_<digits>' (or '_Plate_<digits>') from the folder name.
+# Called in parse_yaml() to set plate_short.
+def detect_plate_short(plate_dir, plate):
+    plate_dir = Path(plate_dir)
+
+    # Prefer the HTD basename in the plate folder root
+    if plate_dir.is_dir():
+        for file in sorted(os.listdir(plate_dir)):
+            if file.endswith('.HTD') and (plate_dir / file).is_file():
+                return file[:-4]
+
+        # Otherwise infer from a TimePoint TIF filename (plate_short_well_wavelength.TIF)
+        for item in sorted(os.listdir(plate_dir)):
+            item_path = plate_dir / item
+            if item_path.is_dir() and item.startswith('TimePoint_'):
+                for file in sorted(os.listdir(item_path)):
+                    match = re.match(r'^(.+?)_[A-Z]\d+(?:_s\d+)?_w\d+\.(tif|TIF)$', file)
+                    if match:
+                        return match.group(1)
+
+    # Fallback: strip the trailing unique identifier from the folder name
+    return re.sub('(_Plate)?_[0-9]+$', '', plate)
 
 # Add '_w1' suffix to all TIF files if missing
 # Called in step 2 of wrapper.py, specifically for IX plates

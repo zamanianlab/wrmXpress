@@ -40,7 +40,7 @@ load_csv <- dplyr::tibble(
   Metadata_Date = stringr::str_extract(plate, '202[0-9]{5}'),
   Metadata_FileLocation = 'nan',
   Metadata_Frame = 0,
-  Metadata_Plate = stringr::str_extract(plate, '-p[0-9]*-') %>% stringr::str_remove_all(., '-'),
+  Metadata_Plate = plate,
   Metadata_Researcher = stringr::str_extract(plate, '-[A-Z]{2,3}') %>% stringr::str_remove_all(., '-'),
   Metadata_Series = 0,
   Metadata_Wavelength = 'nan',

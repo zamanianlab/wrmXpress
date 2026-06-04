@@ -232,11 +232,11 @@ ExportToSpreadsheet:[module_num:16|svn_version:'Unknown'|variable_revision_numbe
     Overwrite existing files without warning?:Yes
     Data to export:NonOverlappingWorms
     Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_nonoverlappingworms_data.csv
+    File name:\g<Plate>_nonoverlappingworms_data.csv
     Use the object name for the file name?:No
     Data to export:StraightenedWorms
     Combine these object measurements with those of the previous object?:No
-    File name:\g<Date>-\g<Plate>-\g<Researcher>_straightenedworms_data.csv
+    File name:\g<Plate>_straightenedworms_data.csv
     Use the object name for the file name?:No
 
 SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -244,7 +244,7 @@ SaveImages:[module_num:17|svn_version:'Unknown'|variable_revision_number:16|show
     Select the image to save:StraightenedImage
     Select method for constructing file names:Single name
     Select image name for file prefix:None
-    Enter single file name:\g<Date>-\g<Plate>-\g<Researcher>-\g<Well>
+    Enter single file name:\g<Plate>-\g<Well>
     Number of digits:4
     Append a suffix to the image file name?:No
     Text to append to the image name:

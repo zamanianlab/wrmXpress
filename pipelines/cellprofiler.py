@@ -51,7 +51,7 @@ def cellprofiler(g, options, well_site):
                 # Rename and move the resulting PNG mask to the 'work/cellprofiler' directory
                 for file in glob.glob(f"{temp_dir}/*.png"):
                     if "cp_masks" in file:
-                            new_filename = (f"{g.plate_short}_{well_site}_w{wavelength + 1}.png")
+                            new_filename = (f"{g.plate}_{well_site}_w{wavelength + 1}.png")
                             shutil.copy(file, work_dir / new_filename)
 
     # Generate the CSV file using the R script
@@ -68,7 +68,7 @@ def cellprofiler(g, options, well_site):
 
     # Run CellProfiler and save the output images to the output/cellprofiler/img directory
     csv_file = (
-        work_dir / f"image_paths_{g.plate_short}_{well_site}_w{wavelength + 1}.csv"
+        work_dir / f"image_paths_{g.plate}_{well_site}_w{wavelength + 1}.csv"
     )
     if csv_file.exists():
         run_cellprofiler(options["pipeline"], csv_file, img_out_dir)
